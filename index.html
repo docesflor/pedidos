@@ -1232,14 +1232,14 @@ footer p {
     .linha-dupla > div.estreito { flex: 1; width: 100%; }
 
     .item { flex-direction: column; gap: 8px; }
-    .btn-remove { width: 100%; text-align: center; padding: 8px; }
+    .btn-remove { width: auto; min-width: 72px; font-size: 0.76em; padding: 6px 10px; }
 
     .pedido-card { padding: 14px 12px; }
     .pedido-header { flex-direction: column; align-items: flex-start; gap: 6px; }
     .pedido-nome { font-size: 1.15em; }
 
-    .pedido-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .pedido-botoes .btn { min-width: unset; width: 100%; font-size: 0.75em; padding: 8px 6px; }
+    .pedido-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+    .pedido-botoes .btn { min-width: unset; width: 100%; font-size: 0.73em; padding: 7px 4px; text-align: center; }
 
     .btn-bloco { font-size: 0.88em; padding: 12px; }
 
@@ -1259,6 +1259,8 @@ footer p {
     .secao-titulo { font-size: 1.2rem; }
     .pedido-botoes { grid-template-columns: 1fr; }
     #dashboard-resultado .linha-dupla { flex-direction: column; }
+    .linha-dupla { flex-direction: column; gap: 0; }
+    .linha-dupla > div, .linha-dupla > div.estreito { flex: 1; width: 100%; }
 }
 </style>
 </head>
@@ -1649,24 +1651,24 @@ footer p {
             <p class="form-card-titulo">💰 Resumo Financeiro</p>
             <div class="linha-dupla" style="margin-bottom:12px;">
                 <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Faturamento</p>
-                    <p id="dashFaturamento" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Faturamento</p>
+                    <p id="dashFaturamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
                     <p id="dashCarteira" style="font-size:0.78em;color:var(--brown-warm);margin-top:2px;">📂 Carteira: <strong id="dashCarteiraValor">R$ 0,00</strong></p>
                     <p id="dashFaturamentoComparativo" style="font-size:0.72em;margin-top:4px;font-weight:600;"></p>
                 </div>
                 <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Ticket Médio</p>
-                    <p id="dashTicket" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Ticket Médio</p>
+                    <p id="dashTicket" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
                 </div>
             </div>
             <div class="linha-dupla">
                 <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Gastos</p>
-                    <p id="dashGastos" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
+                    <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Gastos</p>
+                    <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
                 </div>
                 <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Lucro Líquido</p>
-                    <p id="dashLucro" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
+                    <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Lucro Líquido</p>
+                    <p id="dashLucro" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
                 </div>
             </div>
         </div>
@@ -1685,11 +1687,11 @@ footer p {
             <div class="linha-dupla">
                 <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('finalizados')">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
-                    <p id="dashEntregues" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
+                    <p id="dashEntregues" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
                 </div>
                 <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('andamento')">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
-                    <p id="dashAndamento" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
+                    <p id="dashAndamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
                 </div>
             </div>
         </div>
@@ -1699,11 +1701,11 @@ footer p {
             <div style="display:flex;gap:12px;">
                 <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Brigadeiros</p>
-                    <p id="dashTotalBrig" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
+                    <p id="dashTotalBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
                 </div>
                 <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
-                    <p id="dashMediaBrig" style="font-family:'Cormorant Garamond',serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
+                    <p id="dashMediaBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
                 </div>
             </div>
         </div>
@@ -1983,9 +1985,9 @@ function renderizarItens() {
                 </div>
                 <button class="btn-remove" onclick="removerItem('${item.id}')">Remover</button>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;width:100%;">
                 <span style="font-size:0.78em;font-weight:600;color:var(--brown-warm);">💲 Faixa:</span>
-                <select style="flex:1;min-width:180px;margin-bottom:0;font-size:0.82em;padding:6px 12px;border-radius:50px;" onchange="aplicarPrecoManual('${item.id}',parseFloat(this.value),${precoAuto})">${opcoesHTML}</select>
+                <select style="flex:1;min-width:0;width:100%;margin-bottom:0;font-size:0.78em;padding:6px 10px;border-radius:50px;" onchange="aplicarPrecoManual('${item.id}',parseFloat(this.value),${precoAuto})">${opcoesHTML}</select>
                 ${temDesconto ? `<button style="font-size:0.76em;padding:5px 10px;border:none;border-radius:50px;background:#FEF3C7;color:#92400E;font-weight:600;cursor:pointer;" onclick="resetarPreco('${item.id}')">↩ Automático</button>` : ''}
             </div>`;
         list.appendChild(div);
