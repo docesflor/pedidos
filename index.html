@@ -188,7 +188,7 @@ body {
    HEADER FIXO — estilo cardápio completo
 ═══════════════════════════════════════════ */
 #menu-fixo {
-    position: fixed;
+    position: relative;
     top: 0; left: 0; right: 0;
     z-index: 1000;
     background: var(--brown-dark);
@@ -349,7 +349,7 @@ body {
 }
 
 /* padding body para o header */
-body { padding-top: 310px; }
+body { padding-top: 0; }
 
 /* ═══════════════════════════════════════════
    GAVETA MOBILE
@@ -1207,7 +1207,7 @@ footer p {
 }
 
 @media (max-width: 600px) {
-    body { padding-top: 230px; }
+    body { padding-top: 0; }
 
     #menu-hero { padding: 14px 14px 10px; gap: 5px; }
     #logo-topo { width: 110px; height: 110px; }
@@ -1253,7 +1253,7 @@ footer p {
 }
 
 @media (max-width: 380px) {
-    body { padding-top: 210px; }
+    body { padding-top: 0; }
     #logo-topo { width: 88px; height: 88px; }
     #menu-brand-nome { font-size: 1.25rem; }
     .secao-titulo { font-size: 1.2rem; }
@@ -1983,6 +1983,7 @@ function renderizarItens() {
                     <p style="color:var(--brown-warm);">Qtd: ${item.quantidade} | B: ${item.formato} | F: ${item.tipoForma} | Cor: ${item.cor}</p>
                     <p><strong>Subtotal: R$ ${subtotal}</strong></p>
                 </div>
+                <button class="btn-editar-item" onclick="editarItemCarrinho('${item.id}')" style="background:var(--amber);color:white;border:none;padding:6px 12px;border-radius:50px;cursor:pointer;font-size:0.8em;font-weight:600;white-space:nowrap;margin-top:2px;transition:background 0.2s;margin-right:4px;" onmouseover="this.style.background='var(--laranja-escuro)'" onmouseout="this.style.background='var(--amber)'">✏️ Editar</button>
                 <button class="btn-remove" onclick="removerItem('${item.id}')">Remover</button>
             </div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;width:100%;">
@@ -2032,6 +2033,50 @@ function recalcularDescontoManual() {
         campoDesconto.style.color = ''; campoDesconto.style.fontWeight = '';
     }
     atualizarTotal();
+}
+
+function editarItemCarrinho(id) {
+    const item = itens.find(i => i.id === id);
+    if (!item) return;
+
+    // Preenche os campos com os dados do item
+    document.getElementById('sabor').value = item.sabor || '';
+
+    const selFormato = document.getElementById('formato');
+    selFormato.value = item.formato || '';
+
+    const selTipoForma = document.getElementById('tipoForma');
+    selTipoForma.value = item.tipoForma || '';
+
+    const selCor = document.getElementById('cor');
+    if (['Branca','Preta','Vermelha','Rosa','Azul','Verde','Amarela','Roxa','Laranja','Marrom','Cinza','Dourada','Prateada'].includes(item.cor)) {
+        selCor.value = item.cor;
+        document.getElementById('corCustomizada').style.display = 'none';
+    } else {
+        selCor.value = 'Outra';
+        document.getElementById('corCustomizada').style.display = 'block';
+        document.getElementById('corCustomizada').value = item.cor || '';
+    }
+
+    const opcoes25 = [25,33,34,50,75,100,125,150,200];
+    const selQtd = document.getElementById('quantidade');
+    if (opcoes25.includes(item.quantidade)) {
+        selQtd.value = String(item.quantidade);
+        document.getElementById('quantidadeCustomizada').style.display = 'none';
+    } else {
+        selQtd.value = 'outro';
+        document.getElementById('quantidadeCustomizada').style.display = 'block';
+        document.getElementById('quantidadeCustomizada').value = item.quantidade;
+    }
+
+    // Remove o item da lista para que seja re-adicionado com as correções
+    itens = itens.filter(i => i.id !== id);
+    renderizarItens();
+    atualizarValorBrigadeiros();
+
+    // Scroll e foco no campo sabor
+    document.getElementById('sabor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('✏️ Edite os campos e clique em "+ Adicionar Item"', 'aviso');
 }
 
 function removerItem(id) {
