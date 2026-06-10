@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/docesflor/cardapio/main/icon-512.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/docesflor/cardapio/main/icon-512.png">
     <title>Doces Flor – Sistema de Pedidos</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -10,6 +12,15 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <link rel="manifest" href="manifest.json">
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(r => console.log('SW registrado:', r.scope))
+        .catch(e => console.warn('SW erro:', e));
+    });
+  }
+</script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1407,6 +1418,10 @@ footer p {
                 <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">✨ Gourmet</span>
                 <span id="infoGourmet" style="font-size:0.85em;font-weight:600;color:var(--amber);">0 un.</span>
             </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">🍓 Frutas</span>
+                <span id="infoFrutas" style="font-size:0.85em;font-weight:600;color:var(--amber);">0 un.</span>
+            </div>
         </div>
         <label for="sabor">Sabor</label>
         <select id="sabor">
@@ -1418,20 +1433,27 @@ footer p {
                 <option value="Café">Café</option>
                 <option value="Dois Amores">Dois Amores</option>
                 <option value="Leite Ninho">Leite Ninho</option>
-                <option value="Limão">Limão</option>
-                <option value="Moranguinho">Moranguinho</option>
+                <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
+                <option value="Prestígio">Prestígio</option>
                 <option value="Sensação">Sensação</option>
             </optgroup>
             <optgroup label="Gourmet">
                 <option value="Chocolate Gourmet Preto">Chocolate Gourmet Preto</option>
                 <option value="Confete">Confete</option>
                 <option value="Churros">Churros</option>
-                <option value="Delícia de Uva">Delícia de Uva</option>
                 <option value="Ferrero Rocher">Ferrero Rocher</option>
                 <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
                 <option value="Negresco">Negresco</option>
                 <option value="Ovomaltine">Ovomaltine</option>
-                <option value="Prestígio">Prestígio</option>
+            </optgroup>
+            <optgroup label="Frutas">
+                <option value="Amora">Amora</option>
+                <option value="Banana">Banana</option>
+                <option value="Cereja">Cereja</option>
+                <option value="Frutas Vermelhas">Frutas Vermelhas</option>
+                <option value="Limão">Limão</option>
+                <option value="Maracujá">Maracujá</option>
+                <option value="Uva">Uva</option>
             </optgroup>
         </select>
         <div class="linha-dupla">
@@ -1528,9 +1550,9 @@ footer p {
         <button class="chip-filtro" onclick="filtrarStatus('Pago Parcialmente',this)">Parcial</button>
         <button class="chip-filtro" onclick="filtrarStatus('Pago',this)">Pago</button>
     </div>
-    <button class="btn btn-amarelo btn-bloco" onclick="toggleResumoProd()">🍫 Resumo de Produção do Dia</button>
+    <button class="btn btn-amarelo btn-bloco" onclick="toggleResumoProd()">🍫 Resumo de Produção da Semana</button>
     <div id="resumoProducao" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
-        <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir Hoje</p>
+        <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir na Semana</p>
         <div id="resumoProducaoConteudo"></div>
     </div>
     <button class="btn btn-marrom btn-bloco" onclick="toggleCalendario()">📅 Ver Calendário</button>
@@ -1848,6 +1870,7 @@ function fazerLogout() {
 // ===== PREÇOS =====
 const TABELA_PRECOS = {
     trad:    { 100: 110, 50: 60, 25: 35, avulso: 1.50 },
+    frutas:  { 100: 125, 50: 70, 25: 40, avulso: 1.75 },
     gourmet: { 100: 140, 50: 80, 25: 45, avulso: 2.00 }
 };
 const COMBOS_MISTOS = {
@@ -1856,16 +1879,18 @@ const COMBOS_MISTOS = {
 };
 const CATEGORIA_SABOR = {
     'Amendoim':'trad','Beijinho':'trad','Brigadeiro':'trad','Café':'trad',
-    'Dois Amores':'trad','Leite Ninho':'trad','Limão':'trad','Moranguinho':'trad','Sensação':'trad',
+    'Dois Amores':'trad','Leite Ninho':'trad','Moranguinho (Nesquik)':'trad','Prestígio':'trad','Sensação':'trad',
     'Chocolate Gourmet Preto':'gourmet','Confete':'gourmet','Churros':'gourmet',
-    'Delícia de Uva':'gourmet','Ferrero Rocher':'gourmet','Leite Ninho com Nutella':'gourmet',
-    'Negresco':'gourmet','Ovomaltine':'gourmet','Prestígio':'gourmet'
+    'Ferrero Rocher':'gourmet','Leite Ninho com Nutella':'gourmet',
+    'Negresco':'gourmet','Ovomaltine':'gourmet',
+    'Amora':'frutas','Banana':'frutas','Cereja':'frutas',
+    'Frutas Vermelhas':'frutas','Limão':'frutas','Maracujá':'frutas','Uva':'frutas'
 };
 const PRECOS = {
     'Amendoim':1.50,'Beijinho':1.50,'Brigadeiro':1.50,'Café':1.50,'Dois Amores':1.50,
-    'Leite Ninho':1.50,'Limão':1.50,'Moranguinho':1.50,'Sensação':1.50,
-    'Chocolate Gourmet Preto':2.00,'Confete':2.00,'Churros':2.00,'Delícia de Uva':2.00,
-    'Ferrero Rocher':2.00,'Leite Ninho com Nutella':2.00,'Negresco':2.00,'Ovomaltine':2.00,'Prestígio':2.00
+    'Leite Ninho':1.50,'Moranguinho (Nesquik)':1.50,'Prestígio':1.50,'Sensação':1.50,
+    'Chocolate Gourmet Preto':2.00,'Confete':2.00,'Churros':2.00,
+    'Ferrero Rocher':2.00,'Leite Ninho com Nutella':2.00,'Negresco':2.00,'Ovomaltine':2.00,
 };
 const PRECOS_CARD = PRECOS;
 
@@ -1884,6 +1909,11 @@ function precoUnitarioPorFaixa(cat, qtdTotal) {
         if (qtdTotal >= 50)  return 1.20;
         if (qtdTotal >= 25)  return 1.40;
         return 1.50;
+    } else if (cat === 'frutas') {
+        if (qtdTotal >= 100) return 1.25;
+        if (qtdTotal >= 50)  return 1.40;
+        if (qtdTotal >= 25)  return 1.60;
+        return 1.75;
     } else {
         if (qtdTotal >= 100) return 1.40;
         if (qtdTotal >= 50)  return 1.60;
@@ -1958,40 +1988,61 @@ function renderizarItens() {
     const list = document.getElementById('itensList');
     list.innerHTML = '';
     const qtdTrad    = itens.filter(i => CATEGORIA_SABOR[i.sabor] === 'trad').reduce((s,i) => s+i.quantidade, 0);
+    const qtdFrutas  = itens.filter(i => CATEGORIA_SABOR[i.sabor] === 'frutas').reduce((s,i) => s+i.quantidade, 0);
     const qtdGourmet = itens.filter(i => CATEGORIA_SABOR[i.sabor] === 'gourmet').reduce((s,i) => s+i.quantidade, 0);
     const precoTradAuto    = precoUnitarioPorFaixa('trad', qtdTrad);
+    const precoFrutasAuto  = precoUnitarioPorFaixa('frutas', qtdFrutas);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
     const faixasTrad    = [{label:'Avulso — R$ 1,50/un',valor:1.50},{label:'Caixa 25 — R$ 1,40/un',valor:1.40},{label:'Caixa 50 — R$ 1,20/un',valor:1.20},{label:'Cento 100 — R$ 1,10/un',valor:1.10}];
+    const faixasFrutas  = [{label:'Avulso — R$ 1,75/un',valor:1.75},{label:'Caixa 25 — R$ 1,60/un',valor:1.60},{label:'Caixa 50 — R$ 1,40/un',valor:1.40},{label:'Cento 100 — R$ 1,25/un',valor:1.25}];
     const faixasGourmet = [{label:'Avulso — R$ 2,00/un',valor:2.00},{label:'Caixa 25 — R$ 1,80/un',valor:1.80},{label:'Caixa 50 — R$ 1,60/un',valor:1.60},{label:'Cento 100 — R$ 1,40/un',valor:1.40}];
-    const ordenados = [...itens].sort((a,b) => a.sabor.localeCompare(b.sabor));
-    ordenados.forEach(item => {
-        const cat       = CATEGORIA_SABOR[item.sabor] || 'trad';
-        const precoAuto = cat === 'trad' ? precoTradAuto : precoGourmetAuto;
-        const precoEfetivo = item.precoManual !== undefined ? item.precoManual : precoAuto;
-        const subtotal  = (precoEfetivo * item.quantidade).toFixed(2).replace('.', ',');
-        const nomeSabor = item.sabor.replace('Chocolate Gourmet Preto', 'Choc. Preto');
-        const faixas    = cat === 'trad' ? faixasTrad : faixasGourmet;
-        const temDesconto = item.precoManual !== undefined && item.precoManual < precoAuto;
-        const opcoesHTML = faixas.map(f => `<option value="${f.valor}" ${precoEfetivo === f.valor ? 'selected' : ''}>${f.label}</option>`).join('');
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.style.flexDirection = 'column';
-        div.innerHTML = `
-            <div style="display:flex;align-items:flex-start;gap:10px;width:100%;">
-                <div class="item-info" style="flex:1;">
-                    <p><strong>${nomeSabor}</strong>${temDesconto ? '<span style="font-size:0.75em;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:50px;margin-left:6px;">💚 desconto</span>' : ''}</p>
-                    <p style="color:var(--brown-warm);">Qtd: ${item.quantidade} | B: ${item.formato} | F: ${item.tipoForma} | Cor: ${item.cor}</p>
-                    <p><strong>Subtotal: R$ ${subtotal}</strong></p>
+
+    const grupos = [
+        { cat: 'trad',    label: '🍫 Tradicionais', cor: '#92400E', bg: '#FEF3C7', precoAuto: precoTradAuto,    faixas: faixasTrad    },
+        { cat: 'frutas',  label: '🍓 Frutas',        cor: '#065F46', bg: '#D1FAE5', precoAuto: precoFrutasAuto,  faixas: faixasFrutas  },
+        { cat: 'gourmet', label: '✨ Gourmet',        cor: '#5B21B6', bg: '#EDE9FE', precoAuto: precoGourmetAuto, faixas: faixasGourmet }
+    ];
+
+    grupos.forEach(grupo => {
+        const itensCat = [...itens]
+            .filter(i => (CATEGORIA_SABOR[i.sabor] || 'trad') === grupo.cat)
+            .sort((a,b) => a.sabor.localeCompare(b.sabor));
+        if (itensCat.length === 0) return;
+
+        // Cabeçalho do grupo
+        const header = document.createElement('div');
+        header.style.cssText = `display:flex;justify-content:space-between;align-items:center;background:${grupo.bg};border-radius:10px;padding:6px 14px;margin:10px 0 6px;`;
+        header.innerHTML = `<span style="font-size:0.82em;font-weight:700;color:${grupo.cor};">${grupo.label}</span><span style="font-size:0.78em;font-weight:600;color:${grupo.cor};">${itensCat.reduce((s,i)=>s+i.quantidade,0)} un.</span>`;
+        list.appendChild(header);
+
+        itensCat.forEach(item => {
+            const precoAuto    = grupo.precoAuto;
+            const precoEfetivo = item.precoManual !== undefined ? item.precoManual : precoAuto;
+            const subtotal     = (precoEfetivo * item.quantidade).toFixed(2).replace('.', ',');
+            const nomeSabor    = item.sabor.replace('Chocolate Gourmet Preto', 'Choc. Preto');
+            const temDesconto  = item.precoManual !== undefined && item.precoManual < precoAuto;
+            const opcoesHTML   = grupo.faixas.map(f => `<option value="${f.valor}" ${precoEfetivo === f.valor ? 'selected' : ''}>${f.label}</option>`).join('');
+
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.style.flexDirection = 'column';
+            div.innerHTML = `
+                <div style="display:flex;align-items:flex-start;gap:10px;width:100%;">
+                    <div class="item-info" style="flex:1;">
+                        <p><strong>${nomeSabor}</strong>${temDesconto ? '<span style="font-size:0.75em;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:50px;margin-left:6px;">💚 desconto</span>' : ''}</p>
+                        <p style="color:var(--brown-warm);">Qtd: ${item.quantidade} | B: ${item.formato} | F: ${item.tipoForma} | Cor: ${item.cor}</p>
+                        <p><strong>Subtotal: R$ ${subtotal}</strong></p>
+                    </div>
+                    <button class="btn-editar-item" onclick="editarItemCarrinho('${item.id}')" style="background:var(--amber);color:white;border:none;padding:6px 12px;border-radius:50px;cursor:pointer;font-size:0.8em;font-weight:600;white-space:nowrap;margin-top:2px;transition:background 0.2s;margin-right:4px;" onmouseover="this.style.background='var(--laranja-escuro)'" onmouseout="this.style.background='var(--amber)'">✏️ Editar</button>
+                    <button class="btn-remove" onclick="removerItem('${item.id}')">Remover</button>
                 </div>
-                <button class="btn-editar-item" onclick="editarItemCarrinho('${item.id}')" style="background:var(--amber);color:white;border:none;padding:6px 12px;border-radius:50px;cursor:pointer;font-size:0.8em;font-weight:600;white-space:nowrap;margin-top:2px;transition:background 0.2s;margin-right:4px;" onmouseover="this.style.background='var(--laranja-escuro)'" onmouseout="this.style.background='var(--amber)'">✏️ Editar</button>
-                <button class="btn-remove" onclick="removerItem('${item.id}')">Remover</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;width:100%;">
-                <span style="font-size:0.78em;font-weight:600;color:var(--brown-warm);">💲 Faixa:</span>
-                <select style="flex:1;min-width:0;width:100%;margin-bottom:0;font-size:0.78em;padding:6px 10px;border-radius:50px;" onchange="aplicarPrecoManual('${item.id}',parseFloat(this.value),${precoAuto})">${opcoesHTML}</select>
-                ${temDesconto ? `<button style="font-size:0.76em;padding:5px 10px;border:none;border-radius:50px;background:#FEF3C7;color:#92400E;font-weight:600;cursor:pointer;" onclick="resetarPreco('${item.id}')">↩ Automático</button>` : ''}
-            </div>`;
-        list.appendChild(div);
+                <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;width:100%;">
+                    <span style="font-size:0.78em;font-weight:600;color:var(--brown-warm);">💲 Faixa:</span>
+                    <select style="flex:1;min-width:0;width:100%;margin-bottom:0;font-size:0.78em;padding:6px 10px;border-radius:50px;" onchange="aplicarPrecoManual('${item.id}',parseFloat(this.value),${precoAuto})">${opcoesHTML}</select>
+                    ${temDesconto ? `<button style="font-size:0.76em;padding:5px 10px;border:none;border-radius:50px;background:#FEF3C7;color:#92400E;font-weight:600;cursor:pointer;" onclick="resetarPreco('${item.id}')">↩ Automático</button>` : ''}
+                </div>`;
+            list.appendChild(div);
+        });
     });
 }
 
@@ -2011,14 +2062,16 @@ function resetarPreco(id) {
 
 function recalcularDescontoManual() {
     const qtdTrad    = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='trad').reduce((s,i)=>s+i.quantidade,0);
+    const qtdFrutas  = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='frutas').reduce((s,i)=>s+i.quantidade,0);
     const qtdGourmet = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='gourmet').reduce((s,i)=>s+i.quantidade,0);
     const precoTradAuto    = precoUnitarioPorFaixa('trad', qtdTrad);
+    const precoFrutasAuto  = precoUnitarioPorFaixa('frutas', qtdFrutas);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
     let totalDesconto = 0;
     itens.forEach(item => {
         if (item.precoManual === undefined) return;
         const cat = CATEGORIA_SABOR[item.sabor] || 'trad';
-        const precoAuto = cat === 'trad' ? precoTradAuto : precoGourmetAuto;
+        const precoAuto = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
         const diff = (precoAuto - item.precoManual) * item.quantidade;
         if (diff > 0) totalDesconto += diff;
     });
@@ -2089,19 +2142,23 @@ function atualizarValorBrigadeiros() {
     const qtdGourmet = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='gourmet').reduce((s,i)=>s+i.quantidade,0);
     const precoTradAuto    = precoUnitarioPorFaixa('trad', qtdTrad);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
-    let valorTrad = 0, valorGourmet = 0;
+    const qtdFrutas        = itens.filter(i => CATEGORIA_SABOR[i.sabor] === 'frutas').reduce((s,i) => s+i.quantidade, 0);
+    const precoFrutasAuto  = precoUnitarioPorFaixa('frutas', qtdFrutas);
+    let valorTrad = 0, valorFrutas = 0, valorGourmet = 0;
     itens.forEach(item => {
         const cat = CATEGORIA_SABOR[item.sabor] || 'trad';
-        const preco = cat === 'trad' ? precoTradAuto : precoGourmetAuto;
+        const preco = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
         if (cat === 'trad') valorTrad += preco * item.quantidade;
+        else if (cat === 'frutas') valorFrutas += preco * item.quantidade;
         else valorGourmet += preco * item.quantidade;
     });
-    const total = valorTrad + valorGourmet;
+    const total = valorTrad + valorFrutas + valorGourmet;
     document.getElementById('valor').value = total > 0 ? 'R$ ' + total.toFixed(2).replace('.', ',') : '';
     const contador = document.getElementById('contadorCategorias');
-    if (qtdTrad > 0 || qtdGourmet > 0) {
+    if (qtdTrad > 0 || qtdFrutas > 0 || qtdGourmet > 0) {
         contador.style.display = 'block';
         document.getElementById('infoTrad').textContent = qtdTrad + ' un. × R$ ' + precoTradAuto.toFixed(2).replace('.',',') + ' = R$ ' + (precoTradAuto * qtdTrad).toFixed(2).replace('.',',');
+        document.getElementById('infoFrutas').textContent = qtdFrutas + ' un. × R$ ' + precoFrutasAuto.toFixed(2).replace('.',',') + ' = R$ ' + (precoFrutasAuto * qtdFrutas).toFixed(2).replace('.',',');
         document.getElementById('infoGourmet').textContent = qtdGourmet + ' un. × R$ ' + precoGourmetAuto.toFixed(2).replace('.',',') + ' = R$ ' + (precoGourmetAuto * qtdGourmet).toFixed(2).replace('.',',');
     } else { contador.style.display = 'none'; }
     atualizarTotal();
@@ -2222,8 +2279,34 @@ function _navegarPara(secao, btn) {
     }
 }
 
+function verificarConflitoDatas(dataBR, qtdNovoPedido, keyEdicao) {
+    return new Promise(resolve => {
+        database.ref('pedidos').once('value', snapshot => {
+            let totalNoDia = qtdNovoPedido;
+            let pedidosNoDia = 0;
+            snapshot.forEach(child => {
+                const p = child.val();
+                if (child.key === keyEdicao) return; // ignora o próprio pedido em edição
+                if (p.statusPagamento === 'entregue') return;
+                const dataP = converterDataParaBR(p.dataEntrega);
+                if (dataP !== dataBR) return;
+                pedidosNoDia++;
+                totalNoDia += (p.itens || []).reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0);
+            });
+            if (totalNoDia > 200) {
+                showConfirmModal(
+                    `⚠️ Atenção! A data ${dataBR} já tem ${pedidosNoDia} pedido(s) somando ${totalNoDia - qtdNovoPedido} un. Com este novo pedido serão ${totalNoDia} un no total. Deseja salvar mesmo assim?`,
+                    resolve
+                );
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
 // ===== SALVAR PEDIDO =====
-function salvarPedido() {
+async function salvarPedido() {
     document.querySelectorAll('.campo-erro').forEach(el => el.classList.remove('campo-erro'));
     document.querySelectorAll('.msg-erro-campo').forEach(el => el.remove());
     function marcarErro(id, msg) {
@@ -2239,6 +2322,11 @@ function salvarPedido() {
     if (!getVal('dataEntrega'))        { marcarErro('dataEntrega', '⚠️ Informe a data'); temErro = true; }
     if (!itens || itens.length === 0) { toast('❌ Adicione pelo menos um item!', 'erro'); temErro = true; }
     if (temErro) return;
+
+    // verifica conflito de data antes de salvar
+    const dataEscolhida = converterDataParaBR(getVal('dataEntrega'));
+    const totalNovosPedido = itens.reduce((s, i) => s + i.quantidade, 0);
+    await verificarConflitoDatas(dataEscolhida, totalNovosPedido, window.pedidoEmEdicao);
     const dataRaw = getVal('dataEntrega');
     const pedido = {
         nome: getVal('nome'), telefone: getVal('telefone'),
@@ -2808,44 +2896,126 @@ setInterval(verificarNotificacoes, 10 * 60 * 1000);
 function toggleResumoProd() {
     const div = document.getElementById('resumoProducao'); const btn = event.target;
     if (div.style.display === 'none' || div.style.display === '') { div.style.display = 'block'; btn.textContent = '🍫 Fechar Resumo'; carregarResumoProd(); }
-    else { div.style.display = 'none'; btn.textContent = '🍫 Resumo de Produção do Dia'; }
+    else { div.style.display = 'none'; btn.textContent = '🍫 Resumo de Produção da Semana'; }
 }
 
 function carregarResumoProd() {
     const agora = new Date();
-    const hoje = new Date(agora.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}).split('/').reverse().join('-')+'T00:00:00');
-    const dataISO = hoje.toISOString().split('T')[0];
-    database.ref('pedidos').once('value', snapshot => {
-        const sabores = {}; const timeline = [];
+    // Descobre segunda-feira da semana atual
+    const diaSemana = agora.getDay(); // 0=Dom, 1=Seg...
+    const diffSeg = diaSemana === 0 ? -6 : 1 - diaSemana;
+    const segunda = new Date(agora);
+    segunda.setDate(agora.getDate() + diffSeg);
+    segunda.setHours(0,0,0,0);
+    const domingo = new Date(segunda);
+    domingo.setDate(segunda.getDate() + 6);
+    domingo.setHours(23,59,59,999);
+
+    const diasNome = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const mesesNome = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    function toISO(d) {
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    database.ref('pedidos').orderByKey().once('value', snapshot => {
+        // Agrupa por dia: { 'YYYY-MM-DD': { sabores: {}, timeline: [] } }
+        const porDia = {};
+
         snapshot.forEach(child => {
-            const p = child.val(); if (p.statusPagamento === 'entregue') return;
+            if (!child.exists()) return;
+            const p = child.val();
+            if (p.statusPagamento === 'entregue') return;
             let dataPedido = p.dataEntrega || p.data || '';
-            if (dataPedido.includes('/')) { const pts = dataPedido.split('/'); dataPedido = `${pts[2]}-${pts[1]}-${pts[0]}`; }
-            if (dataPedido !== dataISO) return;
-            (p.itens||[]).forEach(item => { const nome = item.sabor||item.nome||'Desconhecido'; sabores[nome] = (sabores[nome]||0) + (parseInt(item.quantidade)||0); });
-            const totalItens = (p.itens||[]).reduce((s,i)=>s+(parseInt(i.quantidade)||0),0);
-            timeline.push({ horario: p.hora||'--:--', nome: p.nome||'Cliente', itens: totalItens, tipo: p.tipoEntrega==='entrega'?`Entrega - ${p.endereco?.bairro||'N/I'}`:'Retirada', status: p.statusPagamento||'' });
+            if (dataPedido.includes('/')) {
+                const pts = dataPedido.split('/');
+                dataPedido = `${pts[2]}-${pts[1]}-${pts[0]}`;
+            }
+            const dataObj = new Date(dataPedido + 'T00:00:00');
+            if (dataObj < segunda || dataObj > domingo) return;
+
+            const iso = dataPedido;
+            if (!porDia[iso]) porDia[iso] = { sabores: {}, timeline: [] };
+
+            (p.itens||[]).forEach(item => {
+                const nome = item.sabor || item.nome || 'Desconhecido';
+                porDia[iso].sabores[nome] = (porDia[iso].sabores[nome]||0) + (parseInt(item.quantidade)||0);
+            });
+
+            const totalItens = (p.itens||[]).reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+            porDia[iso].timeline.push({
+                horario: p.hora||'--:--',
+                nome: p.nome||'Cliente',
+                itens: totalItens,
+                tipo: p.tipoEntrega==='entrega' ? `Entrega - ${p.endereco?.bairro||'N/I'}` : 'Retirada',
+                status: p.statusPagamento||''
+            });
         });
-        timeline.sort((a,b) => a.horario.localeCompare(b.horario));
+
+        const diasOrdenados = Object.keys(porDia).sort();
         let html = '';
-        const entries = Object.entries(sabores).sort((a,b) => b[1]-a[1]);
-        if (entries.length === 0) { html += `<p style="color:var(--brown-warm);font-size:0.85em;">Nenhum pedido para hoje.</p>`; }
-        else {
-            const totalGeral = entries.reduce((s,e)=>s+e[1],0);
-            entries.forEach(([sabor,qtd]) => {
-                const pct = ((qtd/totalGeral)*100).toFixed(0);
-                html += `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${sabor}</span><strong>${qtd} un</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;overflow:hidden;"><div style="background:var(--amber);width:${pct}%;height:100%;border-radius:6px;"></div></div></div>`;
+
+        if (diasOrdenados.length === 0) {
+            html = '<p style="color:var(--brown-warm);font-size:0.85em;">Nenhum pedido para esta semana.</p>';
+        } else {
+            diasOrdenados.forEach(iso => {
+                const partes = iso.split('-');
+                const dataObj = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
+                const nomeDia = diasNome[dataObj.getDay()];
+                const labelDia = `${nomeDia}, ${String(dataObj.getDate()).padStart(2,'0')}/${mesesNome[dataObj.getMonth()]}`;
+                const { sabores, timeline } = porDia[iso];
+                const entries = Object.entries(sabores).sort((a,b) => b[1]-a[1]);
+                const totalDia = entries.reduce((s,e) => s+e[1], 0);
+                const maxSabor = entries[0]?.[1] || 1;
+
+                // Cabeçalho do dia
+                html += `<div style="margin-bottom:18px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--brown-dark);border-radius:10px;padding:7px 14px;margin-bottom:10px;">
+                        <span style="font-family:'Cormorant Garamond',serif;font-size:1em;font-weight:700;color:var(--amber-light);">📅 ${labelDia}</span>
+                        <span style="font-size:0.8em;font-weight:700;color:var(--amber-light);">${totalDia} un</span>
+                    </div>`;
+
+                // Barras de sabores
+                entries.forEach(([sabor, qtd]) => {
+                    const pct = Math.round((qtd/maxSabor)*100);
+                    html += `<div style="margin-bottom:7px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.84em;margin-bottom:3px;">
+                            <span>${sabor}</span><strong>${qtd} un</strong>
+                        </div>
+                        <div style="background:var(--cream-dark);border-radius:6px;height:6px;overflow:hidden;">
+                            <div style="background:var(--amber);width:${pct}%;height:100%;border-radius:6px;"></div>
+                        </div>
+                    </div>`;
+                });
+
+                // Timeline do dia
+                if (timeline.length > 0) {
+                    timeline.sort((a,b) => a.horario.localeCompare(b.horario));
+                    html += `<div style="margin-top:10px;position:relative;padding-left:22px;">
+                        <div style="position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--cream-dark);"></div>`;
+                    timeline.forEach((item, idx) => {
+                        const cor = item.status==='Pago'?'#4A7C59':item.status==='Pago Parcialmente'?'#F59E0B':'var(--amber)';
+                        html += `<div style="position:relative;padding-left:16px;padding-bottom:${idx<timeline.length-1?'8px':'0'};">
+                            <div style="position:absolute;left:-13px;top:4px;width:12px;height:12px;border-radius:50%;background:${cor};border:2px solid white;box-shadow:0 0 0 2px ${cor};"></div>
+                            <div style="font-size:0.83em;background:var(--cream);border-radius:10px;padding:7px 12px;">
+                                <span style="font-weight:700;color:var(--brown-dark);">${item.horario}</span>
+                                <span style="color:var(--brown-dark);"> — ${item.nome}</span>
+                                <span style="color:var(--brown-warm);font-size:0.9em;"> (${item.itens} un) • ${item.tipo}</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+
+                // Separador entre dias
+                if (iso !== diasOrdenados[diasOrdenados.length-1]) {
+                    html += `<hr style="border:none;border-top:1px dashed var(--cream-dark);margin:4px 0 18px;">`;
+                }
             });
-            html += `<p style="text-align:right;font-size:0.88em;font-weight:700;color:var(--brown-dark);margin-top:8px;">Total: ${totalGeral} un</p>`;
         }
-        if (timeline.length > 0) {
-            html += `<hr style="border:none;border-top:1px solid var(--cream-dark);margin:14px 0;"><p style="font-family:'Cormorant Garamond',serif;font-size:1.05em;font-weight:700;color:var(--brown-dark);margin-bottom:10px;">⏱️ Linha do Tempo</p><div style="position:relative;padding-left:22px;"><div style="position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--cream-dark);"></div>`;
-            timeline.forEach((item,idx) => {
-                const cor = item.status==='Pago'?'#4A7C59':item.status==='Pago Parcialmente'?'#F59E0B':'var(--amber)';
-                html += `<div style="position:relative;padding-left:16px;padding-bottom:${idx<timeline.length-1?'10px':'0'};"><div style="position:absolute;left:-13px;top:4px;width:12px;height:12px;border-radius:50%;background:${cor};border:2px solid white;box-shadow:0 0 0 2px ${cor};"></div><div style="font-size:0.84em;background:var(--cream);border-radius:10px;padding:8px 12px;"><span style="font-weight:700;color:var(--brown-dark);">${item.horario}</span> <span style="color:var(--brown-dark);">— ${item.nome}</span> <span style="color:var(--brown-warm);font-size:0.9em;">(${item.itens} un) • ${item.tipo}</span></div></div>`;
-            });
-            html += `</div>`;
-        }
+
         document.getElementById('resumoProducaoConteudo').innerHTML = html;
     });
 }
@@ -3160,20 +3330,57 @@ function imprimirComprovante(key) {
         const p=snapshot.val(); if(!p){toast('Pedido não encontrado.','erro');return;}
         const dataBr=p.dataEntrega||p.data||''; const horario=p.hora||'';
         let itensHTML='';
-        if(p.itens&&Array.isArray(p.itens)){p.itens.forEach(item=>{const qtd=parseInt(item.quantidade)||0;const preco=item.precoManual!==undefined?item.precoManual:precoUnitario(item.sabor||item.nome,qtd);const subtotal=(qtd*preco).toFixed(2).replace('.',',');itensHTML+=`<tr><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;">${escaparHTML(item.sabor||item.nome||'Item')}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${qtd}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${item.formato||'N/A'}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:right;">R$ ${subtotal}</td></tr>`;});}
-        const valorTotal=typeof p.valorTotal==='number'?'R$ '+p.valorTotal.toFixed(2).replace('.',','):(p.valorTotal||'R$ 0,00');
+        if(p.itens&&Array.isArray(p.itens)){
+            const gruposComp = [
+                { cat:'trad',    label:'🍫 Tradicionais', bg:'#FEF3C7', cor:'#92400E' },
+                { cat:'frutas',  label:'🍓 Frutas',        bg:'#D1FAE5', cor:'#065F46' },
+                { cat:'gourmet', label:'✨ Gourmet',        bg:'#EDE9FE', cor:'#5B21B6' }
+            ];
+            gruposComp.forEach(grupo => {
+                const itensCat = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome] || 'trad') === grupo.cat);
+                if (itensCat.length === 0) return;
+                itensHTML += `<tr><td colspan="4" style="padding:5px 8px 3px;background:${grupo.bg};font-size:10px;font-weight:700;color:${grupo.cor};letter-spacing:0.04em;">${grupo.label}</td></tr>`;
+                itensCat.forEach(item => {
+                    const qtd=parseInt(item.quantidade)||0;
+                    const preco=item.precoManual!==undefined?item.precoManual:precoUnitario(item.sabor||item.nome,qtd);
+                    const subtotal=(qtd*preco).toFixed(2).replace('.',',');
+                    itensHTML+=`<tr><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;">${escaparHTML(item.sabor||item.nome||'Item')}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${qtd}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${item.formato||'N/A'}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:right;">R$ ${subtotal}</td></tr>`;
+                });
+            });
+        }        const valorTotal=typeof p.valorTotal==='number'?'R$ '+p.valorTotal.toFixed(2).replace('.',','):(p.valorTotal||'R$ 0,00');
         const emojiStatus=p.statusPagamento==='Pago'?'✅':p.statusPagamento==='Pago Parcialmente'?'⚠️':'🔴';
         let enderecoHTML='';
         if(p.tipoEntrega==='entrega'&&p.endereco)enderecoHTML=`<div style="margin-bottom:3px;color:#2B1206;"><strong>Endereço:</strong> ${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)} — ${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
         const container=document.createElement('div'); container.style.cssText='position:fixed;top:-9999px;left:0;z-index:-1;background:white;';
-        container.innerHTML=`<div id="comprovante-conteudo" style="width:384px;background:#ffffff;padding:14px 16px 12px;margin:0;font-family:'DM Sans',Arial,sans-serif;"><div style="text-align:center;border-bottom:2px dashed #E8943A;padding-bottom:10px;margin-bottom:10px;"><h1 style="font-size:22px;color:#E8943A;font-weight:700;margin:0 0 2px 0;font-family:'Cormorant Garamond',Georgia,serif;letter-spacing:0.05em;">DOCES FLOR</h1><div style="font-size:12px;color:#5C2A0E;font-weight:600;margin-bottom:2px;">Brigadeiros Artesanais</div><div style="font-size:10px;color:#8B4513;font-style:italic;">"Feito com amor, entregue com carinho ♥"</div></div><div style="padding:8px 10px;margin-bottom:10px;font-size:12px;color:#2B1206;background:#FDF8F0;border:1px dashed #F0E6D3;border-radius:6px;line-height:1.8;"><div><strong style="color:#8B4513;">Cliente:</strong> ${escaparHTML(p.nome||'---')}</div><div><strong style="color:#8B4513;">Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div><div><strong style="color:#8B4513;">Data:</strong> ${escaparHTML(dataBr)} às ${escaparHTML(horario)}</div><div><strong style="color:#8B4513;">Tipo:</strong> ${p.tipoEntrega==='entrega'?'🚚 Entrega':'🏪 Retirada'}</div>${enderecoHTML}</div><table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><thead><tr><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:left;letter-spacing:0.05em;">SABOR</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">QTD</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">FORMATO</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:right;letter-spacing:0.05em;">R$</th></tr></thead><tbody>${itensHTML}</tbody></table><div style="border-top:2px dashed #E8943A;padding-top:8px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Valor dos Brigadeiros</span><span>${typeof p.valorBrigadeiros==='number'?'R$ '+p.valorBrigadeiros.toFixed(2).replace('.',','):'---'}</span></div>${(p.valorFrete||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Frete</span><span>R$ ${p.valorFrete.toFixed(2).replace('.',',')}</span></div>`:''} ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#C9522A;font-weight:600;"><span>Desconto</span><span>− R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#2B1206;font-family:'Cormorant Garamond',Georgia,serif;border-top:1px solid #F0E6D3;padding-top:6px;margin-top:4px;"><span>VALOR TOTAL</span><span>${valorTotal}</span></div></div><div style="text-align:center;font-size:12px;color:#2B1206;margin-bottom:10px;padding:6px 10px;background:#FDF8F0;border:1px solid #F0E6D3;border-radius:6px;font-weight:600;">${emojiStatus} ${escaparHTML(p.statusPagamento||'A pagar')}${p.statusPagamento==='Pago Parcialmente'?' — '+escaparHTML(p.valorPago||'R$ 0,00')+' pago':''}</div>${p.observacoes?`<div style="font-size:11px;color:#8B4513;margin-bottom:10px;padding:6px 10px;border-left:3px solid #E8943A;background:#FDF8F0;line-height:1.5;"><strong>📝 Obs:</strong> ${escaparHTML(p.observacoes)}</div>`:''}<div style="text-align:center;padding-top:8px;border-top:1px dashed #F0E6D3;font-size:10px;color:#8B4513;line-height:1.6;"><strong style="color:#E8943A;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;">Doces Flor</strong> — Brigadeiros Artesanais<br>📞 (47) 9 9274-5896 &nbsp;|&nbsp; Obrigado pela preferência! 💛</div></div>`;
+        container.innerHTML=`<div id="comprovante-conteudo" style="width:384px;background:#ffffff;padding:14px 16px 12px;margin:0;font-family:'DM Sans',Arial,sans-serif;"><div style="text-align:center;border-bottom:2px dashed #E8943A;padding-bottom:10px;margin-bottom:10px;"><h1 style="font-size:22px;color:#E8943A;font-weight:700;margin:0 0 2px 0;font-family:'Cormorant Garamond',Georgia,serif;letter-spacing:0.05em;">DOCES FLOR</h1><div style="font-size:12px;color:#5C2A0E;font-weight:600;margin-bottom:2px;">Brigadeiros Artesanais</div><div style="font-size:10px;color:#8B4513;font-style:italic;">"Feito com amor, entregue com carinho ♥"</div></div><div style="padding:8px 10px;margin-bottom:10px;font-size:12px;color:#2B1206;background:#FDF8F0;border:1px dashed #F0E6D3;border-radius:6px;line-height:1.8;"><div><strong style="color:#8B4513;">Cliente:</strong> ${escaparHTML(p.nome||'---')}</div><div><strong style="color:#8B4513;">Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div><div><strong style="color:#8B4513;">Data:</strong> ${escaparHTML(dataBr)} às ${escaparHTML(horario)}</div><div><strong style="color:#8B4513;">Tipo:</strong> ${p.tipoEntrega==='entrega'?'🚚 Entrega':'🏪 Retirada'}</div>${enderecoHTML}</div><table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><thead><tr><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:left;letter-spacing:0.05em;">SABOR</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">QTD</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">FORMATO</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:right;letter-spacing:0.05em;">R$</th></tr></thead><tbody>${itensHTML}</tbody></table><div style="border-top:2px dashed #E8943A;padding-top:8px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Valor dos Brigadeiros</span><span>${typeof p.valorBrigadeiros==='number'?'R$ '+p.valorBrigadeiros.toFixed(2).replace('.',','):'---'}</span></div>${(p.valorFrete||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Frete</span><span>R$ ${p.valorFrete.toFixed(2).replace('.',',')}</span></div>`:''} ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#C9522A;font-weight:600;"><span>Desconto</span><span>− R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#2B1206;font-family:'DM Sans',Arial,sans-serif;border-top:1px solid #F0E6D3;padding-top:6px;margin-top:4px;"><span>VALOR TOTAL</span><span>${valorTotal}</span></div></div><div style="text-align:center;font-size:12px;color:#2B1206;margin-bottom:10px;padding:6px 10px;background:#FDF8F0;border:1px solid #F0E6D3;border-radius:6px;font-weight:600;">${emojiStatus} ${escaparHTML(p.statusPagamento||'A pagar')}${p.statusPagamento==='Pago Parcialmente'?' — '+escaparHTML(p.valorPago||'R$ 0,00')+' pago':''}</div>${p.observacoes?`<div style="font-size:11px;color:#8B4513;margin-bottom:10px;padding:6px 10px;border-left:3px solid #E8943A;background:#FDF8F0;line-height:1.5;"><strong>📝 Obs:</strong> ${escaparHTML(p.observacoes)}</div>`:''}<div style="text-align:center;padding-top:8px;border-top:1px dashed #F0E6D3;font-size:10px;color:#8B4513;line-height:1.6;"><strong style="color:#E8943A;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;">Doces Flor</strong> — Brigadeiros Artesanais<br>📞 (47) 9 9274-5896 &nbsp;|&nbsp; Obrigado pela preferência! 💛</div></div>`;
         document.body.appendChild(container);
         toast('⏳ Gerando imagem...','aviso');
         setTimeout(()=>{
             const el=document.getElementById('comprovante-conteudo');
             html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:false,allowTaint:true,logging:false}).then(canvas=>{
                 const link=document.createElement('a'); link.download=`comprovante-${key.substr(-6)}.png`; link.href=canvas.toDataURL('image/png'); link.click();
-                container.remove(); toast('📷 Imagem baixada!','sucesso');
+                container.remove();
+                // abre opção de enviar pelo WhatsApp após baixar
+                setTimeout(() => {
+                    database.ref('pedidos/'+key).once('value', snap => {
+                        const pd = snap.val(); if (!pd) return;
+                        const valorTotal = typeof pd.valorTotal==='number' ? 'R$ '+pd.valorTotal.toFixed(2).replace('.',',') : (pd.valorTotal||'');
+                        const msg = `🌸 *Doces Flor* — Comprovante de Pedido\n\n`
+                            + `👤 *Cliente:* ${pd.nome||''}\n`
+                            + `📅 *Data:* ${pd.dataEntrega||''} às ${pd.hora||''}\n`
+                            + `💰 *Total:* ${valorTotal}\n`
+                            + `💳 *Pagamento:* ${pd.statusPagamento||''}\n\n`
+                            + `_A imagem do comprovante foi baixada no seu dispositivo. Anexe ao enviar esta mensagem._`;
+                        const tel = (pd.telefone||'').replace(/\D/g,'');
+                        if (tel.length >= 10) {
+                            showConfirmModal('📲 Deseja abrir o WhatsApp para enviar o comprovante ao cliente?', () => {
+                                window.open('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg), '_blank');
+                            });
+                        } else {
+                            toast('📷 Imagem baixada!','sucesso');
+                        }
+                    });
+                }, 800);
             }).catch(err=>{container.remove();console.error(err);toast('Erro ao gerar imagem.','erro');});
         },500);
     });
