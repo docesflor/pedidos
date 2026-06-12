@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/docesflor/cardapio/main/icon-512.png">
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/docesflor/cardapio/main/icon-512.png">
     <title>Doces Flor – Sistema de Pedidos</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -12,15 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <link rel="manifest" href="manifest.json">
-    <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(r => console.log('SW registrado:', r.scope))
-        .catch(e => console.warn('SW erro:', e));
-    });
-  }
-</script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1426,6 +1415,35 @@ footer p {
         <label for="sabor">Sabor</label>
         <select id="sabor">
             <option value="">Selecione o sabor</option>
+            <optgroup label="Tradicionais">
+                <option value="Amendoim">Amendoim</option>
+                <option value="Beijinho">Beijinho</option>
+                <option value="Brigadeiro">Brigadeiro</option>
+                <option value="Café">Café</option>
+                <option value="Dois Amores">Dois Amores</option>
+                <option value="Leite Ninho">Leite Ninho</option>
+                <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
+                <option value="Prestígio">Prestígio</option>
+                <option value="Sensação">Sensação</option>
+            </optgroup>
+            <optgroup label="Gourmet">
+                <option value="Chocolate Gourmet Preto">Chocolate Gourmet Preto</option>
+                <option value="Confete">Confete</option>
+                <option value="Churros">Churros</option>
+                <option value="Ferrero Rocher">Ferrero Rocher</option>
+                <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
+                <option value="Negresco">Negresco</option>
+                <option value="Ovomaltine">Ovomaltine</option>
+            </optgroup>
+            <optgroup label="Frutas">
+                <option value="Amora">Amora</option>
+                <option value="Banana">Banana</option>
+                <option value="Cereja">Cereja</option>
+                <option value="Frutas Vermelhas">Frutas Vermelhas</option>
+                <option value="Limão">Limão</option>
+                <option value="Maracujá">Maracujá</option>
+                <option value="Uva">Uva</option>
+            </optgroup>
         </select>
         <div class="linha-dupla">
             <div>
@@ -1777,56 +1795,6 @@ footer p {
     setTimeout(function() { t.remove(); }, 3000);
 }
 
-// ===== CARREGAR DADOS DO ADMIN =====
-const ADMIN_RAW = 'https://raw.githubusercontent.com/docesflor/admin/main/';
-
-async function carregarDadosAdmin() {
-    try {
-        const r = await fetch(ADMIN_RAW + 'dados-pedidos.json?t=' + Date.now());
-        const d = await r.json();
-
-        // Preços
-        if (d.precos) {
-            ['trad','frutas','gourmet'].forEach(cat => {
-                if (d.precos[cat]) {
-                    const obj = { avulso: d.precos[cat].avulso || TABELA_PRECOS[cat].avulso };
-                    Object.keys(d.precos[cat]).forEach(k => {
-                        if (k !== 'avulso') obj[parseInt(k)] = parseFloat(d.precos[cat][k]);
-                    });
-                    TABELA_PRECOS[cat] = obj;
-                }
-            });
-        }
-
-        // Sabores — popula o select
-        if (d.sabores) {
-            const select = document.getElementById('sabor');
-            select.innerHTML = '<option value="">Selecione o sabor</option>';
-            const grupos = [
-                { chave: 'trads',    label: 'Tradicionais' },
-                { chave: 'gourmets', label: 'Gourmet' },
-                { chave: 'frutas',   label: 'Frutas' },
-            ];
-            grupos.forEach(grupo => {
-                const lista = d.sabores[grupo.chave] || [];
-                if (lista.length === 0) return;
-                const optgroup = document.createElement('optgroup');
-                optgroup.label = grupo.label;
-                lista.forEach(nome => {
-                    const opt = document.createElement('option');
-                    opt.value = nome;
-                    opt.textContent = nome;
-                    optgroup.appendChild(opt);
-                });
-                select.appendChild(optgroup);
-            });
-        }
-
-    } catch(e) {
-        console.error('Erro ao carregar dados-pedidos.json', e);
-    }
-}
-
         // ===== AUTENTICAÇÃO =====
 var auth = firebase.auth();
 
@@ -1888,8 +1856,8 @@ function fazerLogout() {
     if (confirm('Deseja sair?')) auth.signOut();
 }
 
-// ===== PREÇOS (carregados do admin) =====
-let TABELA_PRECOS = {
+// ===== PREÇOS =====
+const TABELA_PRECOS = {
     trad:    { 100: 110, 50: 60, 25: 35, avulso: 1.50 },
     frutas:  { 100: 125, 50: 70, 25: 40, avulso: 1.75 },
     gourmet: { 100: 140, 50: 80, 25: 45, avulso: 2.00 }
@@ -2300,34 +2268,8 @@ function _navegarPara(secao, btn) {
     }
 }
 
-function verificarConflitoDatas(dataBR, qtdNovoPedido, keyEdicao) {
-    return new Promise(resolve => {
-        database.ref('pedidos').once('value', snapshot => {
-            let totalNoDia = qtdNovoPedido;
-            let pedidosNoDia = 0;
-            snapshot.forEach(child => {
-                const p = child.val();
-                if (child.key === keyEdicao) return; // ignora o próprio pedido em edição
-                if (p.statusPagamento === 'entregue') return;
-                const dataP = converterDataParaBR(p.dataEntrega);
-                if (dataP !== dataBR) return;
-                pedidosNoDia++;
-                totalNoDia += (p.itens || []).reduce((s, i) => s + (parseInt(i.quantidade) || 0), 0);
-            });
-            if (totalNoDia > 200) {
-                showConfirmModal(
-                    `⚠️ Atenção! A data ${dataBR} já tem ${pedidosNoDia} pedido(s) somando ${totalNoDia - qtdNovoPedido} un. Com este novo pedido serão ${totalNoDia} un no total. Deseja salvar mesmo assim?`,
-                    resolve
-                );
-            } else {
-                resolve();
-            }
-        });
-    });
-}
-
 // ===== SALVAR PEDIDO =====
-async function salvarPedido() {
+function salvarPedido() {
     document.querySelectorAll('.campo-erro').forEach(el => el.classList.remove('campo-erro'));
     document.querySelectorAll('.msg-erro-campo').forEach(el => el.remove());
     function marcarErro(id, msg) {
@@ -2343,11 +2285,6 @@ async function salvarPedido() {
     if (!getVal('dataEntrega'))        { marcarErro('dataEntrega', '⚠️ Informe a data'); temErro = true; }
     if (!itens || itens.length === 0) { toast('❌ Adicione pelo menos um item!', 'erro'); temErro = true; }
     if (temErro) return;
-
-    // verifica conflito de data antes de salvar
-    const dataEscolhida = converterDataParaBR(getVal('dataEntrega'));
-    const totalNovosPedido = itens.reduce((s, i) => s + i.quantidade, 0);
-    await verificarConflitoDatas(dataEscolhida, totalNovosPedido, window.pedidoEmEdicao);
     const dataRaw = getVal('dataEntrega');
     const pedido = {
         nome: getVal('nome'), telefone: getVal('telefone'),
@@ -3380,36 +3317,14 @@ function imprimirComprovante(key) {
             const el=document.getElementById('comprovante-conteudo');
             html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:false,allowTaint:true,logging:false}).then(canvas=>{
                 const link=document.createElement('a'); link.download=`comprovante-${key.substr(-6)}.png`; link.href=canvas.toDataURL('image/png'); link.click();
-                container.remove();
-                // abre opção de enviar pelo WhatsApp após baixar
-                setTimeout(() => {
-                    database.ref('pedidos/'+key).once('value', snap => {
-                        const pd = snap.val(); if (!pd) return;
-                        const valorTotal = typeof pd.valorTotal==='number' ? 'R$ '+pd.valorTotal.toFixed(2).replace('.',',') : (pd.valorTotal||'');
-                        const msg = `🌸 *Doces Flor* — Comprovante de Pedido\n\n`
-                            + `👤 *Cliente:* ${pd.nome||''}\n`
-                            + `📅 *Data:* ${pd.dataEntrega||''} às ${pd.hora||''}\n`
-                            + `💰 *Total:* ${valorTotal}\n`
-                            + `💳 *Pagamento:* ${pd.statusPagamento||''}\n\n`
-                            + `_A imagem do comprovante foi baixada no seu dispositivo. Anexe ao enviar esta mensagem._`;
-                        const tel = (pd.telefone||'').replace(/\D/g,'');
-                        if (tel.length >= 10) {
-                            showConfirmModal('📲 Deseja abrir o WhatsApp para enviar o comprovante ao cliente?', () => {
-                                window.open('https://wa.me/55'+tel+'?text='+encodeURIComponent(msg), '_blank');
-                            });
-                        } else {
-                            toast('📷 Imagem baixada!','sucesso');
-                        }
-                    });
-                }, 800);
+                container.remove(); toast('📷 Imagem baixada!','sucesso');
             }).catch(err=>{container.remove();console.error(err);toast('Erro ao gerar imagem.','erro');});
         },500);
     });
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', async function() {
-    await carregarDadosAdmin();
+document.addEventListener('DOMContentLoaded', function() {
     verificarNotificacoes();
     // Login com Enter
     ['loginEmail', 'loginSenha'].forEach(id => {
