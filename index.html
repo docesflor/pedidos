@@ -3282,44 +3282,158 @@ function preencherCliente(cliente) {
 
 document.addEventListener('click',function(e){if(!e.target.closest('.autocomplete-wrapper')){const lista=document.getElementById('autocompleteLista');if(lista)lista.style.display='none';}});
 
-// ===== COMPROVANTE =====
+// ===== COMPROVANTE OTIMIZADO PARA WHATSAPP =====
 function imprimirComprovante(key) {
     database.ref('pedidos/'+key).once('value',snapshot=>{
-        const p=snapshot.val(); if(!p){toast('Pedido não encontrado.','erro');return;}
-        const dataBr=p.dataEntrega||p.data||''; const horario=p.hora||'';
-        let itensHTML='';
-        if(p.itens&&Array.isArray(p.itens)){
+        const p = snapshot.val(); 
+        if(!p){toast('Pedido não encontrado.','erro');return;}
+
+        const dataBr = p.dataEntrega||p.data||''; 
+        const horario = p.hora||'';
+
+        // Endereço de Retirada
+        const enderecoRetirada = `
+            <div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;">
+                <strong>🏠 Retirada em:</strong><br>
+                Residencial Gran Valle<br>
+                Rua Martim Kochella, 350, AP D508 - Ilha da Figueira,<br>
+                Jaraguá do Sul - SC, 89258-680
+            </div>`;
+
+        let enderecoHTML = '';
+        let tipoHTML = '';
+
+        if(p.tipoEntrega === 'entrega' && p.endereco){
+            tipoHTML = `<div><strong>Tipo:</strong> Entrega</div>`;
+            enderecoHTML = `
+                <div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;">
+                    <strong>🚚 Endereço de Entrega:</strong><br>
+                    ${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)}<br>
+                    ${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}
+                </div>`;
+        } else {
+            // Retirada
+            tipoHTML = '';                    // Oculta o "Tipo: Retirada"
+            enderecoHTML = enderecoRetirada;
+        }
+
+        let itensHTML = '';
+        if(p.itens && Array.isArray(p.itens)){
             const gruposComp = [
-                { cat:'trad',    label:'🍫 Tradicionais', bg:'#FEF3C7', cor:'#92400E' },
-                { cat:'frutas',  label:'🍓 Frutas',        bg:'#D1FAE5', cor:'#065F46' },
-                { cat:'gourmet', label:'✨ Gourmet',        bg:'#EDE9FE', cor:'#5B21B6' }
+                { cat:'trad',    label:'🍫 Tradicionais' },
+                { cat:'frutas',  label:'🍓 Frutas' },
+                { cat:'gourmet', label:'✨ Gourmet' }
             ];
             gruposComp.forEach(grupo => {
                 const itensCat = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome] || 'trad') === grupo.cat);
                 if (itensCat.length === 0) return;
-                itensHTML += `<tr><td colspan="4" style="padding:5px 8px 3px;background:${grupo.bg};font-size:10px;font-weight:700;color:${grupo.cor};letter-spacing:0.04em;">${grupo.label}</td></tr>`;
+                itensHTML += `<tr><td colspan="4" style="padding:7px 6px;background:#FEF3C7;font-weight:700;color:#92400E;font-size:12px;">${grupo.label}</td></tr>`;
                 itensCat.forEach(item => {
-                    const qtd=parseInt(item.quantidade)||0;
-                    const preco=item.precoManual!==undefined?item.precoManual:precoUnitario(item.sabor||item.nome,qtd);
-                    const subtotal=(qtd*preco).toFixed(2).replace('.',',');
-                    itensHTML+=`<tr><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;">${escaparHTML(item.sabor||item.nome||'Item')}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${qtd}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:center;">${item.formato||'N/A'}</td><td style="padding:5px 4px;border-bottom:1px solid #F0E6D3;color:#2B1206;font-size:11px;text-align:right;">R$ ${subtotal}</td></tr>`;
+                    const qtd = parseInt(item.quantidade)||0;
+                    const preco = item.precoManual!==undefined ? item.precoManual : precoUnitario(item.sabor||item.nome,qtd);
+                    const subtotal = (qtd*preco).toFixed(2).replace('.',',');
+                    itensHTML += `
+                        <tr>
+                            <td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;font-size:12.5px;">${escaparHTML(item.sabor||item.nome)}</td>
+                            <td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:center;font-size:12.5px;">${qtd}</td>
+                            <td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:center;font-size:11.5px;color:#5C2A0E;">${item.formato||''}</td>
+                            <td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:right;font-size:12.5px;font-weight:600;">R$ ${subtotal}</td>
+                        </tr>`;
                 });
             });
-        }        const valorTotal=typeof p.valorTotal==='number'?'R$ '+p.valorTotal.toFixed(2).replace('.',','):(p.valorTotal||'R$ 0,00');
-        const emojiStatus=p.statusPagamento==='Pago'?'✅':p.statusPagamento==='Pago Parcialmente'?'⚠️':'🔴';
-        let enderecoHTML='';
-        if(p.tipoEntrega==='entrega'&&p.endereco)enderecoHTML=`<div style="margin-bottom:3px;color:#2B1206;"><strong>Endereço:</strong> ${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)} — ${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
-        const container=document.createElement('div'); container.style.cssText='position:fixed;top:-9999px;left:0;z-index:-1;background:white;';
-        container.innerHTML=`<div id="comprovante-conteudo" style="width:384px;background:#ffffff;padding:14px 16px 12px;margin:0;font-family:'DM Sans',Arial,sans-serif;"><div style="text-align:center;border-bottom:2px dashed #E8943A;padding-bottom:10px;margin-bottom:10px;"><h1 style="font-size:22px;color:#E8943A;font-weight:700;margin:0 0 2px 0;font-family:'Cormorant Garamond',Georgia,serif;letter-spacing:0.05em;">DOCES FLOR</h1><div style="font-size:12px;color:#5C2A0E;font-weight:600;margin-bottom:2px;">Brigadeiros Artesanais</div><div style="font-size:10px;color:#8B4513;font-style:italic;">"Feito com amor, entregue com carinho ♥"</div></div><div style="padding:8px 10px;margin-bottom:10px;font-size:12px;color:#2B1206;background:#FDF8F0;border:1px dashed #F0E6D3;border-radius:6px;line-height:1.8;"><div><strong style="color:#8B4513;">Cliente:</strong> ${escaparHTML(p.nome||'---')}</div><div><strong style="color:#8B4513;">Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div><div><strong style="color:#8B4513;">Data:</strong> ${escaparHTML(dataBr)} às ${escaparHTML(horario)}</div><div><strong style="color:#8B4513;">Tipo:</strong> ${p.tipoEntrega==='entrega'?'🚚 Entrega':'🏪 Retirada'}</div>${enderecoHTML}</div><table style="width:100%;border-collapse:collapse;margin-bottom:10px;"><thead><tr><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:left;letter-spacing:0.05em;">SABOR</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">QTD</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:center;letter-spacing:0.05em;">FORMATO</th><th style="background:#2B1206;color:#F5B563;padding:6px 4px;font-size:10px;font-weight:700;text-align:right;letter-spacing:0.05em;">R$</th></tr></thead><tbody>${itensHTML}</tbody></table><div style="border-top:2px dashed #E8943A;padding-top:8px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Valor dos Brigadeiros</span><span>${typeof p.valorBrigadeiros==='number'?'R$ '+p.valorBrigadeiros.toFixed(2).replace('.',','):'---'}</span></div>${(p.valorFrete||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#2B1206;"><span>Frete</span><span>R$ ${p.valorFrete.toFixed(2).replace('.',',')}</span></div>`:''} ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;color:#C9522A;font-weight:600;"><span>Desconto</span><span>− R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#2B1206;font-family:'DM Sans',Arial,sans-serif;border-top:1px solid #F0E6D3;padding-top:6px;margin-top:4px;"><span>VALOR TOTAL</span><span>${valorTotal}</span></div></div><div style="text-align:center;font-size:12px;color:#2B1206;margin-bottom:10px;padding:6px 10px;background:#FDF8F0;border:1px solid #F0E6D3;border-radius:6px;font-weight:600;">${emojiStatus} ${escaparHTML(p.statusPagamento||'A pagar')}${p.statusPagamento==='Pago Parcialmente'?' — '+escaparHTML(p.valorPago||'R$ 0,00')+' pago':''}</div>${p.observacoes?`<div style="font-size:11px;color:#8B4513;margin-bottom:10px;padding:6px 10px;border-left:3px solid #E8943A;background:#FDF8F0;line-height:1.5;"><strong>📝 Obs:</strong> ${escaparHTML(p.observacoes)}</div>`:''}<div style="text-align:center;padding-top:8px;border-top:1px dashed #F0E6D3;font-size:10px;color:#8B4513;line-height:1.6;"><strong style="color:#E8943A;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;">Doces Flor</strong> — Brigadeiros Artesanais<br>📞 (47) 9 9274-5896 &nbsp;|&nbsp; Obrigado pela preferência! 💛</div></div>`;
+        }
+
+        const valorTotal = typeof p.valorTotal==='number' ? 'R$ '+p.valorTotal.toFixed(2).replace('.',',') : (p.valorTotal||'R$ 0,00');
+        const emojiStatus = p.statusPagamento==='Pago'?'✅':p.statusPagamento==='Pago Parcialmente'?'⚠️':'🔴';
+
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;background:white;';
+        
+        container.innerHTML = `
+            <div id="comprovante-conteudo" style="width:480px; background:#ffffff; padding:20px 22px; font-family:'DM Sans',Arial,sans-serif; line-height:1.35;">
+                
+                <!-- LOGO + CABEÇALHO -->
+                <div style="text-align:center;margin-bottom:12px;">
+                    <img src="icon-512.png" style="width:118px;height:118px;border-radius:50%;border:3px solid #E8943A;" alt="Doces Flor">
+                </div>
+                <div style="text-align:center;margin-bottom:16px;">
+                    <h1 style="font-size:24px;color:#2B1206;margin:0 0 4px 0;font-family:'Cormorant Garamond',serif;">Brigadeiros Artesanais</h1>
+                    <p style="margin:0;font-size:13px;color:#5C2A0E;">"Feito com amor, entregue com carinho ♥"</p>
+                </div>
+
+                <!-- DADOS DO CLIENTE -->
+                <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+                    <div><strong>Cliente:</strong> ${escaparHTML(p.nome||'---')}</div>
+                    <div><strong>Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div>
+                    <div><strong>Data:</strong> ${escaparHTML(dataBr)} às ${escaparHTML(horario)}</div>
+                    ${tipoHTML}
+                </div>
+
+                ${enderecoHTML}
+
+                <!-- ITENS -->
+                <table style="width:100%;border-collapse:collapse;margin:16px 0 14px 0;">
+                    <thead>
+                        <tr style="background:#2B1206;">
+                            <th style="color:#F5B563;padding:8px 6px;font-size:11.5px;text-align:left;">Sabor</th>
+                            <th style="color:#F5B563;padding:8px 6px;font-size:11.5px;text-align:center;">Qtd</th>
+                            <th style="color:#F5B563;padding:8px 6px;font-size:11px;text-align:center;">Formato</th>
+                            <th style="color:#F5B563;padding:8px 6px;font-size:11.5px;text-align:right;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itensHTML}</tbody>
+                </table>
+
+                <!-- TOTAIS -->
+                <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:14px 16px;">
+                    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;">
+                        <span>Brigadeiros</span>
+                        <span>${typeof p.valorBrigadeiros==='number'?'R$ '+p.valorBrigadeiros.toFixed(2).replace('.',','):'---'}</span>
+                    </div>
+                    ${(p.valorFrete||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;"><span>Frete</span><span>R$ ${p.valorFrete.toFixed(2).replace('.',',')}</span></div>`:''}
+                    ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;color:#C9522A;"><span>Desconto</span><span>- R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}
+                    
+                    <div style="border-top:2px solid #E8943A;margin:12px 0 4px 0;padding-top:10px;display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:#2B1206;">
+                        <span>TOTAL A PAGAR</span>
+                        <span>${valorTotal}</span>
+                    </div>
+                </div>
+
+                <!-- STATUS -->
+                <div style="text-align:center;margin:16px 0 12px;padding:10px;background:#F0E6D3;border-radius:10px;font-size:14px;font-weight:600;">
+                    ${emojiStatus} ${escaparHTML(p.statusPagamento||'A pagar')}
+                    ${p.statusPagamento==='Pago Parcialmente' ? ` • Pago: ${escaparHTML(p.valorPago||'R$ 0,00')}` : ''}
+                </div>
+
+                ${p.observacoes ? `
+                <div style="font-size:12.5px;padding:10px 12px;background:#FDF8F0;border-left:4px solid #E8943A;border-radius:8px;">
+                    <strong>Obs:</strong> ${escaparHTML(p.observacoes)}
+                </div>` : ''}
+
+                <div style="text-align:center;margin-top:18px;font-size:11.5px;color:#8B4513;">
+                    Doces Flor • (47) 9 9274-5896<br>
+                    Obrigado pela preferência! 💛
+                </div>
+            </div>`;
+
         document.body.appendChild(container);
-        toast('⏳ Gerando imagem...','aviso');
+
+        toast('⏳ Gerando comprovante...','aviso');
+
         setTimeout(()=>{
-            const el=document.getElementById('comprovante-conteudo');
-            html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:false,allowTaint:true,logging:false}).then(canvas=>{
-                const link=document.createElement('a'); link.download=`comprovante-${key.substr(-6)}.png`; link.href=canvas.toDataURL('image/png'); link.click();
-                container.remove(); toast('📷 Imagem baixada!','sucesso');
-            }).catch(err=>{container.remove();console.error(err);toast('Erro ao gerar imagem.','erro');});
-        },500);
+            const el = document.getElementById('comprovante-conteudo');
+            html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas=>{
+                const link = document.createElement('a');
+                link.download = `comprovante-${key.substr(-6)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                container.remove();
+                toast('📷 Comprovante baixado!','sucesso');
+            }).catch(()=>{
+                container.remove();
+                toast('Erro ao gerar imagem.','erro');
+            });
+        },600);
     });
 }
 
