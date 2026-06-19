@@ -1777,6 +1777,20 @@ async function carregarDadosPedidos() {
     try {
         const r = await fetch('https://raw.githubusercontent.com/docesflor/admin/main/dados-pedidos.json?t=' + Date.now());
         DADOS_PEDIDOS = await r.json();
+        
+        // Ordena sabores alfabeticamente
+        if (DADOS_PEDIDOS.sabores) {
+            DADOS_PEDIDOS.sabores.trads = DADOS_PEDIDOS.sabores.trads.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            DADOS_PEDIDOS.sabores.gourmets = DADOS_PEDIDOS.sabores.gourmets.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            DADOS_PEDIDOS.sabores.frutas = DADOS_PEDIDOS.sabores.frutas.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        }
+        
+        // Ordena gastos alfabeticamente
+        if (DADOS_PEDIDOS.gastos) {
+            Object.keys(DADOS_PEDIDOS.gastos).forEach(cat => {
+                DADOS_PEDIDOS.gastos[cat] = DADOS_PEDIDOS.gastos[cat].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            });
+        }
     } catch(e) {
         console.warn('Usando dados padrão de pedidos.');
         DADOS_PEDIDOS = null;
