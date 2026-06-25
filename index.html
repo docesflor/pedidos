@@ -1393,6 +1393,21 @@ footer p {
     font-weight: 700;
     white-space: nowrap;
 }
+.evento-badge.aberto {
+    background: #FEF3C7;
+    color: #92400E;
+}
+.evento-badge.finalizado {
+    background: #D1FAE5;
+    color: #065F46;
+}
+.evento-card-completo.evento-finalizado {
+    border-color: #86EFAC;
+    box-shadow: 0 4px 18px rgba(74, 124, 89, 0.12);
+}
+.evento-card-completo.evento-finalizado .evento-card-nome {
+    color: #065F46;
+}
 
 #aviso-data-bloqueada {
     display: none;
@@ -1511,6 +1526,12 @@ footer p {
     color: #DC2626;
 }
 .btn-evento-excluir:hover { background: #FECACA; }
+
+.btn-evento-finalizar {
+    background: var(--amber);
+    color: white;
+}
+.btn-evento-finalizar:hover { background: var(--laranja-escuro); }
 
 @media (max-width: 600px) {
     .evento-resumo-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2041,6 +2062,12 @@ footer p {
         <label for="eventoObs">Observação (opcional)</label>
         <input type="text" id="eventoObs" placeholder="Detalhes adicionais...">
         <button class="btn btn-vermelho btn-bloco" onclick="salvarEvento()">🔒 Bloquear Período</button>
+    </div>
+
+    <div id="filtros-eventos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="chip-filtro active" onclick="filtrarEventos('todos', this)">Todos</button>
+        <button class="chip-filtro" onclick="filtrarEventos('aberto', this)">Em andamento</button>
+        <button class="chip-filtro" onclick="filtrarEventos('finalizado', this)">Finalizados</button>
     </div>
 
     <div id="lista-eventos">
@@ -4113,6 +4140,10 @@ function imprimirComprovante(key) {
 
 // ===== EVENTOS / BLOQUEIOS =====
 
+function eventoEstaFinalizado(e) {
+    return e.status === 'finalizado';
+}
+
 function salvarEvento() {
     const nome   = document.getElementById('eventoNome').value.trim();
     const inicio = document.getElementById('eventoInicio').value;
@@ -4124,7 +4155,7 @@ function salvarEvento() {
     if (!fim)    { toast('❌ Informe a data de fim.', 'erro'); return; }
     if (fim < inicio) { toast('❌ Data fim deve ser igual ou depois do início.', 'erro'); return; }
 
-    const evento = { nome, inicio, fim, obs, timestamp: Date.now() };
+    const evento = { nome, inicio, fim, obs, status: 'aberto', timestamp: Date.now() };
 
     database.ref('eventos').push(evento).then(() => {
         toast('✅ Evento salvo! Datas bloqueadas.');
@@ -4134,6 +4165,14 @@ function salvarEvento() {
         document.getElementById('eventoObs').value    = '';
         carregarEventos();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function finalizarEvento(key) {
+    showConfirmModal('✅ Finalizar este evento? As datas voltarão a ficar disponíveis para novos pedidos.', function() {
+        database.ref('eventos/' + key).update({ status: 'finalizado', finalizadoEm: Date.now() })
+            .then(() => { toast('✅ Evento finalizado!'); carregarEventos(); })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
 }
 
 function excluirEvento(key) {
@@ -4152,6 +4191,7 @@ function getEventoBloqueado(dataISO) {
             let encontrado = null;
             snapshot.forEach(child => {
                 const e = child.val();
+                if (eventoEstaFinalizado(e)) return;
                 if (dataISO >= e.inicio && dataISO <= e.fim) {
                     encontrado = e;
                 }
@@ -4188,6 +4228,7 @@ function marcarDiasBloqueadosCalendario(mesRef, anoRef, prefixoId) {
     database.ref('eventos').once('value', snapshot => {
         snapshot.forEach(child => {
             const e = child.val();
+            if (eventoEstaFinalizado(e)) return;
             // Percorre cada dia do evento
             const dtInicio = new Date(e.inicio + 'T00:00:00');
             const dtFim    = new Date(e.fim    + 'T00:00:00');
@@ -4223,6 +4264,15 @@ function marcarDiasBloqueadosCalendario(mesRef, anoRef, prefixoId) {
 
 // ===== VENDAS DE EVENTO =====
 
+var filtroEventosAtual = 'todos';
+
+function filtrarEventos(filtro, btn) {
+    filtroEventosAtual = filtro;
+    document.querySelectorAll('#filtros-eventos .chip-filtro').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    carregarEventos();
+}
+
 function carregarEventos() {
     const lista = document.getElementById('lista-eventos');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
@@ -4232,15 +4282,28 @@ function carregarEventos() {
         snapshot.forEach(child => {
             const e = child.val();
             e.key = child.key;
+            if (!e.status) e.status = 'aberto';
+            if (filtroEventosAtual === 'aberto' && eventoEstaFinalizado(e)) return;
+            if (filtroEventosAtual === 'finalizado' && !eventoEstaFinalizado(e)) return;
             eventos.push(e);
         });
 
         if (eventos.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p>';
+            const msgs = {
+                todos: 'Nenhum evento cadastrado.',
+                aberto: 'Nenhum evento em andamento.',
+                finalizado: 'Nenhum evento finalizado.'
+            };
+            lista.innerHTML = `<p style="color:var(--brown-warm);">${msgs[filtroEventosAtual] || msgs.todos}</p>`;
             return;
         }
 
-        eventos.sort((a, b) => a.inicio.localeCompare(b.inicio));
+        eventos.sort((a, b) => {
+            const aFin = eventoEstaFinalizado(a) ? 1 : 0;
+            const bFin = eventoEstaFinalizado(b) ? 1 : 0;
+            if (aFin !== bFin) return aFin - bFin;
+            return b.inicio.localeCompare(a.inicio);
+        });
         lista.innerHTML = '';
 
         const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -4252,13 +4315,18 @@ function carregarEventos() {
 function renderizarEventoCard(e, lista, hoje) {
     const fimDate = new Date(e.fim + 'T00:00:00');
     const passado = fimDate < hoje;
+    const finalizado = eventoEstaFinalizado(e);
     const inicioBR = e.inicio.split('-').reverse().join('/');
     const fimBR    = e.fim.split('-').reverse().join('/');
     const mesmoDia = e.inicio === e.fim;
+    const statusLabel = finalizado ? 'Finalizado ✅' : (passado ? 'Aguardando fechamento' : 'Em andamento');
+    const statusClass = finalizado ? 'finalizado' : 'aberto';
+    const iconeNome = finalizado ? '✅' : '🔒';
 
     const card = document.createElement('div');
-    card.className = 'evento-card-completo';
+    card.className = 'evento-card-completo' + (finalizado ? ' evento-finalizado' : '');
     card.id = 'evento-card-' + e.key;
+    card.dataset.status = e.status || 'aberto';
 
     // Calcula resumo de vendas
     const vendas   = e.vendas   ? Object.values(e.vendas)   : [];
@@ -4271,14 +4339,77 @@ function renderizarEventoCard(e, lista, hoje) {
     const sobrandoCaixas = Math.max(0, caixasProduzidas - totalCaixas);
     const sobrandoUnidades = Math.max(0, produzido - totalUnidades);
 
+    const btnFinalizar = (!finalizado && passado)
+        ? `<button class="btn-evento-acao btn-evento-finalizar"
+                onclick="finalizarEvento('${e.key}')">
+                ✓ Finalizar
+           </button>`
+        : '';
+
+    const vendasRapidasHTML = finalizado ? '' : `
+        <div style="margin-top:12px;">
+            <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
+                <button class="btn btn-cinza" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="toggleEspecificar('${e.key}')">✏️ Especificar<br><span style="font-size:0.85em;opacity:0.75;">outra qtd</span></button>
+            </div>
+
+            <div id="especificar-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;">
+                <label style="font-size:0.76em;">Quantidade de caixinhas</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="venda-caixas-${e.key}"
+                        placeholder="Ex: 7" min="1"
+                        style="margin-bottom:0;flex:1;"
+                        oninput="calcularVenda('${e.key}')">
+                    <button class="btn btn-verde" style="padding:10px 16px;white-space:nowrap;"
+                        onclick="lancarVendaEspecifica('${e.key}')">
+                        ✅ Confirmar
+                    </button>
+                </div>
+                <div style="font-size:0.8em;color:var(--green);margin-top:6px;font-weight:600;">
+                    💰 Total: <span id="preview-venda-${e.key}">R$ 0,00</span>
+                </div>
+            </div>
+        </div>`;
+
+    const producaoHTML = finalizado
+        ? `<p style="font-size:0.82em;color:var(--brown-warm);margin-bottom:8px;">🍫 Total produzido: <strong>${produzido} un</strong> (${caixasProduzidas} caixinhas)</p>`
+        : `<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--cream-dark);">
+                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">
+                    🍫 Total Produzido
+                </p>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="produzido-${e.key}"
+                        value="${produzido}"
+                        placeholder="Ex: 200"
+                        min="0"
+                        style="margin-bottom:0;flex:1;">
+                    <button class="btn btn-marrom"
+                        style="padding:10px 16px;white-space:nowrap;"
+                        onclick="salvarProduzido('${e.key}')">
+                        💾 Salvar
+                    </button>
+                </div>
+                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">
+                    = ${caixasProduzidas} caixinhas de 4 un
+                    <span id="info-caixas-${e.key}"></span>
+                </p>
+            </div>`;
+
     card.innerHTML = `
         <div class="evento-card-header">
             <div>
-                <div class="evento-card-nome">🔒 ${escaparHTML(e.nome)}</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                    <div class="evento-card-nome">${iconeNome} ${escaparHTML(e.nome)}</div>
+                    <span class="evento-badge ${statusClass}">${statusLabel}</span>
+                </div>
                 <div class="evento-card-datas">
                     📅 ${mesmoDia ? inicioBR : inicioBR + ' até ' + fimBR}
                     ${e.obs ? ` — ${escaparHTML(e.obs)}` : ''}
-                    ${passado ? '<span style="color:var(--brown-warm);"> · encerrado</span>' : ''}
                 </div>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
@@ -4286,6 +4417,7 @@ function renderizarEventoCard(e, lista, hoje) {
                     onclick="togglePainelVendas('${e.key}')">
                     💰 Vendas
                 </button>
+                ${btnFinalizar}
                 <button class="btn-evento-acao btn-evento-excluir"
                     onclick="excluirEvento('${e.key}')">
                     🗑️ Excluir
@@ -4316,62 +4448,12 @@ function renderizarEventoCard(e, lista, hoje) {
             </div>
         </div>
 
-        <!-- BOTÕES RÁPIDOS SEMPRE VISÍVEIS -->
-        <div style="margin-top:12px;">
-            <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
-                <button class="btn btn-cinza" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="toggleEspecificar('${e.key}')">✏️ Especificar<br><span style="font-size:0.85em;opacity:0.75;">outra qtd</span></button>
-            </div>
-
-            <!-- Campo especificar (oculto) -->
-            <div id="especificar-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;">
-                <label style="font-size:0.76em;">Quantidade de caixinhas</label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="number" id="venda-caixas-${e.key}"
-                        placeholder="Ex: 7" min="1"
-                        style="margin-bottom:0;flex:1;"
-                        oninput="calcularVenda('${e.key}')">
-                    <button class="btn btn-verde" style="padding:10px 16px;white-space:nowrap;"
-                        onclick="lancarVendaEspecifica('${e.key}')">
-                        ✅ Confirmar
-                    </button>
-                </div>
-                <div style="font-size:0.8em;color:var(--green);margin-top:6px;font-weight:600;">
-                    💰 Total: <span id="preview-venda-${e.key}">R$ 0,00</span>
-                </div>
-            </div>
-        </div>
+        ${vendasRapidasHTML}
 
         <!-- PAINEL DE VENDAS -->
         <div class="painel-vendas" id="painel-${e.key}">
 
-            <!-- Produção -->
-            <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--cream-dark);">
-                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">
-                    🍫 Total Produzido
-                </p>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="number" id="produzido-${e.key}"
-                        value="${produzido}"
-                        placeholder="Ex: 200"
-                        min="0"
-                        style="margin-bottom:0;flex:1;">
-                    <button class="btn btn-marrom"
-                        style="padding:10px 16px;white-space:nowrap;"
-                        onclick="salvarProduzido('${e.key}')">
-                        💾 Salvar
-                    </button>
-                </div>
-                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">
-                    = ${caixasProduzidas} caixinhas de 4 un
-                    <span id="info-caixas-${e.key}"></span>
-                </p>
-            </div>
+            ${producaoHTML}
 
             <!-- Histórico de vendas -->
             <div>
@@ -4388,20 +4470,22 @@ function renderizarEventoCard(e, lista, hoje) {
 
     lista.appendChild(card);
 
-    // Atualiza info de caixas ao digitar produzido
-    const inputProd = document.getElementById('produzido-' + e.key);
-    if (inputProd) {
-        inputProd.addEventListener('input', function() {
-            const un = parseInt(this.value) || 0;
-            const cxs = Math.floor(un / 4);
-            document.getElementById('info-caixas-' + e.key).textContent =
-                un > 0 ? ` (${cxs} caixinhas)` : '';
-        });
+    if (!finalizado) {
+        const inputProd = document.getElementById('produzido-' + e.key);
+        if (inputProd) {
+            inputProd.addEventListener('input', function() {
+                const un = parseInt(this.value) || 0;
+                const cxs = Math.floor(un / 4);
+                const infoEl = document.getElementById('info-caixas-' + e.key);
+                if (infoEl) infoEl.textContent = un > 0 ? ` (${cxs} caixinhas)` : '';
+            });
+        }
     }
 }
 
 function renderizarHistoricoVendas(e) {
     const vendas = e.vendas ? Object.entries(e.vendas) : [];
+    const finalizado = eventoEstaFinalizado(e);
     if (vendas.length === 0) return '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>';
 
     return vendas.map(([key, v]) => {
@@ -4409,6 +4493,8 @@ function renderizarHistoricoVendas(e) {
         const desc = [];
         if (v.caixas > 0) desc.push(`${v.caixas} caixa${v.caixas > 1 ? 's' : ''}`);
         if (v.avulso > 0) desc.push(`${v.avulso} avulso`);
+        const btnExcluir = finalizado ? '' : `<button class="btn-remove" style="padding:4px 10px;font-size:0.74em;"
+                    onclick="excluirVenda('${e.key}','${key}')">✕</button>`;
         return `<div class="venda-item">
             <div>
                 <span style="font-weight:600;">${hora}</span>
@@ -4416,8 +4502,7 @@ function renderizarHistoricoVendas(e) {
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <strong style="color:var(--green);">R$ ${(v.valor||0).toFixed(2).replace('.',',')}</strong>
-                <button class="btn-remove" style="padding:4px 10px;font-size:0.74em;"
-                    onclick="excluirVenda('${e.key}','${key}')">✕</button>
+                ${btnExcluir}
             </div>
         </div>`;
     }).join('');
@@ -4438,11 +4523,15 @@ function calcularVenda(key) {
 }
 
 function salvarProduzido(key) {
-    const produzido = parseInt(document.getElementById('produzido-' + key).value) || 0;
-    database.ref('eventos/' + key).update({ produzido }).then(() => {
-        toast('✅ Total produzido salvo!');
-        carregarEventos();
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    database.ref('eventos/' + key).once('value', snapshot => {
+        const e = snapshot.val();
+        if (eventoEstaFinalizado(e)) { toast('❌ Evento finalizado. Não é possível alterar.', 'erro'); return; }
+        const produzido = parseInt(document.getElementById('produzido-' + key).value) || 0;
+        database.ref('eventos/' + key).update({ produzido }).then(() => {
+            toast('✅ Total produzido salvo!');
+            carregarEventos();
+        }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
 }
 
 function lancarVenda(key) {
@@ -4475,40 +4564,46 @@ function lancarVenda(key) {
 }
 
 function lancarVendaRapida(key, caixas) {
-    const valor = caixas * 10;
-    const agora = new Date();
-    const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
-    const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
+    database.ref('eventos/' + key).once('value', snapshot => {
+        if (eventoEstaFinalizado(snapshot.val())) { toast('❌ Evento finalizado. Não é possível lançar vendas.', 'erro'); return; }
+        const valor = caixas * 10;
+        const agora = new Date();
+        const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+        const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
 
-    database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
-        toast(`✅ +${caixas} caixa${caixas > 1 ? 's' : ''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
-        carregarEventos();
-        setTimeout(() => {
-            const painel = document.getElementById('painel-' + key);
-            if (painel) painel.style.display = 'block';
-        }, 400);
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+        database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
+            toast(`✅ +${caixas} caixa${caixas > 1 ? 's' : ''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+            carregarEventos();
+            setTimeout(() => {
+                const painel = document.getElementById('painel-' + key);
+                if (painel) painel.style.display = 'block';
+            }, 400);
+        }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
 }
 
 function lancarVendaEspecifica(key) {
-    const caixas = parseInt(document.getElementById('venda-caixas-' + key).value) || 0;
-    if (caixas <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
-    const valor = caixas * 10;
-    const agora = new Date();
-    const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
-    const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
+    database.ref('eventos/' + key).once('value', snapshot => {
+        if (eventoEstaFinalizado(snapshot.val())) { toast('❌ Evento finalizado. Não é possível lançar vendas.', 'erro'); return; }
+        const caixas = parseInt(document.getElementById('venda-caixas-' + key).value) || 0;
+        if (caixas <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
+        const valor = caixas * 10;
+        const agora = new Date();
+        const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+        const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
 
-    database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
-        toast(`✅ +${caixas} caixas — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
-        document.getElementById('venda-caixas-' + key).value = '';
-        document.getElementById('preview-venda-' + key).textContent = 'R$ 0,00';
-        document.getElementById('especificar-' + key).style.display = 'none';
-        carregarEventos();
-        setTimeout(() => {
-            const painel = document.getElementById('painel-' + key);
-            if (painel) painel.style.display = 'block';
-        }, 400);
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+        database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
+            toast(`✅ +${caixas} caixas — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+            document.getElementById('venda-caixas-' + key).value = '';
+            document.getElementById('preview-venda-' + key).textContent = 'R$ 0,00';
+            document.getElementById('especificar-' + key).style.display = 'none';
+            carregarEventos();
+            setTimeout(() => {
+                const painel = document.getElementById('painel-' + key);
+                if (painel) painel.style.display = 'block';
+            }, 400);
+        }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
 }
 
 function toggleEspecificar(key) {
