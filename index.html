@@ -1275,6 +1275,7 @@ footer p {
 }
 
 /* ── Swipe mobile ── */
+/* DEPOIS */
 .swipe-wrapper {
     position: relative;
     overflow: hidden;
@@ -1286,18 +1287,17 @@ footer p {
     right: 0; top: 0; bottom: 0;
     display: flex;
     align-items: stretch;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
+    width: 144px;
     border-radius: 0 20px 20px 0;
     overflow: hidden;
+    z-index: 0;
 }
-.swipe-acoes.visivel { transform: translateX(0); }
 .swipe-acoes .btn-swipe {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 72px;
+    flex: 1;
     border: none;
     cursor: pointer;
     font-size: 0.72em;
@@ -1310,8 +1310,20 @@ footer p {
 .swipe-acoes .btn-swipe.finalizar { background: var(--green); }
 .swipe-acoes .btn-swipe.excluir   { background: var(--red);   }
 .pedido-card {
+    position: relative;
+    z-index: 1;
     transition: transform 0.25s ease, box-shadow 0.2s;
     margin-bottom: 0;
+}
+.pedido-card.swipe-aberto {
+    transform: translateX(-144px);
+}
+
+/* Esconde Finalizar e Excluir dos botões fixos no mobile */
+@media (max-width: 600px) {
+    .btn-swipe-ocultar-mobile {
+        display: none !important;
+    }
 }
 
 </style>
@@ -2517,6 +2529,7 @@ function criarCard(pedido, key, finalizado) {
 
     const card = document.createElement('div');
     card.className = 'pedido-card';
+    card.dataset.key = key;
     card.style.cssText = 'margin-bottom:0;position:relative;z-index:1;background:var(--white);';
 
     // ── Melhoria 1: borda de urgência ──
@@ -2582,15 +2595,15 @@ function criarCard(pedido, key, finalizado) {
     // ── Botões ──
     const botoesHTML = finalizado
         ? `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
-           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
+        <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+        <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+        <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
         : `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
-           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
-           <button class="btn btn-laranja"  onclick="finalizarPedido('${key}')">✓ Finalizar</button>
-           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
+        <button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
+        <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+        <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+        <button class="btn btn-laranja btn-swipe-ocultar-mobile" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
+        <button class="btn btn-vermelho btn-swipe-ocultar-mobile" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
 
     // ── Header clicável ──
     const header = document.createElement('div');
@@ -2736,28 +2749,26 @@ function criarCard(pedido, key, finalizado) {
     });
 
     // ── Melhoria 4: swipe touch mobile ──
-    let touchStartX = 0, touchStartY = 0, swiping = false;
-    card.addEventListener('touchstart', e => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        swiping = false;
-    }, { passive: true });
-    card.addEventListener('touchmove', e => {
-        const dx = e.touches[0].clientX - touchStartX;
-        const dy = Math.abs(e.touches[0].clientY - touchStartY);
-        if (dy > 20) return; // scroll vertical, ignora
-        if (dx < -30) { swiping = true; }
-    }, { passive: true });
-    card.addEventListener('touchend', () => {
-        if (!swiping || finalizado) return;
-        const acoes = document.getElementById('swipe-' + key);
-        if (!acoes) return;
-        // Fecha outros swipes abertos
-        document.querySelectorAll('.swipe-acoes.visivel').forEach(el => {
-            if (el.id !== 'swipe-' + key) el.classList.remove('visivel');
+let touchStartX = 0, touchStartY = 0;
+card.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+card.addEventListener('touchmove', e => {
+    const dx = touchStartX - e.touches[0].clientX;
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dy > 20 || finalizado) return;
+    if (dx > 30) {
+        // Fecha outros abertos
+        document.querySelectorAll('.pedido-card.swipe-aberto').forEach(el => {
+            if (el !== card) el.classList.remove('swipe-aberto');
         });
-        acoes.classList.toggle('visivel');
-    });
+        card.classList.add('swipe-aberto');
+    } else if (dx < -10) {
+        card.classList.remove('swipe-aberto');
+    }
+}, { passive: true });
 
     // Fecha swipe ao clicar fora
     document.addEventListener('click', function fecharSwipeOutside(e) {
@@ -2782,8 +2793,8 @@ function criarCard(pedido, key, finalizado) {
 
 // Fecha swipe programaticamente
 function fecharSwipe(key) {
-    const acoes = document.getElementById('swipe-' + key);
-    if (acoes) acoes.classList.remove('visivel');
+    const c = document.querySelector(`[data-key="${key}"]`);
+    if (c) c.classList.remove('swipe-aberto');
 }
 
 function finalizarPedido(key) {
