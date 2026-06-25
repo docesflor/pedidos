@@ -3392,19 +3392,28 @@ function imprimirComprovante(key) {
 
         let itensHTML = '';
         if(p.itens && Array.isArray(p.itens)){
+            // ← NOVO: calcula totais por categoria para aplicar faixa correta
+            const qtdTrad    = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'trad').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+            const qtdFrutas  = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'frutas').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+            const qtdGourmet = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'gourmet').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+            const precoTradAuto    = precoUnitarioPorFaixa('trad',    qtdTrad);
+            const precoFrutasAuto  = precoUnitarioPorFaixa('frutas',  qtdFrutas);
+            const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
+
             const gruposComp = [
-                { cat:'trad',    label:'🍫 Tradicionais' },
-                { cat:'frutas',  label:'🍓 Frutas' },
-                { cat:'gourmet', label:'✨ Gourmet' }
+                { cat:'trad',    label:'🍫 Tradicionais', precoAuto: precoTradAuto    },
+                { cat:'frutas',  label:'🍓 Frutas',        precoAuto: precoFrutasAuto  },
+                { cat:'gourmet', label:'✨ Gourmet',        precoAuto: precoGourmetAuto }
             ];
             gruposComp.forEach(grupo => {
-                const itensCat = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome] || 'trad') === grupo.cat);
+                const itensCat = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === grupo.cat);
                 if (itensCat.length === 0) return;
                 itensHTML += `<tr><td colspan="4" style="padding:7px 6px;background:#FEF3C7;font-weight:700;color:#92400E;font-size:12px;">${grupo.label}</td></tr>`;
                 itensCat.forEach(item => {
                     const qtd = parseInt(item.quantidade)||0;
-                    const preco = item.precoManual!==undefined ? item.precoManual : precoUnitario(item.sabor||item.nome,qtd);
-                    const subtotal = (qtd*preco).toFixed(2).replace('.',',');
+                    // ← USA precoAuto da categoria (faixa correta) em vez de precoUnitario isolado
+                    const preco = item.precoManual !== undefined ? item.precoManual : grupo.precoAuto;
+                    const subtotal = (qtd * preco).toFixed(2).replace('.',',');
                     itensHTML += `
                         <tr>
                             <td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;font-size:12.5px;">${escaparHTML(item.sabor||item.nome)}</td>
