@@ -2481,11 +2481,20 @@ function criarCard(pedido, key, finalizado) {
 
     const itensBox = document.createElement('div'); itensBox.className = 'pedido-itens-lista';
     if (pedido.itens && Array.isArray(pedido.itens) && pedido.itens.length > 0) {
-        const linhas = pedido.itens.map(item => {
-            const preco = precoUnitario(item.sabor || item.nome, item.quantidade || 0);
-            const subtotal = ((item.quantidade || 0) * preco).toFixed(2).replace('.',',');
-            return `<tr><td>${item.sabor||item.nome||'Item'}</td><td style="text-align:center;">${item.quantidade||0}</td><td style="text-align:center;">${item.formato||'N/A'} / ${item.tipoForma||'N/A'} / ${item.cor||'N/A'}</td><td style="text-align:right;">R$ ${subtotal}</td></tr>`;
-        }).join('');
+        const qtdTrad    = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'trad').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    const qtdFrutas  = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'frutas').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    const qtdGourmet = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'gourmet').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    const precoTradAuto    = precoUnitarioPorFaixa('trad',    qtdTrad);
+    const precoFrutasAuto  = precoUnitarioPorFaixa('frutas',  qtdFrutas);
+    const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
+
+    const linhas = pedido.itens.map(item => {
+        const cat = CATEGORIA_SABOR[item.sabor||item.nome] || 'trad';
+        const precoAuto = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
+        const preco = item.precoManual !== undefined ? item.precoManual : precoAuto;
+        const subtotal = ((item.quantidade || 0) * preco).toFixed(2).replace('.',',');
+        return `<tr><td>${item.sabor||item.nome||'Item'}</td><td style="text-align:center;">${item.quantidade||0}</td><td style="text-align:center;">${item.formato||'N/A'} / ${item.tipoForma||'N/A'} / ${item.cor||'N/A'}</td><td style="text-align:right;">R$ ${subtotal}</td></tr>`;
+    }).join('');
         itensBox.innerHTML = `<table class="pedido-itens-tabela"><thead><tr><th>Sabor</th><th style="text-align:center;">Qtd</th><th style="text-align:center;">Detalhes</th><th style="text-align:right;">R$</th></tr></thead><tbody>${linhas}</tbody></table>`;
     } else { itensBox.textContent = 'Sem itens'; }
     detalhes.appendChild(itensBox);
