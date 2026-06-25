@@ -303,13 +303,13 @@ body {
 .menu-tabs-inner::-webkit-scrollbar { display: none; }
 
 .menu-btn {
-    padding: 7px 16px;
+    padding: 7px 10px;
     border: none;
     border-radius: 50px;
     background: transparent;
     color: rgba(245,181,99,0.7);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.82em;
+    font-size: 0.76em;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s;
@@ -1326,6 +1326,196 @@ footer p {
     }
 }
 
+/* ═══════════════════════════════════════════
+   EVENTOS / BLOQUEIOS DE AGENDA
+═══════════════════════════════════════════ */
+.dia.bloqueado {
+    background: #FEE2E2;
+    border-color: #EF4444;
+    cursor: not-allowed;
+    position: relative;
+}
+.dia.bloqueado:hover {
+    background: #FECACA;
+    border-color: #DC2626;
+}
+.dia.bloqueado .dia-numero {
+    color: #DC2626;
+    font-weight: 700;
+}
+.dia-lock {
+    font-size: 0.6em;
+    margin-top: 1px;
+    line-height: 1;
+}
+.dia.bloqueado-inicio {
+    border-left: 3px solid #DC2626;
+}
+.dia.bloqueado-fim {
+    border-right: 3px solid #DC2626;
+}
+
+.evento-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border: 1.5px solid #FCA5A5;
+    box-shadow: 0 2px 10px rgba(239,68,68,0.1);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    animation: itemEntrar 0.25s ease;
+}
+.evento-card:hover {
+    box-shadow: 0 4px 16px rgba(239,68,68,0.18);
+}
+.evento-info { flex: 1; }
+.evento-nome {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #DC2626;
+    margin-bottom: 4px;
+}
+.evento-datas {
+    font-size: 0.83em;
+    color: var(--brown-warm);
+    margin-top: 2px;
+}
+.evento-badge {
+    background: #FEE2E2;
+    color: #DC2626;
+    border-radius: 50px;
+    padding: 3px 12px;
+    font-size: 0.75em;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+#aviso-data-bloqueada {
+    display: none;
+    background: #FEE2E2;
+    border: 1.5px solid #EF4444;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-top: -8px;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #DC2626;
+}
+
+/* ═══════════════════════════════════════════
+   VENDAS DE EVENTO
+═══════════════════════════════════════════ */
+.evento-card-completo {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 1.5px solid #FCA5A5;
+    box-shadow: 0 4px 18px rgba(239,68,68,0.1);
+    transition: box-shadow 0.2s;
+}
+.evento-card-completo:hover {
+    box-shadow: 0 8px 28px rgba(239,68,68,0.18);
+}
+.evento-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+.evento-card-nome {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #DC2626;
+}
+.evento-card-datas {
+    font-size: 0.82em;
+    color: var(--brown-warm);
+    margin-top: 2px;
+}
+.evento-resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+}
+.evento-resumo-item {
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+}
+.evento-resumo-label {
+    font-size: 0.68em;
+    color: var(--brown-warm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.evento-resumo-valor {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--brown-dark);
+}
+.evento-resumo-valor.verde { color: #065F46; }
+.evento-resumo-valor.vermelho { color: #DC2626; }
+.evento-resumo-valor.amber { color: var(--amber); }
+
+.venda-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--cream-dark);
+    font-size: 0.83em;
+}
+.venda-item:last-child { border-bottom: none; }
+
+.painel-vendas {
+    display: none;
+    background: var(--cream);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 12px;
+    border: 1px solid var(--cream-dark);
+}
+
+.btn-evento-acao {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn-evento-vendas {
+    background: var(--green);
+    color: white;
+}
+.btn-evento-vendas:hover { background: #3a6647; }
+
+.btn-evento-excluir {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+.btn-evento-excluir:hover { background: #FECACA; }
+
+@media (max-width: 600px) {
+    .evento-resumo-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 </style>
 </head>
 <body>
@@ -1376,6 +1566,7 @@ footer p {
             <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
             <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
             <button class="menu-btn" onclick="irPara('gastos', this)">💸 Gastos</button>
+            <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
         </div>
     </div>
 </nav>
@@ -1397,6 +1588,7 @@ footer p {
         <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
         <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
         <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">💸 Gastos</button>
+        <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
         <hr class="gaveta-separador">
         <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
     </nav>
@@ -1436,6 +1628,9 @@ footer p {
             <div>
                 <label for="horarioEntrega">Horário</label>
                 <input type="time" id="horarioEntrega">
+                <div id="aviso-data-bloqueada">
+                    🔒 <span id="aviso-data-bloqueada-texto"></span>
+                </div>
             </div>
         </div>
         <label for="tipoEntrega">Tipo</label>
@@ -1793,6 +1988,15 @@ footer p {
             <div id="dashSabores"></div>
         </div>
 
+        <div class="form-card" id="cardEventosDash" style="display:none;">
+            <p class="form-card-titulo">🔒 Eventos do Período</p>
+            <div id="dashEventosLista"></div>
+            <div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">Total Eventos</span>
+                <strong id="dashEventosTotal" style="color:var(--green);font-size:1.1em;">R$ 0,00</strong>
+            </div>
+        </div>
+
         <div class="form-card">
             <p class="form-card-titulo">📈 Faturamento por Período</p>
             <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
@@ -1810,6 +2014,40 @@ footer p {
     </div>
 </section>
 
+<!-- ═══════════════════════════════════
+     SEÇÃO 5: EVENTOS / BLOQUEIOS
+═══════════════════════════════════ -->
+<section id="secao-eventos" class="secao">
+    <h2 class="secao-titulo">
+        🔒 Eventos & Bloqueios
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Gerencie datas indisponíveis para pedidos</span>
+    </h2>
+
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Evento / Bloqueio</p>
+        <label for="eventoNome">Nome do Evento</label>
+        <input type="text" id="eventoNome" placeholder="Ex: Casamento da Ana, Férias...">
+        <div class="linha-dupla">
+            <div>
+                <label for="eventoInicio">Data Início</label>
+                <input type="date" id="eventoInicio">
+            </div>
+            <div>
+                <label for="eventoFim">Data Fim</label>
+                <input type="date" id="eventoFim">
+            </div>
+        </div>
+        <label for="eventoObs">Observação (opcional)</label>
+        <input type="text" id="eventoObs" placeholder="Detalhes adicionais...">
+        <button class="btn btn-vermelho btn-bloco" onclick="salvarEvento()">🔒 Bloquear Período</button>
+    </div>
+
+    <div id="lista-eventos">
+        <p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p>
+    </div>
+</section>
+
 <!-- ═══ MODAL CONFIRMAÇÃO ═══ -->
 <div id="modalConfirmacao" class="modal-overlay" style="display:none;">
     <div class="modal-box">
@@ -1822,15 +2060,6 @@ footer p {
 </div>
 
 <div id="avisoOffline">📵 Sem conexão</div>
-
-<!-- ═══ FOOTER ═══ -->
-<footer>
-    <div class="footer-inner">
-        <strong>Doces Flor</strong>
-        <p>Brigadeiros Artesanais · Sistema de Pedidos<br>
-        📞 (47) 9 9274-5896 &nbsp;|&nbsp; 💛 Feito com amor</p>
-    </div>
-</footer>
 
 <script defer>
         // ===== FIREBASE =====
@@ -2391,6 +2620,7 @@ function _navegarPara(secao, btn) {
     window.scrollTo(0, 0);
     if (secao === 'andamento')   carregarAndamento();
     if (secao === 'finalizados') carregarFinalizados();
+    if (secao === 'eventos') carregarEventos();
     if (secao === 'dashboard') {
         const agora = new Date();
         document.getElementById('dashMes').value = agora.getMonth();
@@ -2399,7 +2629,7 @@ function _navegarPara(secao, btn) {
 }
 
 // ===== SALVAR PEDIDO =====
-function salvarPedido() {
+async function salvarPedido() {
     document.querySelectorAll('.campo-erro').forEach(el => el.classList.remove('campo-erro'));
     document.querySelectorAll('.msg-erro-campo').forEach(el => el.remove());
     function marcarErro(id, msg) {
@@ -2415,6 +2645,18 @@ function salvarPedido() {
     if (!getVal('dataEntrega'))        { marcarErro('dataEntrega', '⚠️ Informe a data'); temErro = true; }
     if (!itens || itens.length === 0) { toast('❌ Adicione pelo menos um item!', 'erro'); temErro = true; }
     if (temErro) return;
+
+    // Verifica bloqueio de data
+    const dataRawCheck = getVal('dataEntrega');
+    if (dataRawCheck) {
+        const eventoBloq = await getEventoBloqueado(dataRawCheck);
+        if (eventoBloq) {
+            const inicioBR = eventoBloq.inicio.split('-').reverse().join('/');
+            const fimBR    = eventoBloq.fim.split('-').reverse().join('/');
+            toast(`🔒 Data bloqueada: ${eventoBloq.nome} (${inicioBR} a ${fimBR})`, 'erro');
+            return;
+        }
+    }
     const dataRaw = getVal('dataEntrega');
     const pedido = {
         nome: getVal('nome'), telefone: getVal('telefone'),
@@ -3038,6 +3280,7 @@ function renderizarCalendario() {
             });
         });
     }, 100);
+    setTimeout(() => marcarDiasBloqueadosCalendario(mesAtual, anoAtual, 'dia'), 300);
 }
 
 function mudarMes(dir) { mesAtual += dir; if (mesAtual<0){mesAtual=11;anoAtual--;} if (mesAtual>11){mesAtual=0;anoAtual++;} renderizarCalendario(); filtrarAndamentoPorMes(); }
@@ -3105,6 +3348,7 @@ function renderizarCalendarioFinalizados() {
             });
         });
     }, 100);
+    setTimeout(() => marcarDiasBloqueadosCalendario(mesAtualFin, anoAtualFin, 'dia-fin'), 300);
 }
 
 function mudarMesFinalizados(dir) { mesAtualFin += dir; if(mesAtualFin<0){mesAtualFin=11;anoAtualFin--;} if(mesAtualFin>11){mesAtualFin=0;anoAtualFin++;} renderizarCalendarioFinalizados(); filtrarFinalizadosPorMes(); }
@@ -3432,10 +3676,64 @@ function carregarDashboard() {
                 totalGastos+=g.valor||0;
                 const cat=g.categoria||'Outros';categorias[cat]=(categorias[cat]||0)+(g.valor||0);
             });
-            const lucro=faturamento-totalGastos;
-            document.getElementById('dashGastos').textContent='R$ '+totalGastos.toFixed(2).replace('.',',');
-            document.getElementById('dashLucro').textContent='R$ '+lucro.toFixed(2).replace('.',',');
-            document.getElementById('dashLucro').style.color=lucro>=0?'#065F46':'var(--red)';
+            // Carrega eventos do período
+database.ref('eventos').once('value', snapEventos => {
+    let totalEventos = 0;
+    const eventosLista = [];
+
+    snapEventos.forEach(child => {
+        const e = child.val();
+        if (!e.inicio) return;
+
+        // Verifica se o evento está dentro do período
+        const anoEvento = parseInt(e.inicio.split('-')[0]);
+        const mesEvento = parseInt(e.inicio.split('-')[1]) - 1;
+        if (anoEvento !== ano) return;
+        if (mes !== null && mesEvento !== mes) return;
+
+        // Soma vendas do evento
+        const vendas = e.vendas ? Object.values(e.vendas) : [];
+        const totalEvento = vendas.reduce((s, v) => s + (parseFloat(v.valor) || 0), 0);
+        if (totalEvento <= 0) return;
+
+        totalEventos += totalEvento;
+        eventosLista.push({ nome: e.nome, total: totalEvento });
+    });
+
+    // Faturamento total = pedidos + eventos
+    const faturamentoTotal = faturamento + totalEventos;
+    const lucro = faturamentoTotal - totalGastos;
+
+    document.getElementById('dashGastos').textContent = 'R$ ' + totalGastos.toFixed(2).replace('.', ',');
+    document.getElementById('dashLucro').textContent = 'R$ ' + lucro.toFixed(2).replace('.', ',');
+    document.getElementById('dashLucro').style.color = lucro >= 0 ? '#065F46' : 'var(--red)';
+
+    // Atualiza faturamento total no card principal
+    document.getElementById('dashFaturamento').textContent = 'R$ ' + faturamentoTotal.toFixed(2).replace('.', ',');
+    document.getElementById('dashCarteiraValor').textContent = 'R$ ' + (faturamentoTotal + totalPendente).toFixed(2).replace('.', ',');
+
+    // Card de eventos
+    const cardEventos = document.getElementById('cardEventosDash');
+    const listaEventos = document.getElementById('dashEventosLista');
+    const totalEventosEl = document.getElementById('dashEventosTotal');
+
+    if (eventosLista.length > 0) {
+        cardEventos.style.display = 'block';
+        listaEventos.innerHTML = eventosLista.map(e => `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;">
+                <div>
+                    <span>🔒 ${escaparHTML(e.nome)}</span>
+                </div>
+                <strong style="color:var(--amber);">
+                    R$ ${e.total.toFixed(2).replace('.', ',')}
+                </strong>
+            </div>`).join('');
+        totalEventosEl.textContent = 'R$ ' + totalEventos.toFixed(2).replace('.', ',');
+    } else {
+        cardEventos.style.display = 'none';
+    }
+});
             const catOrdenadas=Object.entries(categorias).sort((a,b)=>b[1]-a[1]);
             const maxCat=catOrdenadas[0]?.[1]||1;
             document.getElementById('dashGastosCategorias').innerHTML=catOrdenadas.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum gasto no período.</p>':catOrdenadas.map(([cat,val])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${cat}</span><strong>R$ ${val.toFixed(2).replace('.',',')}</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--brown-warm);height:6px;border-radius:6px;width:${Math.round((val/maxCat)*100)}%;"></div></div></div>`).join('');
@@ -3813,6 +4111,429 @@ function imprimirComprovante(key) {
     });
 }
 
+// ===== EVENTOS / BLOQUEIOS =====
+
+function salvarEvento() {
+    const nome   = document.getElementById('eventoNome').value.trim();
+    const inicio = document.getElementById('eventoInicio').value;
+    const fim    = document.getElementById('eventoFim').value;
+    const obs    = document.getElementById('eventoObs').value.trim();
+
+    if (!nome)   { toast('❌ Informe o nome do evento.', 'erro'); return; }
+    if (!inicio) { toast('❌ Informe a data de início.', 'erro'); return; }
+    if (!fim)    { toast('❌ Informe a data de fim.', 'erro'); return; }
+    if (fim < inicio) { toast('❌ Data fim deve ser igual ou depois do início.', 'erro'); return; }
+
+    const evento = { nome, inicio, fim, obs, timestamp: Date.now() };
+
+    database.ref('eventos').push(evento).then(() => {
+        toast('✅ Evento salvo! Datas bloqueadas.');
+        document.getElementById('eventoNome').value  = '';
+        document.getElementById('eventoInicio').value = '';
+        document.getElementById('eventoFim').value    = '';
+        document.getElementById('eventoObs').value    = '';
+        carregarEventos();
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function excluirEvento(key) {
+    showConfirmModal('🔒 Excluir este bloqueio? As datas voltarão a estar disponíveis.', function() {
+        database.ref('eventos/' + key).remove()
+            .then(() => { toast('🗑️ Evento excluído.'); carregarEventos(); })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
+}
+
+// Verifica se uma data (YYYY-MM-DD) está bloqueada
+// Retorna o evento que bloqueia, ou null
+function getEventoBloqueado(dataISO) {
+    return new Promise(resolve => {
+        database.ref('eventos').once('value', snapshot => {
+            let encontrado = null;
+            snapshot.forEach(child => {
+                const e = child.val();
+                if (dataISO >= e.inicio && dataISO <= e.fim) {
+                    encontrado = e;
+                }
+            });
+            resolve(encontrado);
+        });
+    });
+}
+
+// Verifica data escolhida no formulário e exibe aviso
+async function verificarDataBloqueada() {
+    const dataISO = document.getElementById('dataEntrega').value;
+    const aviso   = document.getElementById('aviso-data-bloqueada');
+    const texto   = document.getElementById('aviso-data-bloqueada-texto');
+
+    if (!dataISO) { aviso.style.display = 'none'; return; }
+
+    const evento = await getEventoBloqueado(dataISO);
+    if (evento) {
+        const inicioBR = evento.inicio.split('-').reverse().join('/');
+        const fimBR    = evento.fim.split('-').reverse().join('/');
+        const mesmoDia = evento.inicio === evento.fim;
+        texto.textContent = `Data bloqueada — ${evento.nome}` +
+            (mesmoDia ? ` (${inicioBR})` : ` (${inicioBR} a ${fimBR})`);
+        aviso.style.display = 'block';
+    } else {
+        aviso.style.display = 'none';
+    }
+}
+
+// Marca dias bloqueados no calendário (chame após renderizar o calendário)
+function marcarDiasBloqueadosCalendario(mesRef, anoRef, prefixoId) {
+    prefixoId = prefixoId || 'dia';
+    database.ref('eventos').once('value', snapshot => {
+        snapshot.forEach(child => {
+            const e = child.val();
+            // Percorre cada dia do evento
+            const dtInicio = new Date(e.inicio + 'T00:00:00');
+            const dtFim    = new Date(e.fim    + 'T00:00:00');
+            const cur      = new Date(dtInicio);
+            let idx = 0;
+            while (cur <= dtFim) {
+                if (cur.getMonth() === mesRef && cur.getFullYear() === anoRef) {
+                    const dia = cur.getDate();
+                    const el  = document.getElementById(prefixoId + '-' + dia);
+                    if (el) {
+                        el.classList.add('bloqueado');
+                        if (idx === 0) el.classList.add('bloqueado-inicio');
+                        // Verifica se é o último dia
+                        const proxDia = new Date(cur); proxDia.setDate(proxDia.getDate()+1);
+                        if (proxDia > dtFim) el.classList.add('bloqueado-fim');
+                        // Adiciona ícone se ainda não tem
+                        if (!el.querySelector('.dia-lock')) {
+                            const lock = document.createElement('div');
+                            lock.className = 'dia-lock';
+                            lock.textContent = '🔒';
+                            el.appendChild(lock);
+                        }
+                        // Tooltip com nome do evento
+                        el.title = '🔒 ' + e.nome;
+                    }
+                }
+                cur.setDate(cur.getDate() + 1);
+                idx++;
+            }
+        });
+    });
+}
+
+// ===== VENDAS DE EVENTO =====
+
+function carregarEventos() {
+    const lista = document.getElementById('lista-eventos');
+    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+
+    database.ref('eventos').once('value', snapshot => {
+        const eventos = [];
+        snapshot.forEach(child => {
+            const e = child.val();
+            e.key = child.key;
+            eventos.push(e);
+        });
+
+        if (eventos.length === 0) {
+            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p>';
+            return;
+        }
+
+        eventos.sort((a, b) => a.inicio.localeCompare(b.inicio));
+        lista.innerHTML = '';
+
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        eventos.forEach(e => renderizarEventoCard(e, lista, hoje));
+    });
+}
+
+function renderizarEventoCard(e, lista, hoje) {
+    const fimDate = new Date(e.fim + 'T00:00:00');
+    const passado = fimDate < hoje;
+    const inicioBR = e.inicio.split('-').reverse().join('/');
+    const fimBR    = e.fim.split('-').reverse().join('/');
+    const mesmoDia = e.inicio === e.fim;
+
+    const card = document.createElement('div');
+    card.className = 'evento-card-completo';
+    card.id = 'evento-card-' + e.key;
+
+    // Calcula resumo de vendas
+    const vendas   = e.vendas   ? Object.values(e.vendas)   : [];
+    const produzido = e.produzido || 0;
+    const totalCaixas = vendas.reduce((s, v) => s + (parseInt(v.caixas)||0), 0);
+    const totalAvulso = vendas.reduce((s, v) => s + (parseInt(v.avulso)||0), 0);
+    const totalUnidades = (totalCaixas * 4) + totalAvulso;
+    const totalArrecadado = vendas.reduce((s, v) => s + (parseFloat(v.valor)||0), 0);
+    const caixasProduzidas = Math.floor(produzido / 4);
+    const sobrandoCaixas = Math.max(0, caixasProduzidas - totalCaixas);
+    const sobrandoUnidades = Math.max(0, produzido - totalUnidades);
+
+    card.innerHTML = `
+        <div class="evento-card-header">
+            <div>
+                <div class="evento-card-nome">🔒 ${escaparHTML(e.nome)}</div>
+                <div class="evento-card-datas">
+                    📅 ${mesmoDia ? inicioBR : inicioBR + ' até ' + fimBR}
+                    ${e.obs ? ` — ${escaparHTML(e.obs)}` : ''}
+                    ${passado ? '<span style="color:var(--brown-warm);"> · encerrado</span>' : ''}
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="btn-evento-acao btn-evento-vendas"
+                    onclick="togglePainelVendas('${e.key}')">
+                    💰 Vendas
+                </button>
+                <button class="btn-evento-acao btn-evento-excluir"
+                    onclick="excluirEvento('${e.key}')">
+                    🗑️ Excluir
+                </button>
+            </div>
+        </div>
+
+        <!-- RESUMO -->
+        <div class="evento-resumo-grid">
+            <div class="evento-resumo-item">
+                <div class="evento-resumo-label">🍫 Produzido</div>
+                <div class="evento-resumo-valor">${caixasProduzidas} cxs</div>
+                <div style="font-size:0.7em;color:var(--brown-warm);">${produzido} un</div>
+            </div>
+            <div class="evento-resumo-item">
+                <div class="evento-resumo-label">📦 Vendido</div>
+                <div class="evento-resumo-valor amber">${totalCaixas} cxs</div>
+                <div style="font-size:0.7em;color:var(--brown-warm);">${totalUnidades} un${totalAvulso > 0 ? ' + ' + totalAvulso + ' avulso' : ''}</div>
+            </div>
+            <div class="evento-resumo-item">
+                <div class="evento-resumo-label">📬 Sobrou</div>
+                <div class="evento-resumo-valor vermelho">${sobrandoCaixas} cxs</div>
+                <div style="font-size:0.7em;color:var(--brown-warm);">${sobrandoUnidades} un</div>
+            </div>
+            <div class="evento-resumo-item">
+                <div class="evento-resumo-label">💰 Arrecadado</div>
+                <div class="evento-resumo-valor verde">R$ ${totalArrecadado.toFixed(2).replace('.',',')}</div>
+            </div>
+        </div>
+
+        <!-- BOTÕES RÁPIDOS SEMPRE VISÍVEIS -->
+        <div style="margin-top:12px;">
+            <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
+                <button class="btn btn-cinza" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="toggleEspecificar('${e.key}')">✏️ Especificar<br><span style="font-size:0.85em;opacity:0.75;">outra qtd</span></button>
+            </div>
+
+            <!-- Campo especificar (oculto) -->
+            <div id="especificar-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;">
+                <label style="font-size:0.76em;">Quantidade de caixinhas</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="venda-caixas-${e.key}"
+                        placeholder="Ex: 7" min="1"
+                        style="margin-bottom:0;flex:1;"
+                        oninput="calcularVenda('${e.key}')">
+                    <button class="btn btn-verde" style="padding:10px 16px;white-space:nowrap;"
+                        onclick="lancarVendaEspecifica('${e.key}')">
+                        ✅ Confirmar
+                    </button>
+                </div>
+                <div style="font-size:0.8em;color:var(--green);margin-top:6px;font-weight:600;">
+                    💰 Total: <span id="preview-venda-${e.key}">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAINEL DE VENDAS -->
+        <div class="painel-vendas" id="painel-${e.key}">
+
+            <!-- Produção -->
+            <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--cream-dark);">
+                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">
+                    🍫 Total Produzido
+                </p>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="number" id="produzido-${e.key}"
+                        value="${produzido}"
+                        placeholder="Ex: 200"
+                        min="0"
+                        style="margin-bottom:0;flex:1;">
+                    <button class="btn btn-marrom"
+                        style="padding:10px 16px;white-space:nowrap;"
+                        onclick="salvarProduzido('${e.key}')">
+                        💾 Salvar
+                    </button>
+                </div>
+                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">
+                    = ${caixasProduzidas} caixinhas de 4 un
+                    <span id="info-caixas-${e.key}"></span>
+                </p>
+            </div>
+
+            <!-- Histórico de vendas -->
+            <div>
+                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">
+                    📋 Histórico de Vendas
+                </p>
+                <div id="historico-${e.key}" style="background:var(--white);border-radius:10px;border:1px solid var(--cream-dark);overflow:hidden;">
+                    ${vendas.length === 0
+                        ? '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>'
+                        : renderizarHistoricoVendas(e)}
+                </div>
+            </div>
+        </div>`;
+
+    lista.appendChild(card);
+
+    // Atualiza info de caixas ao digitar produzido
+    const inputProd = document.getElementById('produzido-' + e.key);
+    if (inputProd) {
+        inputProd.addEventListener('input', function() {
+            const un = parseInt(this.value) || 0;
+            const cxs = Math.floor(un / 4);
+            document.getElementById('info-caixas-' + e.key).textContent =
+                un > 0 ? ` (${cxs} caixinhas)` : '';
+        });
+    }
+}
+
+function renderizarHistoricoVendas(e) {
+    const vendas = e.vendas ? Object.entries(e.vendas) : [];
+    if (vendas.length === 0) return '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>';
+
+    return vendas.map(([key, v]) => {
+        const hora = v.hora || '--:--';
+        const desc = [];
+        if (v.caixas > 0) desc.push(`${v.caixas} caixa${v.caixas > 1 ? 's' : ''}`);
+        if (v.avulso > 0) desc.push(`${v.avulso} avulso`);
+        return `<div class="venda-item">
+            <div>
+                <span style="font-weight:600;">${hora}</span>
+                <span style="color:var(--brown-warm);margin-left:6px;">${desc.join(' + ')}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="color:var(--green);">R$ ${(v.valor||0).toFixed(2).replace('.',',')}</strong>
+                <button class="btn-remove" style="padding:4px 10px;font-size:0.74em;"
+                    onclick="excluirVenda('${e.key}','${key}')">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function togglePainelVendas(key) {
+    const painel = document.getElementById('painel-' + key);
+    if (!painel) return;
+    const aberto = painel.style.display === 'block';
+    painel.style.display = aberto ? 'none' : 'block';
+}
+
+function calcularVenda(key) {
+    const caixas = parseInt(document.getElementById('venda-caixas-' + key).value) || 0;
+    const total  = caixas * 10;
+    const preview = document.getElementById('preview-venda-' + key);
+    if (preview) preview.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+}
+
+function salvarProduzido(key) {
+    const produzido = parseInt(document.getElementById('produzido-' + key).value) || 0;
+    database.ref('eventos/' + key).update({ produzido }).then(() => {
+        toast('✅ Total produzido salvo!');
+        carregarEventos();
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function lancarVenda(key) {
+    const caixas = parseInt(document.getElementById('venda-caixas-' + key).value) || 0;
+    const avulso = parseInt(document.getElementById('venda-avulso-' + key).value) || 0;
+
+    if (caixas === 0 && avulso === 0) {
+        toast('❌ Informe ao menos 1 caixinha ou 1 unidade avulsa.', 'erro');
+        return;
+    }
+
+    const valor = (caixas * 10) + (avulso * 2.50);
+    const agora = new Date();
+    const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+
+    const venda = { caixas, avulso, valor, hora, timestamp: Date.now() };
+
+    database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
+        toast('✅ Venda lançada!');
+        document.getElementById('venda-caixas-' + key).value = '';
+        document.getElementById('venda-avulso-' + key).value = '';
+        document.getElementById('preview-venda-' + key).textContent = 'R$ 0,00';
+        carregarEventos();
+        // Reabre o painel após recarregar
+        setTimeout(() => {
+            const painel = document.getElementById('painel-' + key);
+            if (painel) painel.style.display = 'block';
+        }, 400);
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function lancarVendaRapida(key, caixas) {
+    const valor = caixas * 10;
+    const agora = new Date();
+    const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+    const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
+
+    database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
+        toast(`✅ +${caixas} caixa${caixas > 1 ? 's' : ''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+        carregarEventos();
+        setTimeout(() => {
+            const painel = document.getElementById('painel-' + key);
+            if (painel) painel.style.display = 'block';
+        }, 400);
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function lancarVendaEspecifica(key) {
+    const caixas = parseInt(document.getElementById('venda-caixas-' + key).value) || 0;
+    if (caixas <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
+    const valor = caixas * 10;
+    const agora = new Date();
+    const hora  = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+    const venda = { caixas, avulso: 0, valor, hora, timestamp: Date.now() };
+
+    database.ref('eventos/' + key + '/vendas').push(venda).then(() => {
+        toast(`✅ +${caixas} caixas — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+        document.getElementById('venda-caixas-' + key).value = '';
+        document.getElementById('preview-venda-' + key).textContent = 'R$ 0,00';
+        document.getElementById('especificar-' + key).style.display = 'none';
+        carregarEventos();
+        setTimeout(() => {
+            const painel = document.getElementById('painel-' + key);
+            if (painel) painel.style.display = 'block';
+        }, 400);
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function toggleEspecificar(key) {
+    const div = document.getElementById('especificar-' + key);
+    if (!div) return;
+    const aberto = div.style.display === 'block';
+    div.style.display = aberto ? 'none' : 'block';
+    if (!aberto) document.getElementById('venda-caixas-' + key).focus();
+}
+
+function excluirVenda(eventoKey, vendaKey) {
+    showConfirmModal('Excluir esta venda?', function() {
+        database.ref('eventos/' + eventoKey + '/vendas/' + vendaKey).remove()
+            .then(() => {
+                toast('🗑️ Venda excluída.');
+                carregarEventos();
+                setTimeout(() => {
+                    const painel = document.getElementById('painel-' + eventoKey);
+                    if (painel) painel.style.display = 'block';
+                }, 400);
+            })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async function() {
     verificarNotificacoes();
@@ -3838,6 +4559,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('valorFrete').addEventListener('input', function(e) { e.target.value=maskMoeda(e.target.value); atualizarTotal(); });
     document.getElementById('valorDesconto').addEventListener('input', function(e) { e.target.value=maskMoeda(e.target.value); atualizarTotal(); });
     document.getElementById('valorPago').addEventListener('input', function(e) { e.target.value=maskMoeda(e.target.value); });
+    document.getElementById('dataEntrega').addEventListener('change', verificarDataBloqueada);
     document.getElementById('tipoEntrega').addEventListener('change', function() {
         const isEntrega=this.value==='entrega'; document.getElementById('enderecoFields').style.display=isEntrega?'block':'none';
         ['cep','endereco','bairro','cidade','numero','pontoReferencia'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=!isEntrega;if(!isEntrega)el.value='';}});
