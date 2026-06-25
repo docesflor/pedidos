@@ -2445,68 +2445,201 @@ function carregarFinalizados() {
 function criarCard(pedido, key, finalizado) {
     const card = document.createElement('div');
     card.className = 'pedido-card';
+    card.style.cursor = 'pointer';
+
     const statusClass = finalizado ? 'status-entregue' : 'status-andamento';
     const statusTexto = finalizado ? 'Entregue ✅' : (pedido.statusPagamento || 'A pagar');
-    const valorFormatado = typeof pedido.valorTotal === 'number' ? 'R$ ' + pedido.valorTotal.toFixed(2).replace('.',',') : (pedido.valorTotal || 'R$ 0,00');
-    const botoesHTML = finalizado
-        ? `<button class="btn btn-marrom" onclick="toggleDetalhes('${key}')">ℹ️ Detalhes</button>
-           <button class="btn btn-azul" onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-verde" onclick="reenviarWhatsApp('${key}')">📲 Reenviar</button>
-           <button class="btn btn-cinza" onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
-        : `<button class="btn btn-marrom" onclick="toggleDetalhes('${key}')">ℹ️ Detalhes</button>
-           <button class="btn btn-azul" onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-amarelo" onclick="editarPedido('${key}')">✏️ Editar</button>
-           <button class="btn btn-cinza" onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-verde" onclick="reenviarWhatsApp('${key}')">📲 Reenviar</button>
-           <button class="btn btn-laranja" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
-           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
 
-    const header = document.createElement('div'); header.className = 'pedido-header';
-    const nomeEl = document.createElement('div'); nomeEl.className = 'pedido-nome'; nomeEl.textContent = pedido.nome || 'N/A';
-    const statusEl = document.createElement('div'); statusEl.className = 'pedido-status ' + statusClass; statusEl.textContent = statusTexto;
-    header.appendChild(nomeEl); header.appendChild(statusEl);
+    const valorFormatado = typeof pedido.valorTotal === 'number'
+        ? 'R$ ' + pedido.valorTotal.toFixed(2).replace('.', ',')
+        : (pedido.valorTotal || 'R$ 0,00');
 
-    const resumo = document.createElement('div'); resumo.className = 'pedido-resumo';
-    const infoTel = document.createElement('div'); infoTel.className = 'pedido-info'; infoTel.innerHTML = '<strong>Telefone:</strong> '; infoTel.appendChild(document.createTextNode(pedido.telefone || 'N/A'));
-    const infoData = document.createElement('div'); infoData.className = 'pedido-info'; infoData.innerHTML = '<strong>Data:</strong> '; infoData.appendChild(document.createTextNode((converterDataParaBR(pedido.dataEntrega)||'N/A') + (pedido.hora ? ' às ' + pedido.hora : '')));
-    const infoValor = document.createElement('div'); infoValor.className = 'pedido-info'; infoValor.innerHTML = '<strong>Total:</strong> '; infoValor.appendChild(document.createTextNode(valorFormatado));
-    resumo.appendChild(infoTel); resumo.appendChild(infoData); resumo.appendChild(infoValor);
-
-    const detalhes = document.createElement('div'); detalhes.className = 'pedido-detalhes'; detalhes.id = 'detalhes-' + key; detalhes.style.display = 'none';
-    if (pedido.tipoEntrega === 'entrega' && pedido.endereco) {
-        const endEl = document.createElement('div'); endEl.className = 'pedido-info'; endEl.innerHTML = '<strong>Endereço:</strong> '; endEl.appendChild(document.createTextNode(pedido.endereco.logradouro + ', ' + pedido.endereco.numero + ' — ' + pedido.endereco.bairro + ', ' + pedido.endereco.cidade));
-        detalhes.appendChild(endEl);
-    } else { const retEl = document.createElement('div'); retEl.className = 'pedido-info'; retEl.innerHTML = '<strong>Tipo:</strong> '; retEl.appendChild(document.createTextNode('Retirada')); detalhes.appendChild(retEl); }
-
-    const itensBox = document.createElement('div'); itensBox.className = 'pedido-itens-lista';
-    if (pedido.itens && Array.isArray(pedido.itens) && pedido.itens.length > 0) {
-        const qtdTrad    = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'trad').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
-    const qtdFrutas  = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'frutas').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
-    const qtdGourmet = pedido.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'gourmet').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    // ── Calcula preços por categoria (faixa correta) ──
+    const todosItens = pedido.itens || [];
+    const qtdTrad    = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'trad').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    const qtdFrutas  = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'frutas').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
+    const qtdGourmet = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'gourmet').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
     const precoTradAuto    = precoUnitarioPorFaixa('trad',    qtdTrad);
     const precoFrutasAuto  = precoUnitarioPorFaixa('frutas',  qtdFrutas);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
 
-    const linhas = pedido.itens.map(item => {
-        const cat = CATEGORIA_SABOR[item.sabor||item.nome] || 'trad';
-        const precoAuto = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
-        const preco = item.precoManual !== undefined ? item.precoManual : precoAuto;
-        const subtotal = ((item.quantidade || 0) * preco).toFixed(2).replace('.',',');
-        return `<tr><td>${item.sabor||item.nome||'Item'}</td><td style="text-align:center;">${item.quantidade||0}</td><td style="text-align:center;">${item.formato||'N/A'} / ${item.tipoForma||'N/A'} / ${item.cor||'N/A'}</td><td style="text-align:right;">R$ ${subtotal}</td></tr>`;
-    }).join('');
-        itensBox.innerHTML = `<table class="pedido-itens-tabela"><thead><tr><th>Sabor</th><th style="text-align:center;">Qtd</th><th style="text-align:center;">Detalhes</th><th style="text-align:right;">R$</th></tr></thead><tbody>${linhas}</tbody></table>`;
-    } else { itensBox.textContent = 'Sem itens'; }
-    detalhes.appendChild(itensBox);
+    // ── Botões ──
+    const botoesHTML = finalizado
+        ? `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
+           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
+        : `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
+           <button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
+           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+           <button class="btn btn-laranja"  onclick="finalizarPedido('${key}')">✓ Finalizar</button>
+           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
 
-    const obsEl = document.createElement('div'); obsEl.className = 'pedido-info'; obsEl.innerHTML = '<strong>Obs:</strong> '; obsEl.appendChild(document.createTextNode(pedido.observacoes || 'Nenhuma')); detalhes.appendChild(obsEl);
-    const pagEl = document.createElement('div'); pagEl.className = 'pedido-info'; pagEl.innerHTML = '<strong>Pagamento:</strong> '; pagEl.appendChild(document.createTextNode(pedido.statusPagamento || 'N/A')); detalhes.appendChild(pagEl);
+    // ── Header (clique expande/recolhe) ──
+    const header = document.createElement('div');
+    header.className = 'pedido-header';
+    header.style.cursor = 'pointer';
+    header.title = 'Clique para ver detalhes';
+
+    const nomeEl = document.createElement('div');
+    nomeEl.className = 'pedido-nome';
+    nomeEl.textContent = (pedido.nome || 'N/A') + ' 🔽';
+
+    const statusEl = document.createElement('div');
+    statusEl.className = 'pedido-status ' + statusClass;
+    statusEl.textContent = statusTexto;
+    header.appendChild(nomeEl);
+    header.appendChild(statusEl);
+
+    // ── Resumo sempre visível ──
+    const resumo = document.createElement('div');
+    resumo.className = 'pedido-resumo';
+
+    const infoTel = document.createElement('div');
+    infoTel.className = 'pedido-info';
+    infoTel.innerHTML = '<strong>Telefone:</strong> ' + escaparHTML(pedido.telefone || 'N/A');
+
+    const dataTexto = (converterDataParaBR(pedido.dataEntrega) || 'N/A') + (pedido.hora ? ' às ' + pedido.hora : '');
+    const infoData = document.createElement('div');
+    infoData.className = 'pedido-info';
+    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto);
+
+    const infoValor = document.createElement('div');
+    infoValor.className = 'pedido-info';
+    infoValor.innerHTML = '<strong>Total:</strong> ' + escaparHTML(valorFormatado);
+
+    // ── Melhoria 5: valor pago / saldo quando parcial ──
     if (pedido.statusPagamento === 'Pago Parcialmente') {
-        const vpEl = document.createElement('div'); vpEl.className = 'pedido-info'; vpEl.innerHTML = '<strong>Valor Pago:</strong> '; vpEl.appendChild(document.createTextNode(pedido.valorPago || 'N/A')); detalhes.appendChild(vpEl);
+        const vPago   = parseFloat((pedido.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
+        const vTotal  = typeof pedido.valorTotal === 'number' ? pedido.valorTotal : 0;
+        const vSaldo  = Math.max(0, vTotal - vPago);
+        const infoPag = document.createElement('div');
+        infoPag.className = 'pedido-info';
+        infoPag.innerHTML = `<strong>Pago:</strong> <span style="color:var(--green);font-weight:700;">R$ ${vPago.toFixed(2).replace('.',',')}</span>`
+            + ` &nbsp;|&nbsp; <strong>Falta:</strong> <span style="color:var(--red);font-weight:700;">R$ ${vSaldo.toFixed(2).replace('.',',')}</span>`;
+        resumo.appendChild(infoTel);
+        resumo.appendChild(infoData);
+        resumo.appendChild(infoValor);
+        resumo.appendChild(infoPag);
+    } else {
+        resumo.appendChild(infoTel);
+        resumo.appendChild(infoData);
+        resumo.appendChild(infoValor);
     }
 
-    const botoesDiv = document.createElement('div'); botoesDiv.className = 'pedido-botoes'; botoesDiv.innerHTML = botoesHTML;
-    card.appendChild(header); card.appendChild(resumo); card.appendChild(detalhes); card.appendChild(botoesDiv);
+    // ── Detalhes (expansível) ──
+    const detalhes = document.createElement('div');
+    detalhes.className = 'pedido-detalhes';
+    detalhes.id = 'detalhes-' + key;
+    detalhes.style.display = 'none';
+
+    // ── Melhoria 4: Tipo com destaque visual ──
+    const tipoEntrega = pedido.tipoEntrega || 'retirada';
+    const tipoDiv = document.createElement('div');
+    tipoDiv.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:' +
+        (tipoEntrega === 'entrega' ? '#DBEAFE' : '#D1FAE5') +
+        ';border-radius:50px;padding:4px 12px;font-size:0.8em;font-weight:700;color:' +
+        (tipoEntrega === 'entrega' ? '#1E40AF' : '#065F46') +
+        ';margin-bottom:10px;';
+    tipoDiv.textContent = tipoEntrega === 'entrega' ? '🚚 Entrega' : '🏠 Retirada';
+    detalhes.appendChild(tipoDiv);
+
+    if (tipoEntrega === 'entrega' && pedido.endereco) {
+        const endEl = document.createElement('div');
+        endEl.className = 'pedido-info';
+        endEl.innerHTML = '<strong>Endereço:</strong> '
+            + escaparHTML(pedido.endereco.logradouro + ', ' + pedido.endereco.numero
+            + ' — ' + pedido.endereco.bairro + ', ' + pedido.endereco.cidade);
+        detalhes.appendChild(endEl);
+    }
+
+    // ── Melhoria 1: tabela agrupada por categoria ──
+    const itensBox = document.createElement('div');
+    itensBox.className = 'pedido-itens-lista';
+    itensBox.style.marginTop = '10px';
+
+    const grupos = [
+        { cat: 'trad',    label: '🍫 Tradicionais', cor: '#92400E', bg: '#FEF3C7', precoAuto: precoTradAuto    },
+        { cat: 'frutas',  label: '🍓 Frutas',        cor: '#065F46', bg: '#D1FAE5', precoAuto: precoFrutasAuto  },
+        { cat: 'gourmet', label: '✨ Gourmet',        cor: '#5B21B6', bg: '#EDE9FE', precoAuto: precoGourmetAuto }
+    ];
+
+    if (todosItens.length > 0) {
+        let tbodyHTML = '';
+        grupos.forEach(grupo => {
+            const itensCat = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === grupo.cat);
+            if (itensCat.length === 0) return;
+            const totalCat = itensCat.reduce((s, i) => s + (parseInt(i.quantidade)||0), 0);
+            const valorCat = itensCat.reduce((s, i) => {
+                const preco = i.precoManual !== undefined ? i.precoManual : grupo.precoAuto;
+                return s + (parseInt(i.quantidade)||0) * preco;
+            }, 0);
+            tbodyHTML += `<tr>
+                <td colspan="4" style="padding:6px 8px;background:${grupo.bg};font-weight:700;color:${grupo.cor};font-size:0.78em;">
+                    ${grupo.label}
+                    <span style="float:right;font-weight:600;">${totalCat} un — R$ ${valorCat.toFixed(2).replace('.',',')}</span>
+                </td>
+            </tr>`;
+            itensCat.forEach(item => {
+                const qtd    = parseInt(item.quantidade) || 0;
+                const preco  = item.precoManual !== undefined ? item.precoManual : grupo.precoAuto;
+                const sub    = (qtd * preco).toFixed(2).replace('.', ',');
+                tbodyHTML += `<tr>
+                    <td>${escaparHTML(item.sabor||item.nome||'Item')}</td>
+                    <td style="text-align:center;">${qtd}</td>
+                    <td style="text-align:center;">${escaparHTML(item.formato||'N/A')} / ${escaparHTML(item.tipoForma||'N/A')} / ${escaparHTML(item.cor||'N/A')}</td>
+                    <td style="text-align:right;">R$ ${sub}</td>
+                </tr>`;
+            });
+        });
+        itensBox.innerHTML = `<table class="pedido-itens-tabela">
+            <thead><tr>
+                <th>Sabor</th>
+                <th style="text-align:center;">Qtd</th>
+                <th style="text-align:center;">Detalhes</th>
+                <th style="text-align:right;">R$</th>
+            </tr></thead>
+            <tbody>${tbodyHTML}</tbody>
+        </table>`;
+    } else {
+        itensBox.textContent = 'Sem itens';
+    }
+    detalhes.appendChild(itensBox);
+
+    const obsEl = document.createElement('div');
+    obsEl.className = 'pedido-info';
+    obsEl.style.marginTop = '8px';
+    obsEl.innerHTML = '<strong>Obs:</strong> ' + escaparHTML(pedido.observacoes || 'Nenhuma');
+    detalhes.appendChild(obsEl);
+
+    const pagEl = document.createElement('div');
+    pagEl.className = 'pedido-info';
+    pagEl.innerHTML = '<strong>Pagamento:</strong> ' + escaparHTML(pedido.statusPagamento || 'N/A');
+    detalhes.appendChild(pagEl);
+
+    if (pedido.statusPagamento === 'Pago Parcialmente') {
+        const vpEl = document.createElement('div');
+        vpEl.className = 'pedido-info';
+        vpEl.innerHTML = '<strong>Valor Pago:</strong> ' + escaparHTML(pedido.valorPago || 'N/A');
+        detalhes.appendChild(vpEl);
+    }
+
+    // ── Melhoria 6: clique no header expande ──
+    header.addEventListener('click', function() {
+        const aberto = detalhes.style.display !== 'none';
+        detalhes.style.display = aberto ? 'none' : 'block';
+        nomeEl.textContent = (pedido.nome || 'N/A') + (aberto ? ' 🔽' : ' 🔼');
+    });
+
+    const botoesDiv = document.createElement('div');
+    botoesDiv.className = 'pedido-botoes';
+    botoesDiv.innerHTML = botoesHTML;
+
+    card.appendChild(header);
+    card.appendChild(resumo);
+    card.appendChild(detalhes);
+    card.appendChild(botoesDiv);
     return card;
 }
 
