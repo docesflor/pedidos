@@ -1774,26 +1774,20 @@ footer p {
 let DADOS_PEDIDOS = null;
 
 async function carregarDadosPedidos() {
-    try {
-        const r = await fetch('https://raw.githubusercontent.com/docesflor/admin/main/dados-pedidos.json?t=' + Date.now());
-        DADOS_PEDIDOS = await r.json();
-        
-        // Ordena sabores alfabeticamente
-        if (DADOS_PEDIDOS.sabores) {
-            DADOS_PEDIDOS.sabores.trads = DADOS_PEDIDOS.sabores.trads.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            DADOS_PEDIDOS.sabores.gourmets = DADOS_PEDIDOS.sabores.gourmets.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            DADOS_PEDIDOS.sabores.frutas = DADOS_PEDIDOS.sabores.frutas.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-        }
-        
-        // Ordena gastos alfabeticamente
-        if (DADOS_PEDIDOS.gastos) {
-            Object.keys(DADOS_PEDIDOS.gastos).forEach(cat => {
-                DADOS_PEDIDOS.gastos[cat] = DADOS_PEDIDOS.gastos[cat].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            });
-        }
-    } catch(e) {
-        console.warn('Usando dados padrão de pedidos.');
-        DADOS_PEDIDOS = null;
+    DADOS_PEDIDOS = {"sabores":{"trads":["Amendoim","Beijinho","Brigadeiro","Café","Dois Amores","Leite Ninho","Moranguinho (Nesquik)","Prestígio","Sensação"],"gourmets":["Chocolate Gourmet","Confete","Churros","Ferrero Rocher","Leite Ninho com Nutella","Negresco","Ovomaltine"],"frutas":["Amora","Banana","Cereja","Frutas Vermelhas","Limão","Maracujá","Uva"]},"precos":{"trad":{"25":35,"50":60,"75":85,"100":110,"avulso":1.50},"frutas":{"25":40,"50":70,"75":100,"100":125,"avulso":1.75},"gourmet":{"25":45,"50":80,"75":115,"100":140,"avulso":2.00}},"gastos":{"Ingredientes":["Leite condensado","Chocolate em pó","Manteiga","Creme de leite","Leite Ninho","Nutella","Pasta de amendoim","Coco ralado","Morango","Frutas variadas"],"Embalagens":["Forminhas","Caixas 25 un","Caixas 50 un","Caixas 100 un","Fitas e laços","Papel celofane","Etiquetas"],"Gás/Energia":["Gás de cozinha","Energia elétrica"],"Entrega":["Combustível","Taxa de entrega app","Embalagem transporte"],"Outros":["Luvas descartáveis","Papel toalha","Detergente / limpeza"]}};
+    
+    // Ordena sabores alfabeticamente
+    if (DADOS_PEDIDOS.sabores) {
+        DADOS_PEDIDOS.sabores.trads = DADOS_PEDIDOS.sabores.trads.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        DADOS_PEDIDOS.sabores.gourmets = DADOS_PEDIDOS.sabores.gourmets.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        DADOS_PEDIDOS.sabores.frutas = DADOS_PEDIDOS.sabores.frutas.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+    
+    // Ordena gastos alfabeticamente
+    if (DADOS_PEDIDOS.gastos) {
+        Object.keys(DADOS_PEDIDOS.gastos).forEach(cat => {
+            DADOS_PEDIDOS.gastos[cat] = DADOS_PEDIDOS.gastos[cat].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        });
     }
 }
         var firebaseConfig = {
@@ -1807,7 +1801,7 @@ async function carregarDadosPedidos() {
         };
         firebase.initializeApp(firebaseConfig);
         var database = firebase.database();
-        var VALIDAR_DATA_PASSADA = false; // mude para true para reativar a trava
+        var VALIDAR_DATA_PASSADA = true; // Impede seleção de datas passadas no calendário
         var graficoFaturamento = null;
 
         function toast(msg, tipo) {
@@ -2170,7 +2164,8 @@ function atualizarValorBrigadeiros() {
     let valorTrad = 0, valorFrutas = 0, valorGourmet = 0;
     itens.forEach(item => {
         const cat = CATEGORIA_SABOR[item.sabor] || 'trad';
-        const preco = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
+        const precoAuto = cat === 'trad' ? precoTradAuto : cat === 'frutas' ? precoFrutasAuto : precoGourmetAuto;
+        const preco = item.precoManual !== undefined ? item.precoManual : precoAuto;
         if (cat === 'trad') valorTrad += preco * item.quantidade;
         else if (cat === 'frutas') valorFrutas += preco * item.quantidade;
         else valorGourmet += preco * item.quantidade;
@@ -3553,6 +3548,5 @@ window.addEventListener('online', ()=>{ document.getElementById('avisoOffline').
 window.addEventListener('offline', ()=>{ document.getElementById('avisoOffline').style.display='block'; });
 
 </script>
-
 </body>
 </html>
