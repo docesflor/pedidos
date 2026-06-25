@@ -1262,6 +1262,58 @@ footer p {
     .linha-dupla { flex-direction: column; gap: 0; }
     .linha-dupla > div, .linha-dupla > div.estreito { flex: 1; width: 100%; }
 }
+/* ── Urgência borda lateral ── */
+.swipe-wrapper.urgente-hoje {
+    border-left: 4px solid var(--red);
+    border-radius: 20px;
+    box-shadow: -2px 0 0 var(--red), 0 4px 18px var(--shadow);
+}
+.swipe-wrapper.urgente-amanha {
+    border-left: 4px solid #F59E0B;
+    border-radius: 20px;
+    box-shadow: -2px 0 0 #F59E0B, 0 4px 18px var(--shadow);
+}
+
+/* ── Swipe mobile ── */
+.swipe-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    margin-bottom: 14px;
+}
+.swipe-acoes {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    display: flex;
+    align-items: stretch;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    border-radius: 0 20px 20px 0;
+    overflow: hidden;
+}
+.swipe-acoes.visivel { transform: translateX(0); }
+.swipe-acoes .btn-swipe {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.72em;
+    font-weight: 700;
+    gap: 4px;
+    padding: 0 6px;
+    color: white;
+}
+.swipe-acoes .btn-swipe span { font-size: 1.4em; }
+.swipe-acoes .btn-swipe.finalizar { background: var(--green); }
+.swipe-acoes .btn-swipe.excluir   { background: var(--red);   }
+.pedido-card {
+    transition: transform 0.25s ease, box-shadow 0.2s;
+    margin-bottom: 0;
+}
+
 </style>
 </head>
 <body>
@@ -2443,9 +2495,48 @@ function carregarFinalizados() {
 
 // ===== CRIAR CARD =====
 function criarCard(pedido, key, finalizado) {
+
+    // ── Wrapper para swipe ──
+    const wrapper = document.createElement('div');
+    wrapper.className = 'swipe-wrapper';
+
+    // ── Ações swipe (mobile) ──
+    if (!finalizado) {
+        const swipeAcoes = document.createElement('div');
+        swipeAcoes.className = 'swipe-acoes';
+        swipeAcoes.id = 'swipe-' + key;
+        swipeAcoes.innerHTML = `
+            <button class="btn-swipe finalizar" onclick="finalizarPedido('${key}');fecharSwipe('${key}')">
+                <span>✓</span>Finalizar
+            </button>
+            <button class="btn-swipe excluir" onclick="excluirPedido('${key}')">
+                <span>🗑️</span>Excluir
+            </button>`;
+        wrapper.appendChild(swipeAcoes);
+    }
+
     const card = document.createElement('div');
     card.className = 'pedido-card';
-    card.style.cursor = 'pointer';
+    card.style.cssText = 'margin-bottom:0;position:relative;z-index:1;background:var(--white);';
+
+    // ── Melhoria 1: borda de urgência ──
+    if (!finalizado) {
+        const hoje  = new Date(); hoje.setHours(0,0,0,0);
+        const amanha = new Date(hoje); amanha.setDate(amanha.getDate()+1);
+        let dataP = null;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(pedido.dataEntrega)) {
+            const pts = pedido.dataEntrega.split('/');
+            dataP = new Date(pts[2], pts[1]-1, pts[0]);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)) {
+            const pts = pedido.dataEntrega.split('-');
+            dataP = new Date(pts[0], pts[1]-1, pts[2]);
+        }
+        if (dataP) {
+            dataP.setHours(0,0,0,0);
+            if (dataP.getTime() === hoje.getTime())        wrapper.classList.add('urgente-hoje');
+            else if (dataP.getTime() === amanha.getTime()) wrapper.classList.add('urgente-amanha');
+        }
+    }
 
     const statusClass = finalizado ? 'status-entregue' : 'status-andamento';
     const statusTexto = finalizado ? 'Entregue ✅' : (pedido.statusPagamento || 'A pagar');
@@ -2454,7 +2545,7 @@ function criarCard(pedido, key, finalizado) {
         ? 'R$ ' + pedido.valorTotal.toFixed(2).replace('.', ',')
         : (pedido.valorTotal || 'R$ 0,00');
 
-    // ── Calcula preços por categoria (faixa correta) ──
+    // ── Preços por faixa de categoria ──
     const todosItens = pedido.itens || [];
     const qtdTrad    = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'trad').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
     const qtdFrutas  = todosItens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === 'frutas').reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
@@ -2462,6 +2553,31 @@ function criarCard(pedido, key, finalizado) {
     const precoTradAuto    = precoUnitarioPorFaixa('trad',    qtdTrad);
     const precoFrutasAuto  = precoUnitarioPorFaixa('frutas',  qtdFrutas);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
+
+    // ── Melhoria 2: total de brigadeiros ──
+    const totalBrig = qtdTrad + qtdFrutas + qtdGourmet;
+
+    // ── Melhoria 5: badge tempo até entrega ──
+    let badgeTempo = '';
+    if (!finalizado) {
+        const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
+        let dataP2 = null;
+        if (/^\d{02}\/\d{2}\/\d{4}$/.test(pedido.dataEntrega)) {
+            const pts = pedido.dataEntrega.split('/');
+            dataP2 = new Date(pts[2], pts[1]-1, pts[0]);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)) {
+            const pts = pedido.dataEntrega.split('-');
+            dataP2 = new Date(pts[0], pts[1]-1, pts[2]);
+        }
+        if (dataP2) {
+            dataP2.setHours(0,0,0,0);
+            const diff = Math.round((dataP2 - hoje2) / 86400000);
+            if (diff < 0)       badgeTempo = `<span style="background:var(--red);color:white;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:8px;">⚠️ Atrasado</span>`;
+            else if (diff === 0) badgeTempo = `<span style="background:var(--red);color:white;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:8px;">🔴 HOJE</span>`;
+            else if (diff === 1) badgeTempo = `<span style="background:#F59E0B;color:white;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:8px;">⏰ AMANHÃ</span>`;
+            else                 badgeTempo = `<span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:600;margin-left:8px;">em ${diff} dias</span>`;
+        }
+    }
 
     // ── Botões ──
     const botoesHTML = finalizado
@@ -2476,7 +2592,7 @@ function criarCard(pedido, key, finalizado) {
            <button class="btn btn-laranja"  onclick="finalizarPedido('${key}')">✓ Finalizar</button>
            <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
 
-    // ── Header (clique expande/recolhe) ──
+    // ── Header clicável ──
     const header = document.createElement('div');
     header.className = 'pedido-header';
     header.style.cursor = 'pointer';
@@ -2503,45 +2619,45 @@ function criarCard(pedido, key, finalizado) {
     const dataTexto = (converterDataParaBR(pedido.dataEntrega) || 'N/A') + (pedido.hora ? ' às ' + pedido.hora : '');
     const infoData = document.createElement('div');
     infoData.className = 'pedido-info';
-    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto);
+    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo;
 
-    const infoValor = document.createElement('div');
-    infoValor.className = 'pedido-info';
-    infoValor.innerHTML = '<strong>Total:</strong> ' + escaparHTML(valorFormatado);
+    // ── Melhoria 2: brigadeiros no resumo ──
+    const infoBrig = document.createElement('div');
+    infoBrig.className = 'pedido-info';
+    infoBrig.innerHTML = '<strong>Total:</strong> ' + escaparHTML(valorFormatado)
+        + ` <span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 10px;font-size:0.75em;font-weight:600;margin-left:6px;">🍫 ${totalBrig} un.</span>`;
 
-    // ── Melhoria 5: valor pago / saldo quando parcial ──
+    resumo.appendChild(infoTel);
+    resumo.appendChild(infoData);
+    resumo.appendChild(infoBrig);
+
+    // ── Melhoria 3: valor pago / saldo ──
     if (pedido.statusPagamento === 'Pago Parcialmente') {
-        const vPago   = parseFloat((pedido.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
-        const vTotal  = typeof pedido.valorTotal === 'number' ? pedido.valorTotal : 0;
-        const vSaldo  = Math.max(0, vTotal - vPago);
+        const vPago  = parseFloat((pedido.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
+        const vTotal = typeof pedido.valorTotal === 'number' ? pedido.valorTotal : 0;
+        const vSaldo = Math.max(0, vTotal - vPago);
         const infoPag = document.createElement('div');
         infoPag.className = 'pedido-info';
-        infoPag.innerHTML = `<strong>Pago:</strong> <span style="color:var(--green);font-weight:700;">R$ ${vPago.toFixed(2).replace('.',',')}</span>`
+        infoPag.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:6px;';
+        infoPag.innerHTML = `⚠️ <strong>Pago:</strong> <span style="color:var(--green);font-weight:700;">R$ ${vPago.toFixed(2).replace('.',',')}</span>`
             + ` &nbsp;|&nbsp; <strong>Falta:</strong> <span style="color:var(--red);font-weight:700;">R$ ${vSaldo.toFixed(2).replace('.',',')}</span>`;
-        resumo.appendChild(infoTel);
-        resumo.appendChild(infoData);
-        resumo.appendChild(infoValor);
         resumo.appendChild(infoPag);
-    } else {
-        resumo.appendChild(infoTel);
-        resumo.appendChild(infoData);
-        resumo.appendChild(infoValor);
     }
 
-    // ── Detalhes (expansível) ──
+    // ── Detalhes expansíveis ──
     const detalhes = document.createElement('div');
     detalhes.className = 'pedido-detalhes';
     detalhes.id = 'detalhes-' + key;
     detalhes.style.display = 'none';
 
-    // ── Melhoria 4: Tipo com destaque visual ──
+    // ── Tipo com badge colorido ──
     const tipoEntrega = pedido.tipoEntrega || 'retirada';
     const tipoDiv = document.createElement('div');
-    tipoDiv.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:' +
-        (tipoEntrega === 'entrega' ? '#DBEAFE' : '#D1FAE5') +
-        ';border-radius:50px;padding:4px 12px;font-size:0.8em;font-weight:700;color:' +
-        (tipoEntrega === 'entrega' ? '#1E40AF' : '#065F46') +
-        ';margin-bottom:10px;';
+    tipoDiv.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:'
+        + (tipoEntrega === 'entrega' ? '#DBEAFE' : '#D1FAE5')
+        + ';border-radius:50px;padding:4px 12px;font-size:0.8em;font-weight:700;color:'
+        + (tipoEntrega === 'entrega' ? '#1E40AF' : '#065F46')
+        + ';margin-bottom:10px;';
     tipoDiv.textContent = tipoEntrega === 'entrega' ? '🚚 Entrega' : '🏠 Retirada';
     detalhes.appendChild(tipoDiv);
 
@@ -2554,7 +2670,7 @@ function criarCard(pedido, key, finalizado) {
         detalhes.appendChild(endEl);
     }
 
-    // ── Melhoria 1: tabela agrupada por categoria ──
+    // ── Tabela agrupada por categoria ──
     const itensBox = document.createElement('div');
     itensBox.className = 'pedido-itens-lista';
     itensBox.style.marginTop = '10px';
@@ -2579,12 +2695,11 @@ function criarCard(pedido, key, finalizado) {
                 <td colspan="4" style="padding:6px 8px;background:${grupo.bg};font-weight:700;color:${grupo.cor};font-size:0.78em;">
                     ${grupo.label}
                     <span style="float:right;font-weight:600;">${totalCat} un — R$ ${valorCat.toFixed(2).replace('.',',')}</span>
-                </td>
-            </tr>`;
+                </td></tr>`;
             itensCat.forEach(item => {
-                const qtd    = parseInt(item.quantidade) || 0;
-                const preco  = item.precoManual !== undefined ? item.precoManual : grupo.precoAuto;
-                const sub    = (qtd * preco).toFixed(2).replace('.', ',');
+                const qtd   = parseInt(item.quantidade) || 0;
+                const preco = item.precoManual !== undefined ? item.precoManual : grupo.precoAuto;
+                const sub   = (qtd * preco).toFixed(2).replace('.', ',');
                 tbodyHTML += `<tr>
                     <td>${escaparHTML(item.sabor||item.nome||'Item')}</td>
                     <td style="text-align:center;">${qtd}</td>
@@ -2595,10 +2710,8 @@ function criarCard(pedido, key, finalizado) {
         });
         itensBox.innerHTML = `<table class="pedido-itens-tabela">
             <thead><tr>
-                <th>Sabor</th>
-                <th style="text-align:center;">Qtd</th>
-                <th style="text-align:center;">Detalhes</th>
-                <th style="text-align:right;">R$</th>
+                <th>Sabor</th><th style="text-align:center;">Qtd</th>
+                <th style="text-align:center;">Detalhes</th><th style="text-align:right;">R$</th>
             </tr></thead>
             <tbody>${tbodyHTML}</tbody>
         </table>`;
@@ -2607,29 +2720,51 @@ function criarCard(pedido, key, finalizado) {
     }
     detalhes.appendChild(itensBox);
 
-    const obsEl = document.createElement('div');
-    obsEl.className = 'pedido-info';
-    obsEl.style.marginTop = '8px';
-    obsEl.innerHTML = '<strong>Obs:</strong> ' + escaparHTML(pedido.observacoes || 'Nenhuma');
-    detalhes.appendChild(obsEl);
-
-    const pagEl = document.createElement('div');
-    pagEl.className = 'pedido-info';
-    pagEl.innerHTML = '<strong>Pagamento:</strong> ' + escaparHTML(pedido.statusPagamento || 'N/A');
-    detalhes.appendChild(pagEl);
-
-    if (pedido.statusPagamento === 'Pago Parcialmente') {
-        const vpEl = document.createElement('div');
-        vpEl.className = 'pedido-info';
-        vpEl.innerHTML = '<strong>Valor Pago:</strong> ' + escaparHTML(pedido.valorPago || 'N/A');
-        detalhes.appendChild(vpEl);
+    if (pedido.observacoes && pedido.observacoes.trim()) {
+        const obsEl = document.createElement('div');
+        obsEl.className = 'pedido-info';
+        obsEl.style.marginTop = '8px';
+        obsEl.innerHTML = '<strong>Obs:</strong> ' + escaparHTML(pedido.observacoes);
+        detalhes.appendChild(obsEl);
     }
 
-    // ── Melhoria 6: clique no header expande ──
+    // ── Toggle expand ao clicar no header ──
     header.addEventListener('click', function() {
         const aberto = detalhes.style.display !== 'none';
         detalhes.style.display = aberto ? 'none' : 'block';
         nomeEl.textContent = (pedido.nome || 'N/A') + (aberto ? ' 🔽' : ' 🔼');
+    });
+
+    // ── Melhoria 4: swipe touch mobile ──
+    let touchStartX = 0, touchStartY = 0, swiping = false;
+    card.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        swiping = false;
+    }, { passive: true });
+    card.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - touchStartX;
+        const dy = Math.abs(e.touches[0].clientY - touchStartY);
+        if (dy > 20) return; // scroll vertical, ignora
+        if (dx < -30) { swiping = true; }
+    }, { passive: true });
+    card.addEventListener('touchend', () => {
+        if (!swiping || finalizado) return;
+        const acoes = document.getElementById('swipe-' + key);
+        if (!acoes) return;
+        // Fecha outros swipes abertos
+        document.querySelectorAll('.swipe-acoes.visivel').forEach(el => {
+            if (el.id !== 'swipe-' + key) el.classList.remove('visivel');
+        });
+        acoes.classList.toggle('visivel');
+    });
+
+    // Fecha swipe ao clicar fora
+    document.addEventListener('click', function fecharSwipeOutside(e) {
+        if (!card.contains(e.target)) {
+            const acoes = document.getElementById('swipe-' + key);
+            if (acoes) acoes.classList.remove('visivel');
+        }
     });
 
     const botoesDiv = document.createElement('div');
@@ -2640,10 +2775,16 @@ function criarCard(pedido, key, finalizado) {
     card.appendChild(resumo);
     card.appendChild(detalhes);
     card.appendChild(botoesDiv);
-    return card;
+
+    wrapper.appendChild(card);
+    return wrapper;
 }
 
-function toggleDetalhes(key) { const el = document.getElementById('detalhes-' + key); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+// Fecha swipe programaticamente
+function fecharSwipe(key) {
+    const acoes = document.getElementById('swipe-' + key);
+    if (acoes) acoes.classList.remove('visivel');
+}
 
 function finalizarPedido(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
