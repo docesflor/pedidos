@@ -4301,8 +4301,12 @@ function carregarEventos() {
         eventos.sort((a, b) => {
             const aFin = eventoEstaFinalizado(a) ? 1 : 0;
             const bFin = eventoEstaFinalizado(b) ? 1 : 0;
+
+            // Primeiro: eventos não finalizados vêm antes
             if (aFin !== bFin) return aFin - bFin;
-            return b.inicio.localeCompare(a.inicio);
+
+            // Depois: ordena pela data de INÍCIO (do mais próximo/mais novo para o mais antigo)
+            return a.inicio.localeCompare(b.inicio);
         });
         lista.innerHTML = '';
 
