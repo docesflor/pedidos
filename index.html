@@ -2832,74 +2832,64 @@ function imprimirComprovante(key) {
             </div>`;
 
         document.body.appendChild(container);
-        toast('⏳ Gerando comprovante...','aviso');
-        setTimeout(()=>{
+        toast('⏳ Gerando comprovante...', 'aviso');
+
+        setTimeout(() => {
             const el = document.getElementById('comprovante-conteudo');
-            html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas=>{
-        // 1. BAIXA a imagem sempre
-            const link = document.createElement('a');
-            link.download = 'comprovante-' + key.substr(-6) + '.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            
+            html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas => {
+                
+                // 1. Baixar a imagem
+                const link = document.createElement('a');
+                link.download = 'comprovante-' + key.substr(-6) + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
 
-            // 2. Tenta copiar para o clipboard (para colar no WhatsApp)
-            canvas.toBlob(async (blob) => {
-                try {
-                    await navigator.clipboard.write([
-                        new ClipboardItem({ 'image/png': blob })
-                    ]);
-                } catch (e) {
-                    // silencioso — o download já foi feito acima
-                }
+                // 2. Tentar copiar imagem para clipboard (opcional)
+                canvas.toBlob(async (blob) => {
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    } catch (e) {}
+                }, 'image/png');
 
-                const p2 = snapshot.val();
-                const valorFormatado2 = typeof p2.valorTotal === 'number'
-                    ? 'R$ ' + p2.valorTotal.toFixed(2).replace('.', ',')
-                    : (p2.valorTotal || 'R$ 0,00');
-                const dataBr2 = p2.dataEntrega || '';
-                const horario2 = p2.hora || '';
-
-                const statusTexto = p2.statusPagamento === 'Pago'
-                    ? 'Pago'
-                    : p2.statusPagamento === 'Pago Parcialmente'
-                    ? 'Pago Parcialmente'
-                    : 'A pagar';
-
-                const linhas = [
-                    '*Doces Flor - Comprovante de Pedido*',
-                    '',
-                    '*Cliente:* ' + (p2.nome || ''),
-                    '*Data:* ' + dataBr2 + (horario2 ? ' as ' + horario2 : ''),
-                    '*Total:* ' + valorFormatado2,
-                    '*Pagamento:* ' + statusTexto,
-                ];
-
-                if (p2.observacoes && p2.observacoes.trim()) {
-                    linhas.push('');
-                    linhas.push('*Obs:* ' + p2.observacoes.trim());
-                }
-
-                const mensagem = linhas.join('\n');
-
-                const telefone = (p2.telefone || '').replace(/\D/g, '');
+                const telefone = (p.telefone || '').replace(/\D/g, '');
                 const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
-                const urlWpp = 'https://wa.me/' + foneFormatado + '?text=' + encodeURIComponent(mensagem);
+
+                // Mensagem para WhatsApp
+                const mensagem = `🌸 *Doces Flor - Comprovante*\n\n` +
+                    `👤 *Cliente:* ${p.nome || ''}\n` +
+                    `📅 *Data:* ${dataBr} ${horario ? 'às ' + horario : ''}\n` +
+                    `💰 *Total:* R$ ${typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.',',') : '0,00'}\n` +
+                    `💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}` +
+                    (p.observacoes ? `\n\n*Obs:* ${p.observacoes}` : '');
+
+                const urlWpp = `https://wa.me/${foneFormatado}?text=${encodeURIComponent(mensagem)}`;
 
                 container.remove();
 
-                toast('Comprovante baixado! Abrindo WhatsApp...', 'sucesso');
+                toast('✅ Comprovante baixado! Abrindo WhatsApp...', 'sucesso');
 
+                // FORÇA ABERTURA DIRETA NO APP (melhor comportamento mobile)
                 setTimeout(() => {
-                    window.open(urlWpp, '_blank');
-                }, 800);
+                    // Tenta scheme nativo primeiro (melhor em Android)
+                    const intentUrl = `intent://send?phone=${foneFormatado}&text=${encodeURIComponent(mensagem)}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+                    
+                    // Redireciona diretamente
+                    window.location.href = urlWpp;
+                    
+                    // Fallback caso precise
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            window.open(urlWpp, '_self');
+                        }
+                    }, 600);
+                }, 700);
 
-            }, 'image/png');
-
-        }).catch(()=>{
+            }).catch(() => {
                 container.remove();
-                toast('Erro ao gerar imagem.','erro');
+                toast('Erro ao gerar imagem.', 'erro');
             });
-        },600);
+        }, 600);
     });
 }
 
