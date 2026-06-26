@@ -2869,7 +2869,6 @@ ${p.tipoEntrega === 'entrega' ? '🚚 *Entrega*' : '🏠 *Retirada*'}
 if (p.observacoes && p.observacoes.trim()) {
     mensagem += `\n\n📝 *Obs:* ${p.observacoes.trim()}`;
 }
-mensagem += `\n\n❤️ Obrigado pela preferência!`;
 
                 const urlWpp = `https://wa.me/${foneFormatado}?text=${encodeURIComponent(mensagem)}`;
 
