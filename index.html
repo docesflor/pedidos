@@ -2836,13 +2836,66 @@ function imprimirComprovante(key) {
         setTimeout(()=>{
             const el = document.getElementById('comprovante-conteudo');
             html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas=>{
-                const link = document.createElement('a');
-                link.download = `comprovante-${key.substr(-6)}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+        // 1. BAIXA a imagem sempre
+            const link = document.createElement('a');
+            link.download = 'comprovante-' + key.substr(-6) + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            // 2. Tenta copiar para o clipboard (para colar no WhatsApp)
+            canvas.toBlob(async (blob) => {
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]);
+                } catch (e) {
+                    // silencioso — o download já foi feito acima
+                }
+
+                const p2 = snapshot.val();
+                const valorFormatado2 = typeof p2.valorTotal === 'number'
+                    ? 'R$ ' + p2.valorTotal.toFixed(2).replace('.', ',')
+                    : (p2.valorTotal || 'R$ 0,00');
+                const dataBr2 = p2.dataEntrega || '';
+                const horario2 = p2.hora || '';
+
+                const statusTexto = p2.statusPagamento === 'Pago'
+                    ? 'Pago'
+                    : p2.statusPagamento === 'Pago Parcialmente'
+                    ? 'Pago Parcialmente'
+                    : 'A pagar';
+
+                const linhas = [
+                    '*Doces Flor - Comprovante de Pedido*',
+                    '',
+                    '*Cliente:* ' + (p2.nome || ''),
+                    '*Data:* ' + dataBr2 + (horario2 ? ' as ' + horario2 : ''),
+                    '*Total:* ' + valorFormatado2,
+                    '*Pagamento:* ' + statusTexto,
+                ];
+
+                if (p2.observacoes && p2.observacoes.trim()) {
+                    linhas.push('');
+                    linhas.push('*Obs:* ' + p2.observacoes.trim());
+                }
+
+                const mensagem = linhas.join('\n');
+
+                const telefone = (p2.telefone || '').replace(/\D/g, '');
+                const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
+                const urlWpp = 'https://wa.me/' + foneFormatado + '?text=' + encodeURIComponent(mensagem);
+
                 container.remove();
-                toast('📷 Comprovante baixado!','sucesso');
-            }).catch(()=>{
+
+                toast('Comprovante baixado! Abrindo WhatsApp...', 'sucesso');
+
+                setTimeout(() => {
+                    window.open(urlWpp, '_blank');
+                }, 800);
+
+            }, 'image/png');
+
+        }).catch(()=>{
                 container.remove();
                 toast('Erro ao gerar imagem.','erro');
             });
