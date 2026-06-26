@@ -2856,12 +2856,20 @@ function imprimirComprovante(key) {
                 const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
 
                 // Mensagem para WhatsApp
-                const mensagem = `🌸 *Doces Flor - Comprovante*\n\n` +
-                    `👤 *Cliente:* ${p.nome || ''}\n` +
-                    `📅 *Data:* ${dataBr} ${horario ? 'às ' + horario : ''}\n` +
-                    `💰 *Total:* R$ ${typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.',',') : '0,00'}\n` +
-                    `💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}` +
-                    (p.observacoes ? `\n\n*Obs:* ${p.observacoes}` : '');
+const mensagem = 
+`🌸 *Doces Flor — Comprovante*
+
+👤 *Cliente:* ${p.nome || '---'}
+📅 *Data:* ${dataBr}${horario ? ' às ' + horario : ''}
+${p.tipoEntrega === 'entrega' ? '🚚 *Entrega*' : '🏠 *Retirada*'}
+
+💰 *Total:* R$ ${typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00'}
+💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}`;
+
+if (p.observacoes && p.observacoes.trim()) {
+    mensagem += `\n\n📝 *Obs:* ${p.observacoes.trim()}`;
+}
+mensagem += `\n\n❤️ Obrigado pela preferência!`;
 
                 const urlWpp = `https://wa.me/${foneFormatado}?text=${encodeURIComponent(mensagem)}`;
 
