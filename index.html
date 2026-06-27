@@ -181,7 +181,7 @@ body {
 /* ═══════════════════════════════════════════
    AVISO PRÓXIMOS
 ═══════════════════════════════════════════ */
-#avisoProximos { display: none; background: linear-gradient(135deg, rgba(232,148,58,0.15), rgba(232,148,58,0.08)); border: 1px solid rgba(232,148,58,0.4); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; text-align: center; font-weight: 600; color: var(--brown-dark); font-size: 0.88em; font-family: 'DM Sans', sans-serif; }
+#avisoProximos { display: none; position: sticky; top: 0; z-index: 900; background: linear-gradient(135deg, rgba(232,148,58,0.97), rgba(232,148,58,0.85)); border-bottom: 1px solid rgba(232,148,58,0.6); padding: 10px 18px; text-align: center; font-weight: 600; color: var(--brown-dark); font-size: 0.88em; font-family: 'DM Sans', sans-serif; backdrop-filter: blur(4px); }
 
 /* ═══════════════════════════════════════════
    SEÇÕES
@@ -299,6 +299,8 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .dia-contador { font-size: 0.65em; background: var(--amber); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; margin-top: 2px; font-weight: 700; }
 .dia-contador-verde { font-size: 0.65em; background: var(--green); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; margin-top: 2px; font-weight: 700; }
 .dia.sem-pedidos .dia-contador, .dia.sem-pedidos .dia-contador-verde { display: none; }
+.dia.dia-hoje { border-color: var(--amber) !important; background: rgba(232,148,58,0.1) !important; }
+.dia.dia-hoje .dia-numero { color: var(--amber); font-weight: 700; }
 
 /* ═══════════════════════════════════════════
    CHIPS & FILTROS
@@ -797,7 +799,13 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Acompanhe seus pedidos ativos</span>
     </h2>
-    <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;" oninput="filtrarAndamentoPorNome()">
+    <div id="totalizador-andamento" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
+        <span style="font-size:1em;font-weight:700;color:var(--amber);">📦 Em andamento: <span id="totalAndamentoContagem">0</span> pedidos</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;" oninput="filtrarAndamentoPorNome()">
+        <input type="text" id="buscaAndamentoData" placeholder="📅 dd/mm" style="margin-bottom:0;width:90px;flex-shrink:0;" oninput="filtrarAndamentoPorData()" maxlength="5">
+    </div>
     <div id="filtros-status" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
         <button class="chip-filtro active" onclick="filtrarStatus('todos',this)">Todos</button>
         <button class="chip-filtro" onclick="filtrarStatus('A pagar',this)">A pagar</button>
@@ -821,10 +829,28 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Histórico de entregas realizadas</span>
     </h2>
-    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;" oninput="filtrarFinalizadosPorNome()">
+    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
     <div id="totalizador-finalizados" style="display:none;">
         <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
         <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+        <select id="filtroFinalizadosMes" style="margin-bottom:0;flex:1;">
+            <option value="">Todos os meses</option>
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+            <option value="2">Março</option><option value="3">Abril</option>
+            <option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option>
+            <option value="8">Setembro</option><option value="9">Outubro</option>
+            <option value="10">Novembro</option><option value="11">Dezembro</option>
+        </select>
+        <select id="filtroFinalizadosAno" style="margin-bottom:0;width:90px;flex-shrink:0;">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+        </select>
+        <button class="btn btn-marrom" style="white-space:nowrap;" onclick="filtrarFinalizadosPorPeriodo()">🔍 Filtrar</button>
     </div>
     <button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizados()">📅 Ver Calendário</button>
     <div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
@@ -1250,12 +1276,6 @@ const CATEGORIA_SABOR = {
     'Ferrero Rocher':'gourmet','Leite Ninho com Nutella':'gourmet','Negresco':'gourmet','Ovomaltine':'gourmet',
     'Amora':'frutas','Banana':'frutas','Cereja':'frutas',
     'Frutas Vermelhas':'frutas','Limão':'frutas','Maracujá':'frutas','Uva':'frutas'
-};
-const PRECOS_CARD = {
-    'Amendoim':1.50,'Beijinho':1.50,'Brigadeiro':1.50,'Café':1.50,'Dois Amores':1.50,
-    'Leite Ninho':1.50,'Moranguinho (Nesquik)':1.50,'Prestígio':1.50,'Sensação':1.50,
-    'Chocolate Gourmet Preto':2.00,'Confete':2.00,'Churros':2.00,
-    'Ferrero Rocher':2.00,'Leite Ninho com Nutella':2.00,'Negresco':2.00,'Ovomaltine':2.00
 };
 
 function precoUnitario(sabor, qtd) {
@@ -1771,10 +1791,13 @@ function carregarAndamento() {
             if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
             if (da - db !== 0) return da - db;
             // Mesmo dia: ordena pelo horário
-            const ha = a.hora || '00:00', hb = b.hora || '00:00';
+            const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '99:99';
+            const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '99:99';
             return ha.localeCompare(hb);
         });
         lista.innerHTML = '';
+        document.getElementById('totalizador-andamento').style.display = 'block';
+        document.getElementById('totalAndamentoContagem').textContent = pedidos.length;
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
     });
 }
@@ -1813,7 +1836,9 @@ function carregarFinalizados() {
             const da = toDate(a.dataEntrega), db = toDate(b.dataEntrega);
             if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
             if (db - da !== 0) return db - da;
-            return (b.hora||'00:00').localeCompare(a.hora||'00:00');
+            const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '00:00';
+            const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '00:00';
+            return hb.localeCompare(ha);
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
@@ -1878,16 +1903,14 @@ function criarCard(pedido, key, finalizado) {
         }
     }
     const botoesHTML = finalizado
-        ? `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
-           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
-        : `<button class="btn btn-azul"     onclick="clonarPedido('${key}')">📋 Clonar</button>
-           <button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
-           <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-           <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
-           <button class="btn btn-laranja btn-swipe-ocultar-mobile" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
-           <button class="btn btn-vermelho btn-swipe-ocultar-mobile" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
+         ? `<button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+            <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+            <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
+         : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
+            <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
+            <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+            <button class="btn btn-laranja btn-swipe-ocultar-mobile" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
+            <button class="btn btn-vermelho btn-swipe-ocultar-mobile" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
     const header = document.createElement('div');
     header.className = 'pedido-header';
     header.style.cursor = 'pointer';
@@ -1905,9 +1928,11 @@ function criarCard(pedido, key, finalizado) {
     const infoTel = document.createElement('div');
     infoTel.className = 'pedido-info';
     infoTel.innerHTML = '<strong>Telefone:</strong> ' + escaparHTML(pedido.telefone || 'N/A');
-    const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (pedido.hora && pedido.hora.trim() ? ' às ' + pedido.hora.trim() + 'h' : '');    const infoData = document.createElement('div');
+    const semHorario = !pedido.hora || !pedido.hora.trim();
+    const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (semHorario ? '' : ' às ' + pedido.hora.trim() + 'h');
+    const badgeSemHorario = (!finalizado && semHorario) ? '<span style="background:#E0E0E0;color:#666;border-radius:50px;padding:2px 8px;font-size:0.7em;font-weight:600;margin-left:6px;">⏰ sem horário</span>' : '';    const infoData = document.createElement('div');
     infoData.className = 'pedido-info';
-    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo;
+    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo + badgeSemHorario;
     const infoBrig = document.createElement('div');
     infoBrig.className = 'pedido-info';
     infoBrig.innerHTML = '<strong>Total:</strong> ' + escaparHTML(valorFormatado)
@@ -2089,36 +2114,6 @@ function editarPedido(key) {
     });
 }
 
-function clonarPedido(key) {
-    database.ref('pedidos/' + key).once('value', snapshot => {
-        const data = snapshot.val(); if (!data) { toast('Pedido não encontrado.', 'erro'); return; }
-        document.querySelectorAll('.secao').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('secao-criar').classList.add('active');
-        document.querySelector('.menu-btn').classList.add('active');
-        window.scrollTo(0, 0);
-        itens = []; document.getElementById('itensList').innerHTML = '';
-        setVal('nome', data.nome); setVal('telefone', data.telefone);
-        setVal('dataEntrega', ''); setVal('horarioEntrega', '');
-        setVal('tipoEntrega', data.tipoEntrega || 'retirada');
-        setVal('observacoes', data.observacoes); setVal('statusPagamento', 'A pagar'); setVal('valorPago', '');
-        if (data.tipoEntrega === 'entrega' && data.endereco) {
-            document.getElementById('enderecoFields').style.display = 'block';
-            ['cep','endereco','bairro','cidade','numero'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
-            setVal('cep', data.endereco.cep); setVal('endereco', data.endereco.logradouro);
-            setVal('numero', data.endereco.numero); setVal('bairro', data.endereco.bairro);
-            setVal('cidade', data.endereco.cidade); setVal('pontoReferencia', data.endereco.complemento);
-        } else { document.getElementById('enderecoFields').style.display = 'none'; }
-        if (data.itens && Array.isArray(data.itens)) {
-            data.itens.forEach(item => itens.push({ id: String(Date.now())+String(Math.floor(Math.random()*1000)), sabor: item.sabor, formato: item.formato, tipoForma: item.tipoForma, cor: item.cor, quantidade: item.quantidade }));
-            renderizarItens(); atualizarValorBrigadeiros();
-        }
-        if (data.valorFrete) setVal('valorFrete', formatarValor(data.valorFrete));
-setTimeout(() => { renderizarItens(); atualizarValorBrigadeiros(); atualizarTotal(); }, 50);
-toast('📋 Pedido clonado! Ajuste a data.');
-    });
-}
-
 function reenviarWhatsApp(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
         const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
@@ -2126,9 +2121,11 @@ function reenviarWhatsApp(key) {
         let msg = `Pedidos - Doces Flor\n\nNome: ${p.nome||''}\nTelefone: ${p.telefone||''}\nData: ${formatarDataComDia(p.dataEntrega||'')}${p.hora && p.hora.trim() ? ' às ' + p.hora.trim() + 'h' : ''}\n`;
         if (p.tipoEntrega === 'entrega' && p.endereco) {
             const e = p.endereco;
-            msg += `Endereço: ${e.logradouro}, ${e.numero}, ${e.bairro}, ${e.cidade}, CEP: ${e.cep}\n`;
+            msg += `🚚 Entrega em: ${e.logradouro}, ${e.numero}, ${e.bairro}, ${e.cidade}\n`;
             if (e.complemento) msg += `Complemento: ${e.complemento}\n`;
-        } else { msg += `Tipo: Retirada\n`; }
+        } else {
+            msg += `🏠 Retirada no local\n`;
+        }
         msg += `──────────\nItens:\n`;
         const itensP = p.itens || [];
         const primeiro = itensP[0] || {};
@@ -2139,8 +2136,15 @@ function reenviarWhatsApp(key) {
         msg += `──────────\n`;
         if (p.valorFrete > 0) { msg += `Brigadeiros: R$ ${(p.valorBrigadeiros||0).toFixed(2).replace('.',',')}\nFrete: R$ ${p.valorFrete.toFixed(2).replace('.',',')}\n`; }
         if (p.desconto > 0) msg += `Desconto: R$ ${p.desconto.toFixed(2).replace('.',',')}\n`;
-        msg += `Valor Total: R$ ${(p.valorTotal||0).toFixed(2).replace('.',',')}\n\nPagamento: ${p.statusPagamento||''}\n`;
-        if (p.valorPago) msg += `Valor Pago: ${p.valorPago}\n`;
+        msg += `Valor Total: R$ ${(p.valorTotal||0).toFixed(2).replace('.',',')}\n\n`;
+        const vTotalR = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
+        const vPagoR  = parseFloat((p.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
+        const vFaltaR = Math.max(0, vTotalR - vPagoR);
+        if (p.statusPagamento === 'Pago Parcialmente') {
+            msg += `⚠️ Pago Parcialmente\n💚 Pago: R$ ${vPagoR.toFixed(2).replace('.', ',')}\n🔴 Falta: R$ ${vFaltaR.toFixed(2).replace('.', ',')}\n`;
+        } else {
+            msg += `Pagamento: ${p.statusPagamento||''}\n`;
+        }
         if (p.observacoes) msg += `\nObs: ${p.observacoes}\n`;
         copiarParaClipboard(msg).then(ok => toast(ok ? '📋 Mensagem copiada!' : 'Erro ao copiar.', ok ? 'sucesso' : 'erro'));
     });
@@ -2199,6 +2203,59 @@ function filtrarFinalizadosPorNome() {
     });
 }
 
+function filtrarFinalizadosPorPeriodo() {
+    const mesVal = document.getElementById('filtroFinalizadosMes').value;
+    const ano    = parseInt(document.getElementById('filtroFinalizadosAno').value);
+    if (mesVal === '') { carregarFinalizados(); return; }
+    const mes = parseInt(mesVal);
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const lista = document.getElementById('lista-finalizados');
+    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    database.ref('pedidos').once('value', snapshot => {
+        const pedidos = [];
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (p.statusPagamento !== 'entregue' || !p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+            else return;
+            if (dataP.getMonth() !== mes || dataP.getFullYear() !== ano) return;
+            p.key = child.key; pedidos.push(p);
+        });
+        if (pedidos.length === 0) {
+            lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido em ${meses[mes]} de ${ano}.</p>`;
+            return;
+        }
+        pedidos.sort((a,b) => {
+            const toDate = d => { if(!d) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00'); const p=d.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):null; };
+            const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega);
+            if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;
+            if(db-da!==0)return db-da;
+            const ha=(a.hora&&a.hora.trim())?a.hora.trim():'00:00';
+            const hb=(b.hora&&b.hora.trim())?b.hora.trim():'00:00';
+            return hb.localeCompare(ha);
+        });
+        lista.innerHTML = '';
+        const pInfo = document.createElement('p');
+        pInfo.style.cssText = 'color:var(--brown-warm);font-size:0.85em;margin-bottom:12px;';
+        pInfo.innerHTML = `📅 ${meses[mes]} de ${ano} — ${pedidos.length} pedido${pedidos.length>1?'s':''} — <a href="#" onclick="carregarFinalizados();return false;" style="color:var(--amber);">ver todos</a>`;
+        lista.appendChild(pInfo);
+        pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
+    });
+}
+
+function filtrarAndamentoPorData() {
+    const termo = document.getElementById('buscaAndamentoData').value.trim();
+    document.querySelectorAll('#lista-andamento .swipe-wrapper').forEach(wrapper => {
+        if (!termo || termo.length < 3) { wrapper.style.display = ''; return; }
+        const card = wrapper.querySelector('.pedido-card');
+        if (!card) return;
+        const infoData = card.querySelector('.pedido-info:nth-child(2)');
+        wrapper.style.display = (infoData && infoData.textContent.includes(termo)) ? '' : 'none';
+    });
+}
+
 // ====================== CALENDÁRIO ANDAMENTO ======================
 let mesAtual = new Date().getMonth();
 let anoAtual = new Date().getFullYear();
@@ -2232,7 +2289,8 @@ function filtrarAndamentoPorMes() {
             const toDate = d => { if(!d) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00'); const p=d.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):null; };
             const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1;
             if (da - db !== 0) return da - db;
-            const ha = a.hora || '00:00', hb = b.hora || '00:00';
+            const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '99:99';
+            const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '99:99';
             return ha.localeCompare(hb);
         });
         lista.innerHTML = '';
@@ -2252,9 +2310,14 @@ function renderizarCalendario() {
     const diasAntes = primeiro.getDay();
     const ultimoDia = new Date(anoAtual, mesAtual+1, 0).getDate();
     for (let i=0; i<diasAntes; i++) html += `<div class="dia outro-mes"></div>`;
+    const hoje = new Date();
+    const diaHojeNum = hoje.getDate();
+    const mesHojeNum = hoje.getMonth();
+    const anoHojeNum = hoje.getFullYear();
     for (let dia=1; dia<=ultimoDia; dia++) {
         const dataStr = `${anoAtual}-${String(mesAtual+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-        html += `<div class="dia sem-pedidos" id="dia-${dia}" onclick="filtrarPorDia('${dataStr}')"><div class="dia-numero">${dia}</div></div>`;
+        const isHoje = dia === diaHojeNum && mesAtual === mesHojeNum && anoAtual === anoHojeNum;
+        html += `<div class="dia sem-pedidos${isHoje ? ' dia-hoje' : ''}" id="dia-${dia}" onclick="filtrarPorDia('${dataStr}')"><div class="dia-numero">${dia}</div></div>`;
     }
     const diasDepois = 42 - (diasAntes + ultimoDia);
     for (let i=0; i<diasDepois; i++) html += `<div class="dia outro-mes"></div>`;
@@ -2327,9 +2390,14 @@ function renderizarCalendarioFinalizados() {
     const diasAntes = primeiro.getDay();
     const ultimoDia = new Date(anoAtualFin, mesAtualFin+1, 0).getDate();
     for (let i=0; i<diasAntes; i++) html += `<div class="dia outro-mes"></div>`;
+    const hojeF = new Date();
+    const diaHojeFNum = hojeF.getDate();
+    const mesHojeFNum = hojeF.getMonth();
+    const anoHojeFNum = hojeF.getFullYear();
     for (let dia=1; dia<=ultimoDia; dia++) {
         const dataStr = `${anoAtualFin}-${String(mesAtualFin+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-        html += `<div class="dia sem-pedidos" id="dia-fin-${dia}" onclick="filtrarPorDiaFinalizados('${dataStr}')"><div class="dia-numero">${dia}</div></div>`;
+        const isHoje = dia === diaHojeFNum && mesAtualFin === mesHojeFNum && anoAtualFin === anoHojeFNum;
+        html += `<div class="dia sem-pedidos${isHoje ? ' dia-hoje' : ''}" id="dia-fin-${dia}" onclick="filtrarPorDiaFinalizados('${dataStr}')"><div class="dia-numero">${dia}</div></div>`;
     }
     const diasDepois = 42 - (diasAntes + ultimoDia);
     for (let i=0; i<diasDepois; i++) html += `<div class="dia outro-mes"></div>`;
@@ -2378,7 +2446,9 @@ function filtrarFinalizadosPorMes() {
             const toDate = d => { if(!d) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00'); const p=d.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):null; };
             const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1;
             if(db-da!==0)return db-da;
-            return (b.hora||'00:00').localeCompare(a.hora||'00:00');
+            const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '00:00';
+            const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '00:00';
+            return hb.localeCompare(ha);
         });
         const pFin = document.createElement('p');
         pFin.style.cssText = 'color:var(--brown-warm);font-size:0.85em;margin-bottom:12px;';
@@ -2392,14 +2462,21 @@ function filtrarPorDiaFinalizados(dataISO) {
     const lista = document.getElementById('lista-finalizados');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
     database.ref('pedidos').once('value', snapshot => {
-        lista.innerHTML = ''; let encontrou = false;
+        const pedidosDia = [];
         snapshot.forEach(child => {
             const p = child.val(); if (p.statusPagamento !== 'entregue') return;
             let dataPedido = p.dataEntrega || p.data || '';
             if (dataPedido.includes('/')) { const pts = dataPedido.split('/'); dataPedido = `${pts[2]}-${pts[1]}-${pts[0]}`; }
-            if (dataPedido === dataISO) { p.key = child.key; lista.appendChild(criarCard(p, child.key, true)); encontrou = true; }
+            if (dataPedido === dataISO) { p.key = child.key; pedidosDia.push(p); }
         });
-        if (!encontrou) { const [ano,mes,dia] = dataISO.split('-'); lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido finalizado em ${dia}/${mes}/${ano}.</p>`; }
+        lista.innerHTML = '';
+        if (pedidosDia.length === 0) {
+            const [ano,mes,dia] = dataISO.split('-');
+            lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido finalizado em ${dia}/${mes}/${ano}.</p>`;
+            return;
+        }
+        pedidosDia.sort((a,b) => (b.hora||'00:00').localeCompare(a.hora||'00:00'));
+        pedidosDia.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
     });
 }
 
@@ -2458,6 +2535,10 @@ function verificarNotificacoes() {
         else if (totalHoje > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE`;
         else if (totalAmanha > 0) texto = `⏰ ${totalAmanha} pedido${totalAmanha>1?'s':''} para AMANHÃ`;
         aviso.textContent = texto; aviso.style.display = texto ? 'block' : 'none';
+        if (totalHoje > 0 && !_notificacaoSomDisparada) {
+            _notificacaoSomDisparada = true;
+            dispararNotificacaoSensorial();
+        }
         if (totalProximos > 0) { badge.textContent = totalProximos; badge.style.display = 'flex'; } else { badge.style.display = 'none'; }
         const btnAndamento = document.getElementById('btnAndamento');
         if (btnAndamento) {
@@ -2467,6 +2548,35 @@ function verificarNotificacoes() {
     });
 }
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
+
+let _notificacaoSomDisparada = false;
+
+function dispararNotificacaoSensorial() {
+    // Vibração (Android; iOS ignora silenciosamente)
+    if (navigator.vibrate) {
+        navigator.vibrate([300, 100, 300, 100, 300]);
+    }
+    // Som via Web Audio API
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const tocar = (freq, inicio, duracao) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0, ctx.currentTime + inicio);
+            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + inicio + 0.02);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + inicio + duracao);
+            osc.start(ctx.currentTime + inicio);
+            osc.stop(ctx.currentTime + inicio + duracao);
+        };
+        tocar(880, 0,    0.18);
+        tocar(880, 0.22, 0.18);
+        tocar(1100,0.44, 0.28);
+    } catch(e) {}
+}
 
 // ====================== RESUMO PRODUÇÃO ======================
 function toggleResumoProd() {
@@ -2505,7 +2615,7 @@ function carregarResumoProd() {
                 porDia[iso].sabores[nome] = (porDia[iso].sabores[nome]||0) + (parseInt(item.quantidade)||0);
             });
             const totalItens = (p.itens||[]).reduce((s,i) => s+(parseInt(i.quantidade)||0), 0);
-            porDia[iso].timeline.push({ horario: p.hora||'--:--', nome: p.nome||'Cliente', itens: totalItens, tipo: p.tipoEntrega==='entrega' ? `Entrega - ${p.endereco?.bairro||'N/I'}` : 'Retirada', status: p.statusPagamento||'' });
+            porDia[iso].timeline.push({ horario: p.hora||'--:--', nome: p.nome||'Cliente', itens: totalItens, tipo: p.tipoEntrega==='entrega' ? `Entrega - ${p.endereco?.bairro||'N/I'}` : 'Retirada', status: p.statusPagamento||'', dataISO: iso });
         });
         const diasOrdenados = Object.keys(porDia).sort();
         let html = '';
@@ -2516,6 +2626,9 @@ function carregarResumoProd() {
                 const partes = iso.split('-');
                 const dataObj = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
                 const nomeDia = diasNome[dataObj.getDay()];
+                const hoje20 = new Date(); hoje20.setHours(0,0,0,0);
+                const diffDias = Math.round((dataObj - hoje20) / 86400000);
+                const labelRelativo = diffDias === 0 ? '🔴 HOJE' : diffDias === 1 ? '⏰ AMANHÃ' : diffDias < 0 ? `⚠️ ${Math.abs(diffDias)}d atrás` : `em ${diffDias} dias`;
                 const labelDia = `${nomeDia}, ${String(dataObj.getDate()).padStart(2,'0')}/${mesesNome[dataObj.getMonth()]}/${anoAtual}`;
                 const { sabores, timeline } = porDia[iso];
                 const entries = Object.entries(sabores).sort((a,b) => b[1]-a[1]);
@@ -2524,7 +2637,7 @@ function carregarResumoProd() {
                 html += `<div style="margin-bottom:18px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--brown-dark);border-radius:10px;padding:7px 14px;margin-bottom:10px;">
                         <span style="font-family:'Cormorant Garamond',serif;font-size:1em;font-weight:700;color:var(--amber-light);">📅 ${labelDia}</span>
-                        <span style="font-size:0.8em;font-weight:700;color:var(--amber-light);">${totalDia} un</span>
+                        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:0.75em;background:rgba(255,255,255,0.15);border-radius:50px;padding:2px 8px;color:var(--amber-light);">${labelRelativo}</span><span style="font-size:0.8em;font-weight:700;color:var(--amber-light);">${totalDia} un</span></div>
                     </div>`;
                 entries.forEach(([sabor, qtd]) => {
                     const pct = Math.round((qtd/maxSabor)*100);
@@ -2533,9 +2646,15 @@ function carregarResumoProd() {
                 if (timeline.length > 0) {
                     timeline.sort((a,b) => a.horario.localeCompare(b.horario));
                     html += `<div style="margin-top:10px;position:relative;padding-left:22px;"><div style="position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--cream-dark);"></div>`;
+                    const agoraProd = new Date(); agoraProd.setHours(0,0,0,0);
                     timeline.forEach((item, idx) => {
                         const cor = item.status==='Pago'?'#4A7C59':item.status==='Pago Parcialmente'?'#F59E0B':'var(--amber)';
-                        html += `<div style="position:relative;padding-left:16px;padding-bottom:${idx<timeline.length-1?'8px':'0'};"><div style="position:absolute;left:-13px;top:4px;width:12px;height:12px;border-radius:50%;background:${cor};border:2px solid white;box-shadow:0 0 0 2px ${cor};"></div><div style="font-size:0.83em;background:var(--cream);border-radius:10px;padding:7px 12px;"><span style="font-weight:700;color:var(--brown-dark);">${item.horario}</span><span style="color:var(--brown-dark);"> — ${item.nome}</span><span style="color:var(--brown-warm);font-size:0.9em;"> (${item.itens} un) • ${item.tipo}</span></div></div>`;
+                        let dataItemObj = null;
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(item.dataISO||'')) { const pts=(item.dataISO||'').split('-'); dataItemObj=new Date(pts[0],pts[1]-1,pts[2]); dataItemObj.setHours(0,0,0,0); }
+                        const atrasado = dataItemObj && dataItemObj < agoraProd;
+                        const bgCard = atrasado ? '#FEE2E2' : 'var(--cream)';
+                        const badgeAtrasado = atrasado ? '<span style="background:var(--red);color:white;border-radius:50px;padding:1px 8px;font-size:0.75em;font-weight:700;margin-left:6px;">⚠️ atrasado</span>' : '';
+                        html += `<div style="position:relative;padding-left:16px;padding-bottom:${idx<timeline.length-1?'8px':'0'};"><div style="position:absolute;left:-13px;top:4px;width:12px;height:12px;border-radius:50%;background:${atrasado?'var(--red)':cor};border:2px solid white;box-shadow:0 0 0 2px ${atrasado?'var(--red)':cor};"></div><div style="font-size:0.83em;background:${bgCard};border-radius:10px;padding:7px 12px;"><span style="font-weight:700;color:var(--brown-dark);">${item.horario}</span><span style="color:var(--brown-dark);"> — ${item.nome}</span>${badgeAtrasado}<span style="color:var(--brown-warm);font-size:0.9em;"> (${item.itens} un) • ${item.tipo}</span></div></div>`;
                     });
                     html += `</div>`;
                 }
@@ -2787,7 +2906,9 @@ function irParaPedidosDash(tipo) {
     if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;
     if(tipo==='finalizados'){
         if(db-da!==0)return db-da;
-        return (b.hora||'00:00').localeCompare(a.hora||'00:00');
+        const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '00:00';
+        const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '00:00';
+        return hb.localeCompare(ha);
     }
     if(da-db!==0)return da-db;
     return (a.hora||'00:00').localeCompare(b.hora||'00:00');
@@ -3726,6 +3847,44 @@ function selecionarCategoria(categoria, btn) {
     btn.textContent = todosChecados ? 'Marcar todos' : 'Desmarcar todos';
 }
 
+function salvarImportacao() {
+    const selecionados = [];
+    INSUMOS_PADRAO.forEach((ins, idx) => {
+        const check = document.getElementById('imp-check-' + idx);
+        const preco = parseFloat(document.getElementById('imp-preco-' + idx)?.value || '0');
+        if (check && check.checked && !check.disabled && preco > 0) {
+            selecionados.push({ ...ins, preco, timestamp: Date.now() });
+        }
+    });
+    if (selecionados.length === 0) {
+        toast('❌ Selecione ao menos um insumo e preencha o preço.', 'erro');
+        return;
+    }
+    const btn = document.querySelector('#painel-importacao .btn-verde');
+    if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
+    const promises = selecionados.map(ins => {
+        const { categoria, ...dados } = ins;
+        return database.ref('insumos').push(dados);
+    });
+    Promise.all(promises).then(() => {
+        toast(`✅ ${selecionados.length} insumo${selecionados.length > 1 ? 's' : ''} importado${selecionados.length > 1 ? 's' : ''}!`);
+        fecharImportacao();
+        carregarInsumos();
+    }).catch(err => {
+        toast('❌ Erro ao salvar: ' + err.message, 'erro');
+        if (btn) { btn.textContent = '💾 Salvar Selecionados'; btn.disabled = false; }
+    });
+}
+
+function fecharImportacao() {
+    const painel = document.getElementById('painel-importacao');
+    if (painel) painel.style.display = 'none';
+    const lista = document.getElementById('lista-importacao');
+    if (lista) lista.innerHTML = '';
+    const btn = document.querySelector('#painel-importacao .btn-verde');
+    if (btn) { btn.textContent = '💾 Salvar Selecionados'; btn.disabled = false; }
+}
+
 // ====================== INSUMOS ======================
 function salvarInsumo() {
     const nome    = document.getElementById('insumoNome').value.trim();
@@ -4084,6 +4243,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     document.getElementById('cor').addEventListener('change', function() {
         document.getElementById('corCustomizada').style.display=this.value==='Outra'?'block':'none';
+    });
+    let _debounceFinalizados = null;
+    document.getElementById('buscaFinalizados').addEventListener('input', function() {
+        clearTimeout(_debounceFinalizados);
+        _debounceFinalizados = setTimeout(() => filtrarFinalizadosPorNome(), 200);
     });
     window.addEventListener('beforeunload', function(e) { if(window.pedidoEmEdicao){e.preventDefault();e.returnValue='';} });
 });
