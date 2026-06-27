@@ -1811,7 +1811,9 @@ function carregarFinalizados() {
                 const p = d.split('/'); return p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : null;
             };
             const da = toDate(a.dataEntrega), db = toDate(b.dataEntrega);
-            if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db - da;
+            if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
+            if (db - da !== 0) return db - da;
+            return (b.hora||'00:00').localeCompare(a.hora||'00:00');
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
@@ -1903,7 +1905,7 @@ function criarCard(pedido, key, finalizado) {
     const infoTel = document.createElement('div');
     infoTel.className = 'pedido-info';
     infoTel.innerHTML = '<strong>Telefone:</strong> ' + escaparHTML(pedido.telefone || 'N/A');
-    const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (pedido.hora ? ' às ' + pedido.hora + 'h' : '');    const infoData = document.createElement('div');
+    const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (pedido.hora && pedido.hora.trim() ? ' às ' + pedido.hora.trim() + 'h' : '');    const infoData = document.createElement('div');
     infoData.className = 'pedido-info';
     infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo;
     const infoBrig = document.createElement('div');
@@ -2079,8 +2081,6 @@ function editarPedido(key) {
                 itens.push({ id: String(Date.now())+String(Math.floor(Math.random()*1000)), sabor: item.sabor||item.nome, formato: item.formato, tipoForma: item.tipoForma, cor: item.cor, quantidade: item.quantidade });
             });
         }
-        let totalBrig = 0; itens.forEach(i => totalBrig += (PRECOS_CARD[i.sabor]||1.00) * i.quantidade);
-        document.getElementById('valor').value = 'R$ ' + totalBrig.toFixed(2).replace('.',',');
         setVal('valorFrete', formatarValor(data.valorFrete));
         setVal('valorDesconto', formatarValor(data.desconto));
         setTimeout(() => { renderizarItens(); atualizarValorBrigadeiros(); atualizarTotal(); }, 50);
@@ -2114,7 +2114,8 @@ function clonarPedido(key) {
             renderizarItens(); atualizarValorBrigadeiros();
         }
         if (data.valorFrete) setVal('valorFrete', formatarValor(data.valorFrete));
-        toast('📋 Pedido clonado! Ajuste a data.');
+setTimeout(() => { renderizarItens(); atualizarValorBrigadeiros(); atualizarTotal(); }, 50);
+toast('📋 Pedido clonado! Ajuste a data.');
     });
 }
 
@@ -2122,7 +2123,7 @@ function reenviarWhatsApp(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
         const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
         function abreviar(s) { return (s||'').replace('Chocolate Gourmet Preto','Choc. Preto'); }
-        let msg = `Pedidos - Doces Flor\n\nNome: ${p.nome||''}\nTelefone: ${p.telefone||''}\nData: ${p.dataEntrega||''} às ${p.hora||''}\n`;
+        let msg = `Pedidos - Doces Flor\n\nNome: ${p.nome||''}\nTelefone: ${p.telefone||''}\nData: ${formatarDataComDia(p.dataEntrega||'')}${p.hora && p.hora.trim() ? ' às ' + p.hora.trim() + 'h' : ''}\n`;
         if (p.tipoEntrega === 'entrega' && p.endereco) {
             const e = p.endereco;
             msg += `Endereço: ${e.logradouro}, ${e.numero}, ${e.bairro}, ${e.cidade}, CEP: ${e.cep}\n`;
@@ -2204,7 +2205,7 @@ let anoAtual = new Date().getFullYear();
 
 function toggleCalendario() {
     const w = document.getElementById('calendario-wrapper');
-    const btn = event.target;
+    const btn = event.target.closest('button') || event.target;
     if (w.style.display === 'none' || w.style.display === '') {
         w.style.display = 'block'; btn.textContent = '📅 Fechar Calendário';
         renderizarCalendario(); filtrarAndamentoPorMes();
@@ -2285,14 +2286,21 @@ function mudarMes(dir) { mesAtual += dir; if (mesAtual<0){mesAtual=11;anoAtual--
 function filtrarPorDia(dataISO) {
     const lista = document.getElementById('lista-andamento');
     database.ref('pedidos').once('value', snapshot => {
-        lista.innerHTML = ''; let encontrou = false;
+        const pedidosDia = [];
         snapshot.forEach(child => {
             const p = child.val(); if (p.statusPagamento === 'entregue') return;
             let dataPedido = p.dataEntrega || p.data || '';
             if (dataPedido.includes('/')) { const pts = dataPedido.split('/'); dataPedido = `${pts[2]}-${pts[1]}-${pts[0]}`; }
-            if (dataPedido === dataISO) { p.key = child.key; lista.appendChild(criarCard(p, child.key, false)); encontrou = true; }
+            if (dataPedido === dataISO) { p.key = child.key; pedidosDia.push(p); }
         });
-        if (!encontrou) { const [ano,mes,dia] = dataISO.split('-'); lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido para ${dia}/${mes}/${ano}.</p>`; }
+        lista.innerHTML = '';
+        if (pedidosDia.length === 0) {
+            const [ano,mes,dia] = dataISO.split('-');
+            lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido para ${dia}/${mes}/${ano}.</p>`;
+            return;
+        }
+        pedidosDia.sort((a,b) => (a.hora||'00:00').localeCompare(b.hora||'00:00'));
+        pedidosDia.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
     });
 }
 
@@ -2302,7 +2310,7 @@ let anoAtualFin = new Date().getFullYear();
 
 function toggleCalendarioFinalizados() {
     const w = document.getElementById('calendario-wrapper-finalizados');
-    const btn = event.target;
+    const btn = event.target.closest('button') || event.target;
     if (w.style.display === 'none' || w.style.display === '') {
         w.style.display = 'block'; btn.textContent = '📅 Fechar Calendário';
         renderizarCalendarioFinalizados(); filtrarFinalizadosPorMes();
@@ -2368,7 +2376,9 @@ function filtrarFinalizadosPorMes() {
         if (pedidos.length === 0) { lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido finalizado em ${meses[mesAtualFin]} de ${anoAtualFin}.</p>`; return; }
         pedidos.sort((a,b) => {
             const toDate = d => { if(!d) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00'); const p=d.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):null; };
-            const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return db-da;
+            const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1;
+            if(db-da!==0)return db-da;
+            return (b.hora||'00:00').localeCompare(a.hora||'00:00');
         });
         const pFin = document.createElement('p');
         pFin.style.cssText = 'color:var(--brown-warm);font-size:0.85em;margin-bottom:12px;';
@@ -2426,7 +2436,7 @@ function verificarNotificacoes() {
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const amanha = new Date(hoje); amanha.setDate(amanha.getDate()+1);
     database.ref('pedidos').once('value', snapshot => {
-        let totalHoje = 0, totalAmanha = 0;
+        let totalHoje = 0, totalAmanha = 0, totalAtrasados = 0;
         snapshot.forEach(child => {
             const p = child.val(); if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
             let dataP;
@@ -2436,12 +2446,15 @@ function verificarNotificacoes() {
             dataP.setHours(0,0,0,0);
             if (dataP.getTime() === hoje.getTime()) totalHoje++;
             else if (dataP.getTime() === amanha.getTime()) totalAmanha++;
+            else if (dataP < hoje) totalAtrasados++;
         });
-        const totalProximos = totalHoje + totalAmanha;
+        const totalProximos = totalHoje + totalAmanha + totalAtrasados;
         const badge = document.getElementById('gavetaBadge');
         const aviso = document.getElementById('avisoProximos');
         let texto = '';
-        if (totalHoje > 0 && totalAmanha > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE • ${totalAmanha} para AMANHÃ`;
+        if (totalAtrasados > 0 && totalHoje > 0) texto = `⚠️ ${totalAtrasados} atrasado${totalAtrasados>1?'s':''} • 🚨 ${totalHoje} para HOJE`;
+        else if (totalAtrasados > 0) texto = `⚠️ ${totalAtrasados} pedido${totalAtrasados>1?'s':''} ATRASADO${totalAtrasados>1?'S':''}`;
+        else if (totalHoje > 0 && totalAmanha > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE • ${totalAmanha} para AMANHÃ`;
         else if (totalHoje > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE`;
         else if (totalAmanha > 0) texto = `⏰ ${totalAmanha} pedido${totalAmanha>1?'s':''} para AMANHÃ`;
         aviso.textContent = texto; aviso.style.display = texto ? 'block' : 'none';
@@ -2724,7 +2737,7 @@ async function carregarDashboard() {
                 snapshot.forEach(child=>{
                     const p=child.val(); if(!p.dataEntrega) return;
                     let dataP;
-                    if(/^\d{02}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
+                    if(/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
                     else if(/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('-');dataP=new Date(pts[0],pts[1]-1,pts[2]);}
                     else return;
                     if(dataP.getFullYear()!==ano) return;
@@ -2768,7 +2781,17 @@ function irParaPedidosDash(tipo) {
             p.key=child.key;pedidos.push(p);
         });
         if(pedidos.length===0){lista.innerHTML=`<p style="color:var(--brown-warm);">Nenhum pedido em ${meses[mes]} de ${ano}.</p>`;return;}
-        pedidos.sort((a,b)=>{const toDate=d=>{if(!d)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(d))return new Date(d+'T00:00:00');const p=d.split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]):null;};const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return tipo==='finalizados'?db-da:da-db;});
+        pedidos.sort((a,b)=>{
+    const toDate=d=>{if(!d)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(d))return new Date(d+'T00:00:00');const p=d.split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]):null;};
+    const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega);
+    if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;
+    if(tipo==='finalizados'){
+        if(db-da!==0)return db-da;
+        return (b.hora||'00:00').localeCompare(a.hora||'00:00');
+    }
+    if(da-db!==0)return da-db;
+    return (a.hora||'00:00').localeCompare(b.hora||'00:00');
+});
         const fnVerTodos = tipo === 'finalizados' ? 'carregarFinalizados' : 'carregarAndamento';
         const pDash = document.createElement('p');
         pDash.style.cssText = 'color:var(--brown-warm);font-size:0.85em;margin-bottom:12px;';
@@ -3002,7 +3025,7 @@ function imprimirComprovante(key) {
                 <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
                     <div><strong>Cliente:</strong> ${escaparHTML(p.nome||'---')}</div>
                     <div><strong>Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div>
-                    <div><strong>Data:</strong> ${escaparHTML(dataBr)} às ${escaparHTML(horario)}</div>
+                    <div><strong>Data:</strong> ${escaparHTML(dataBr)}${horario && horario.trim() ? ' às ' + escaparHTML(horario.trim()) + 'h' : ''}</div>
                     ${tipoHTML}
                 </div>
                 ${enderecoHTML}
