@@ -203,6 +203,25 @@ body {
 .form-card-titulo { font-family: 'Cormorant Garamond', serif; color: var(--brown-dark); font-size: 1.15em; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--cream-dark); letter-spacing: 0.02em; }
 label { display: block; font-size: 0.82em; font-weight: 600; color: var(--brown-warm); margin-bottom: 6px; letter-spacing: 0.03em; text-transform: uppercase; }
 input, select, textarea { width: 100%; padding: 11px 16px; border: 2px solid var(--cream-dark); border-radius: 50px; font-size: 0.9em; font-family: 'DM Sans', sans-serif; color: var(--brown-dark); background: var(--cream); box-sizing: border-box; margin-bottom: 14px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; -webkit-appearance: none; appearance: none; }
+input[type="checkbox"] {
+    width: 18px !important;
+    height: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 4px !important;
+    border: 2px solid var(--cream-dark) !important;
+    background: var(--white) !important;
+    cursor: pointer !important;
+    -webkit-appearance: checkbox !important;
+    appearance: checkbox !important;
+    flex-shrink: 0 !important;
+}
+
+input[type="checkbox"]:checked {
+    accent-color: var(--amber);
+    background: var(--amber) !important;
+    border-color: var(--amber) !important;
+}
 select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B4513' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
 textarea { border-radius: 16px; resize: vertical; min-height: 80px; }
 input:focus, select:focus, textarea:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(232,148,58,0.15); background: var(--white); }
@@ -446,6 +465,28 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .evento-card-completo.evento-finalizado { border-color: #86EFAC; box-shadow: 0 4px 18px rgba(74,124,89,0.12); }
 .evento-card-completo.evento-finalizado .evento-card-nome { color: #065F46; }
 #aviso-data-bloqueada { display: none; background: #FEE2E2; border: 1.5px solid #EF4444; border-radius: 12px; padding: 10px 14px; margin-top: -8px; margin-bottom: 10px; font-size: 0.85em; font-weight: 600; color: #DC2626; }
+
+/* ═══════════════════════════════════════════
+   CUSTOS / INSUMOS / RECEITAS
+═══════════════════════════════════════════ */
+.custos-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.custos-tab  { padding: 8px 20px; border: 2px solid var(--cream-dark); border-radius: 50px; background: var(--white); color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.custos-tab.active { background: var(--brown-dark); color: var(--amber-light); border-color: var(--brown-dark); }
+.insumo-card { background: var(--white); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--cream-dark); display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 2px 8px var(--shadow); animation: itemEntrar 0.25s ease; }
+.insumo-info { flex: 1; }
+.insumo-nome { font-weight: 700; color: var(--brown-dark); font-size: 0.92em; }
+.insumo-detalhe { font-size: 0.8em; color: var(--brown-warm); margin-top: 2px; }
+.receita-card { background: var(--white); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1.5px solid var(--cream-dark); box-shadow: 0 2px 10px var(--shadow); animation: itemEntrar 0.25s ease; }
+.receita-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.receita-sabor { font-family: 'Cormorant Garamond', serif; font-size: 1.1em; font-weight: 700; color: var(--brown-dark); }
+.receita-custo-badge { background: #D1FAE5; color: #065F46; border-radius: 50px; padding: 4px 14px; font-size: 0.8em; font-weight: 700; }
+.receita-ingrediente-linha { display: flex; justify-content: space-between; font-size: 0.82em; padding: 5px 0; border-bottom: 1px solid var(--cream-dark); color: var(--brown-dark); }
+.receita-ingrediente-linha:last-child { border-bottom: none; }
+.custo-pedido-card { background: #D1FAE5; border: 1.5px solid #86EFAC; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+.custo-pedido-titulo { font-size: 0.78em; font-weight: 700; color: #065F46; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+.custo-pedido-linha { display: flex; justify-content: space-between; font-size: 0.85em; padding: 4px 0; color: #065F46; }
+.custo-pedido-total { font-size: 1.05em; font-weight: 700; border-top: 1.5px solid #86EFAC; margin-top: 8px; padding-top: 8px; color: #065F46; display: flex; justify-content: space-between; }
+.custo-pedido-margem { text-align: center; margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.6); border-radius: 10px; font-size: 0.88em; font-weight: 700; color: #065F46; }
 
 /* ═══════════════════════════════════════════
    VENDAS DE EVENTO
@@ -735,6 +776,17 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             <input type="text" id="valorPago" placeholder="R$ 0,00">
         </div>
     </div>
+    <div id="custo-pedido-estimado" style="display:none;">
+    <div class="custo-pedido-card">
+        <div class="custo-pedido-titulo">🧮 Custo Estimado de Produção</div>
+        <div id="custo-pedido-linhas"></div>
+        <div class="custo-pedido-total">
+            <span>Custo Total</span>
+            <span id="custo-pedido-total-valor">R$ 0,00</span>
+        </div>
+        <div class="custo-pedido-margem" id="custo-pedido-margem"></div>
+    </div>
+</div>
     <button class="btn btn-verde btn-bloco" id="btnEnviar" onclick="salvarPedido()">💾 Salvar Pedido</button>
 </section>
 
@@ -781,6 +833,11 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 
 <!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
 <section id="secao-gastos" class="secao">
+    <div class="custos-tabs">
+        <button class="custos-tab active" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
+        <button class="custos-tab" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
+        <button class="custos-tab" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
+    </div>
     <h2 class="secao-titulo">
         💸 Gastos
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
@@ -831,9 +888,79 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     </div>
     <div id="gastoResumo" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:16px;text-align:center;box-shadow:0 4px 18px var(--shadow);">
         <p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total no Período</p>
-        <p id="gastoTotalPeriodo" style="font-family:'Cormorant Garamond',serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
+        <p id="gastoTotalPeriodo" style="font-family:'DM Sans',sans-serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
     </div>
     <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
+<!-- ── ABA INSUMOS ── -->
+<div id="aba-insumos" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Insumo</p>
+        <label for="insumoNome">Nome do Insumo</label>
+        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado">
+        <div class="linha-dupla">
+            <div>
+                <label for="insumoPreco">Preço (R$)</label>
+                <input type="text" id="insumoPreco" placeholder="R$ 0,00">
+            </div>
+            <div>
+                <label for="insumoUnidade">Unidade</label>
+                <select id="insumoUnidade">
+                    <option value="un">Unidade (un)</option>
+                    <option value="g">Gramas (g)</option>
+                    <option value="ml">Mililitros (ml)</option>
+                    <option value="kg">Quilograma (kg)</option>
+                </select>
+            </div>
+        </div>
+        <div id="insumoQtdWrapper">
+            <label for="insumoQtd">Quantidade por embalagem</label>
+            <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
+        </div>
+        <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
+        <button class="btn btn-marrom btn-bloco" onclick="abrirImportacaoPadrao()">📦 Importar Lista Padrão</button>
+    <div id="painel-importacao" style="display:none;margin-top:16px;">
+        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.04em;">📦 Selecione e preencha os preços</p>
+        <div id="lista-importacao"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+            <button class="btn btn-verde btn-bloco" onclick="salvarImportacao()">💾 Salvar Selecionados</button>
+            <button class="btn btn-cinza btn-bloco" onclick="fecharImportacao()">✕ Cancelar</button>
+        </div>
+    </div>
+    </div>
+    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
+</div>
+
+<!-- ── ABA RECEITAS ── -->
+<div id="aba-receitas" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Nova Receita</p>
+        <label for="receitaSabor">Sabor</label>
+        <select id="receitaSabor">
+            <option value="">Selecione o sabor</option>
+        </select>
+        <label for="receitaRendimento">Rendimento médio (unidades)</label>
+        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1">
+        <hr class="divisor">
+        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em;">🧴 Ingredientes da Receita</p>
+        <div class="linha-dupla">
+            <div>
+                <label for="receitaInsumoSel">Insumo</label>
+                <select id="receitaInsumoSel">
+                    <option value="">Selecione</option>
+                </select>
+            </div>
+            <div>
+                <label for="receitaInsumoQtd">Quantidade usada</label>
+                <input type="number" id="receitaInsumoQtd" placeholder="Ex: 80">
+            </div>
+        </div>
+        <p id="receitaInsumoHint" style="font-size:0.76em;color:var(--brown-warm);margin-top:-8px;margin-bottom:10px;padding-left:4px;"></p>
+        <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
+        <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
+        <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
+    </div>
+    <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
+</div>
 </section>
 
 <!-- ═══ SEÇÃO 4: DASHBOARD ═══ -->
@@ -1399,6 +1526,7 @@ function atualizarTotal() {
     const vDesc  = parseFloat((document.getElementById('valorDesconto').value || 'R$ 0,00').replace('R$ ','').replace(/\./g,'').replace(',','.')) || 0;
     const total  = Math.max(0, vBrig + vFrete - vDesc);
     document.getElementById('valorTotal').value = 'R$ ' + total.toFixed(2).replace('.',',');
+calcularCustoPedido();
 }
 
 // ====================== UTILS ======================
@@ -2383,7 +2511,7 @@ function carregarResumoProd() {
 }
 
 // ====================== DASHBOARD ======================
-function carregarDashboard() {
+async function carregarDashboard() {
     const mesVal = document.getElementById('dashMes').value;
     const mes    = mesVal === 'geral' ? null : parseInt(mesVal);
     const ano    = parseInt(document.getElementById('dashAno').value);
@@ -2393,6 +2521,12 @@ function carregarDashboard() {
         const str = String(v).replace(/R\$\s*/g,'').trim().replace(/\./g,'').replace(',','.');
         const num = parseFloat(str); return isNaN(num)?0:num;
     }
+    const snapshotReceitas = await database.ref('receitas').once('value');
+    const receitasMap = {};
+    snapshotReceitas.forEach(child => {
+        const r = child.val();
+        receitasMap[r.sabor] = r;
+    });
     database.ref('pedidos').once('value', snapshot => {
         let faturamento=0, faturamentoMesAnterior=0, totalPendente=0, qtdPendente=0, entregues=0, andamento=0;
         const sabores={}, pagamentos={};
@@ -2465,6 +2599,23 @@ function carregarDashboard() {
         const maxSabor=saboresOrdenados[0]?.[1]||1;
         document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
         document.getElementById('dashPagamentos').innerHTML=Object.entries(pagamentos).length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':Object.entries(pagamentos).map(([sk,qtd])=>{const nomes={'entregue':'Entregue','A pagar':'A pagar','Pago Parcialmente':'Pago Parcialmente','Pago':'Pago'};return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.88em;"><span>${nomes[sk]||sk}</span><strong>${qtd} pedido${qtd>1?'s':''}</strong></div>`;}).join('');
+        let custoProducaoEstimado = 0;
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2], pts[1]-1, pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0], pts[1]-1, pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== ano) return;
+            if (mes !== null && dataP.getMonth() !== mes) return;
+            (p.itens || []).forEach(item => {
+                const receita = receitasMap[item.sabor];
+                if (!receita) return;
+                const custoPorUn = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
+                custoProducaoEstimado += custoPorUn * (parseInt(item.quantidade) || 0);
+            });
+        });
         database.ref('gastos').once('value', snapGastos=>{
             let totalGastos=0; const categorias={};
             snapGastos.forEach(child=>{
@@ -2507,6 +2658,40 @@ function carregarDashboard() {
                     listaEventos.innerHTML = eventosLista.map(e => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><span>🔒 ${escaparHTML(e.nome)}</span></div><strong style="color:var(--amber);">R$ ${e.total.toFixed(2).replace('.', ',')}</strong></div>`).join('');
                     totalEventosEl.textContent = 'R$ ' + totalEventos.toFixed(2).replace('.', ',');
                 } else { cardEventos.style.display = 'none'; }
+                // card custo de produção no dashboard
+                let cardCustoProd = document.getElementById('cardCustoProdDash');
+                if (!cardCustoProd) {
+                    cardCustoProd = document.createElement('div');
+                    cardCustoProd.className = 'form-card';
+                    cardCustoProd.id = 'cardCustoProdDash';
+                    document.getElementById('dashboard-resultado').insertBefore(
+                        cardCustoProd,
+                        document.getElementById('cardEventosDash')
+                    );
+                }
+                if (custoProducaoEstimado > 0) {
+                    const margemBruta = faturamentoTotal > 0
+                        ? ((faturamentoTotal - custoProducaoEstimado) / faturamentoTotal * 100).toFixed(1)
+                        : null;
+                    cardCustoProd.style.display = 'block';
+                    cardCustoProd.innerHTML = `
+                        <p class="form-card-titulo">🧮 Custo de Produção Estimado</p>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                            <div style="flex:1;background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
+                                <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Custo Produção</p>
+                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#92400E;">R$ ${custoProducaoEstimado.toFixed(2).replace('.',',')}</p>
+                                <p style="font-size:0.72em;color:#92400E;margin-top:2px;">apenas sabores com receita cadastrada</p>
+                            </div>
+                            ${margemBruta !== null ? `
+                            <div style="flex:1;background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
+                                <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Margem Bruta</p>
+                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#065F46;">${margemBruta}%</p>
+                                <p style="font-size:0.72em;color:#065F46;margin-top:2px;">lucro estimado: R$ ${(faturamentoTotal - custoProducaoEstimado).toFixed(2).replace('.',',')}</p>
+                            </div>` : ''}
+                        </div>`;
+                } else {
+                    cardCustoProd.style.display = 'none';
+                }
                 const catOrdenadas=Object.entries(categorias).sort((a,b)=>b[1]-a[1]);
                 const maxCat=catOrdenadas[0]?.[1]||1;
                 document.getElementById('dashGastosCategorias').innerHTML=catOrdenadas.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum gasto no período.</p>':catOrdenadas.map(([cat,val])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${cat}</span><strong>R$ ${val.toFixed(2).replace('.',',')}</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--brown-warm);height:6px;border-radius:6px;width:${Math.round((val/maxCat)*100)}%;"></div></div></div>`).join('');
@@ -3255,6 +3440,551 @@ function excluirVenda(eventoKey, vendaKey) {
             setTimeout(()=>{ const p=document.getElementById('painel-'+eventoKey); if(p) p.style.display='block'; },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
+}
+
+// ====================== CUSTOS: ABA SWITCHER ======================
+function mostrarAbaGastos(aba, btn) {
+    document.querySelectorAll('.custos-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const secaoGastos = document.getElementById('secao-gastos');
+    const tituloGastos = secaoGastos.querySelector('.secao-titulo');
+
+    // Pega apenas os cards DIRETOS da seção de gastos (não os das sub-abas)
+    const cardsGastos = [...secaoGastos.querySelectorAll(':scope > .form-card, #gastoResumo, #lista-gastos')];
+
+    document.getElementById('aba-insumos').style.display  = 'none';
+    document.getElementById('aba-receitas').style.display = 'none';
+
+    if (aba === 'gastos') {
+        if (tituloGastos) tituloGastos.style.display = '';
+        cardsGastos.forEach(el => el.style.display = '');
+    } else {
+        if (tituloGastos) tituloGastos.style.display = 'none';
+        cardsGastos.forEach(el => el.style.display = 'none');
+        if (aba === 'insumos') {
+            document.getElementById('aba-insumos').style.display = 'block';
+            carregarInsumos();
+        } else if (aba === 'receitas') {
+            document.getElementById('aba-receitas').style.display = 'block';
+            carregarReceitasLista();
+            popularSelectReceitaSabor();
+            popularSelectInsumos();
+        }
+    }
+}
+
+// ====================== BASE DE INSUMOS PADRÃO ======================
+const INSUMOS_PADRAO = [
+    // ── BASES LÁCTEAS ──
+    { nome: 'Leite condensado 395g',        qtdEmbalagem: 395,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Leite condensado 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Creme de leite 200g',          qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Creme de leite 1kg',           qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Manteiga sem sal 200g',        qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Manteiga sem sal 500g',        qtdEmbalagem: 500,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Manteiga sem sal 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Leite em pó integral 400g',    qtdEmbalagem: 400,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Leite em pó integral 1kg',     qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Leite integral 1L',            qtdEmbalagem: 1000, unidade: 'ml', categoria: '🥛 Bases Lácteas' },
+    { nome: 'Doce de leite 400g',           qtdEmbalagem: 400,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Doce de leite 1kg',            qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+
+    // ── CHOCOLATES ──
+    { nome: 'Chocolate em pó 50% 200g',     qtdEmbalagem: 200,  unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate em pó 50% 1kg',      qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate em pó 100% 200g',    qtdEmbalagem: 200,  unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate em pó 100% 1kg',     qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Cacau em pó 100% 200g',        qtdEmbalagem: 200,  unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Cacau em pó 100% 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate ao leite 1kg',       qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate ao leite 2kg',       qtdEmbalagem: 2000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate branco 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate branco 2kg',         qtdEmbalagem: 2000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate meio amargo 1kg',    qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate meio amargo 2kg',    qtdEmbalagem: 2000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate nobre ao leite 1kg', qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+    { nome: 'Chocolate nobre branco 1kg',   qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍫 Chocolates' },
+
+    // ── PASTAS E CREMES ──
+    { nome: 'Creme de avelã 350g',          qtdEmbalagem: 350,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Creme de avelã 650g',          qtdEmbalagem: 650,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Creme de avelã 1kg',           qtdEmbalagem: 1000, unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Pasta de amendoim 450g',       qtdEmbalagem: 450,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Pasta de amendoim 1kg',        qtdEmbalagem: 1000, unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Pasta de avelã 400g',          qtdEmbalagem: 400,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Pasta de pistache 200g',       qtdEmbalagem: 200,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+    { nome: 'Pasta de churros 400g',        qtdEmbalagem: 400,  unidade: 'g',  categoria: '🫙 Pastas e Cremes' },
+
+    // ── GRANULADOS E COBERTURAS ──
+    { nome: 'Granulado chocolate macio 500g',  qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Granulado chocolate macio 1kg',   qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Granulado chocolate duro 500g',   qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Granulado chocolate duro 1kg',    qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Granulado colorido 500g',         qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Granulado colorido 1kg',          qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Coco ralado fino 100g',           qtdEmbalagem: 100,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Coco ralado fino 500g',           qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Coco ralado fino 1kg',            qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Amendoim torrado s/ pele 500g',   qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Amendoim torrado s/ pele 1kg',    qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Confete 500g',                    qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Confete 1kg',                     qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Ovomaltine 300g',                 qtdEmbalagem: 300,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Ovomaltine 1kg',                  qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Biscoito triturado 200g',         qtdEmbalagem: 200,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Biscoito triturado 1kg',          qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Flocos de arroz 500g',            qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Wafer triturado 500g',            qtdEmbalagem: 500,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Canela em pó 30g',                qtdEmbalagem: 30,   unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Canela em pó 100g',               qtdEmbalagem: 100,  unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Açúcar cristal 1kg',              qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+    { nome: 'Açúcar refinado 1kg',             qtdEmbalagem: 1000, unidade: 'g', categoria: '✨ Granulados e Coberturas' },
+
+    // ── FRUTAS E SABORIZANTES ──
+    { nome: 'Cereja ao marasquino 180g',    qtdEmbalagem: 180,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Cereja ao marasquino 500g',    qtdEmbalagem: 500,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Morango fresco 300g',          qtdEmbalagem: 300,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Morango fresco 500g',          qtdEmbalagem: 500,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Polpa de maracujá 400g',       qtdEmbalagem: 400,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Polpa de maracujá 1kg',        qtdEmbalagem: 1000, unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Polpa de amora 400g',          qtdEmbalagem: 400,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Polpa de uva 400g',            qtdEmbalagem: 400,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Polpa de limão 400g',          qtdEmbalagem: 400,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Banana passa 500g',            qtdEmbalagem: 500,  unidade: 'g',  categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Essência de baunilha 30ml',    qtdEmbalagem: 30,   unidade: 'ml', categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Essência de baunilha 100ml',   qtdEmbalagem: 100,  unidade: 'ml', categoria: '🍓 Frutas e Saborizantes' },
+    { nome: 'Extrato de baunilha 30ml',     qtdEmbalagem: 30,   unidade: 'ml', categoria: '🍓 Frutas e Saborizantes' },
+
+    // ── INDUSTRIALIZADOS ──
+    { nome: 'Ferrero Rocher unidade',       qtdEmbalagem: 1,    unidade: 'un', categoria: '🏭 Industrializados' },
+    { nome: 'Ferrero Rocher caixa 16un',    qtdEmbalagem: 16,   unidade: 'un', categoria: '🏭 Industrializados' },
+    { nome: 'Ferrero Rocher caixa 30un',    qtdEmbalagem: 30,   unidade: 'un', categoria: '🏭 Industrializados' },
+    { nome: 'Biscoito recheado 100g',       qtdEmbalagem: 100,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Biscoito recheado 400g',       qtdEmbalagem: 400,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Wafer 140g',                   qtdEmbalagem: 140,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Achocolatado em pó 200g',      qtdEmbalagem: 200,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Achocolatado em pó 400g',      qtdEmbalagem: 400,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Biscoito tipo Oreo 144g',      qtdEmbalagem: 144,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Biscoito tipo Oreo 360g',      qtdEmbalagem: 360,  unidade: 'g',  categoria: '🏭 Industrializados' },
+    { nome: 'Chocolate barra 45g',          qtdEmbalagem: 45,   unidade: 'g',  categoria: '🏭 Industrializados' },
+
+    // ── EMBALAGENS ──
+    { nome: 'Forminha redonda nº4 c/100',   qtdEmbalagem: 100,  unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Forminha redonda nº4 c/1000',  qtdEmbalagem: 1000, unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Forminha quadrada nº4 c/100',  qtdEmbalagem: 100,  unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Forminha quadrada nº4 c/1000', qtdEmbalagem: 1000, unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Caixinha 25 unidades',         qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Caixinha 50 unidades',         qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Caixinha 100 unidades',        qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Caixa kraft 25 unidades',      qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Caixa kraft 50 unidades',      qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Fita de cetim 10m',            qtdEmbalagem: 10,   unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Papel celofane transparente',  qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Papel celofane colorido',      qtdEmbalagem: 1,    unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Etiqueta adesiva c/100',       qtdEmbalagem: 100,  unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Lacinho decorativo c/50',      qtdEmbalagem: 50,   unidade: 'un', categoria: '📦 Embalagens' },
+    { nome: 'Saquinho transparente c/100',  qtdEmbalagem: 100,  unidade: 'un', categoria: '📦 Embalagens' },
+
+    // ── OUTROS ──
+    { nome: 'Luvas descartáveis c/100',     qtdEmbalagem: 100,  unidade: 'un', categoria: '🧹 Outros' },
+    { nome: 'Papel toalha',                 qtdEmbalagem: 1,    unidade: 'un', categoria: '🧹 Outros' },
+    { nome: 'Gás de cozinha 13kg',          qtdEmbalagem: 1,    unidade: 'un', categoria: '🧹 Outros' },
+    { nome: 'Álcool 70% 500ml',             qtdEmbalagem: 500,  unidade: 'ml', categoria: '🧹 Outros' },
+    { nome: 'Detergente 500ml',             qtdEmbalagem: 500,  unidade: 'ml', categoria: '🧹 Outros' },
+];
+
+async function abrirImportacaoPadrao() {
+    const painel = document.getElementById('painel-importacao');
+    const lista  = document.getElementById('lista-importacao');
+    painel.style.display = 'block';
+    lista.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
+
+    const snapshot = await database.ref('insumos').once('value');
+    const jaExistem = new Set();
+    snapshot.forEach(child => jaExistem.add(child.val().nome.toLowerCase().trim()));
+
+    // Agrupa por categoria
+    const grupos = {};
+    INSUMOS_PADRAO.forEach((ins, idx) => {
+        const cat = ins.categoria || 'Outros';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push({ ins, idx });
+    });
+
+    lista.innerHTML = '';
+    Object.entries(grupos).forEach(([categoria, itens]) => {
+        // Header da categoria
+        const header = document.createElement('div');
+        header.style.cssText = 'background:var(--brown-dark);color:var(--amber-light);padding:8px 14px;border-radius:10px;margin:14px 0 8px;font-size:0.82em;font-weight:700;letter-spacing:0.04em;display:flex;justify-content:space-between;align-items:center;';
+        header.innerHTML = `<span>${categoria}</span><button onclick="selecionarCategoria('${categoria.replace(/'/g,"\\'")}', this)" style="background:rgba(245,181,99,0.2);border:1px solid var(--amber-light);color:var(--amber-light);border-radius:50px;padding:3px 10px;font-size:0.8em;cursor:pointer;font-family:'DM Sans',sans-serif;">Marcar todos</button>`;
+        lista.appendChild(header);
+
+        itens.forEach(({ ins, idx }) => {
+            const jaCadastrado = jaExistem.has(ins.nome.toLowerCase().trim());
+            const div = document.createElement('div');
+            div.dataset.categoria = categoria;
+            div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:'
+                + (jaCadastrado ? '#f5f5f5' : 'var(--white)')
+                + ';border-radius:12px;margin-bottom:6px;border:1px solid var(--cream-dark);'
+                + (jaCadastrado ? 'opacity:0.5;' : '');
+            div.innerHTML = `
+                <label for="imp-check-${idx}" style="display:flex;align-items:center;gap:10px;flex:1;cursor:${jaCadastrado ? 'default' : 'pointer'};">
+                    <input type="checkbox" id="imp-check-${idx}" ${jaCadastrado ? 'disabled' : ''}
+                        style="width:18px;height:18px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;">
+                    <div style="flex:1;">
+                        <div style="font-size:0.88em;font-weight:700;color:var(--brown-dark);">
+                            ${escaparHTML(ins.nome)}
+                            ${jaCadastrado ? '<span style="font-size:0.75em;color:var(--green);margin-left:6px;">✅ já cadastrado</span>' : ''}
+                        </div>
+                        <div style="font-size:0.76em;color:var(--brown-warm);">${ins.qtdEmbalagem}${ins.unidade}</div>
+                    </div>
+                </label>
+                <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                    <span style="font-size:0.82em;color:var(--brown-warm);">R$</span>
+                    <input type="number" id="imp-preco-${idx}" placeholder="0,00" step="0.01" min="0"
+                        ${jaCadastrado ? 'disabled' : ''}
+                        style="width:80px;padding:6px 10px;border:2px solid var(--cream-dark);border-radius:50px;
+                        font-size:0.85em;font-family:'DM Sans',sans-serif;color:var(--brown-dark);
+                        background:var(--cream);outline:none;margin-bottom:0;"
+                        onfocus="document.getElementById('imp-check-${idx}').checked=true">
+                </div>`;
+            lista.appendChild(div);
+        });
+    });
+}
+
+function selecionarCategoria(categoria, btn) {
+    const itensCategoria = INSUMOS_PADRAO
+        .map((ins, idx) => ({ ins, idx }))
+        .filter(({ ins }) => ins.categoria === categoria);
+
+    const todosChecados = itensCategoria.every(({ idx }) => {
+        const el = document.getElementById('imp-check-' + idx);
+        return !el || el.disabled || el.checked;
+    });
+
+    itensCategoria.forEach(({ idx }) => {
+        const el = document.getElementById('imp-check-' + idx);
+        if (el && !el.disabled) el.checked = !todosChecados;
+    });
+
+    btn.textContent = todosChecados ? 'Marcar todos' : 'Desmarcar todos';
+}
+
+// ====================== INSUMOS ======================
+function salvarInsumo() {
+    const nome    = document.getElementById('insumoNome').value.trim();
+    const precoRaw= document.getElementById('insumoPreco').value;
+    const preco   = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
+    const unidade = document.getElementById('insumoUnidade').value;
+    const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 1;
+
+    if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
+    if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
+    if (qtd<=0)   { toast('❌ Informe a quantidade por embalagem.', 'erro'); return; }
+
+    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, timestamp: Date.now() };
+    database.ref('insumos').push(insumo).then(() => {
+        toast('✅ Insumo salvo!');
+        document.getElementById('insumoNome').value  = '';
+        document.getElementById('insumoPreco').value = '';
+        document.getElementById('insumoQtd').value   = '';
+        carregarInsumos();
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function carregarInsumos() {
+    const lista = document.getElementById('lista-insumos');
+    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    database.ref('insumos').once('value', snapshot => {
+        const insumos = [];
+        snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
+        insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        if (insumos.length === 0) {
+            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
+            return;
+        }
+        lista.innerHTML = '';
+        insumos.forEach(i => {
+            const precoPorUnidade = i.unidade === 'un'
+                ? 'R$ ' + i.preco.toFixed(2).replace('.', ',') + '/un'
+                : 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + i.unidade;
+            const div = document.createElement('div');
+            div.className = 'insumo-card';
+            div.innerHTML = `
+                <div class="insumo-info">
+                    <div class="insumo-nome">${escaparHTML(i.nome)}</div>
+                    <div class="insumo-detalhe">
+                        R$ ${i.preco.toFixed(2).replace('.',',')} 
+                        ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
+                        &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
+                    </div>
+                </div>
+                <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>`;
+            lista.appendChild(div);
+        });
+    });
+}
+
+function excluirInsumo(key) {
+    showConfirmModal('Excluir este insumo?', () => {
+        database.ref('insumos/' + key).remove()
+            .then(() => { toast('🗑️ Insumo excluído.'); carregarInsumos(); })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
+}
+
+function popularSelectInsumos() {
+    database.ref('insumos').once('value', snapshot => {
+        const sel = document.getElementById('receitaInsumoSel');
+        sel.innerHTML = '<option value="">Selecione</option>';
+        const insumos = [];
+        snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
+        insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        insumos.forEach(i => {
+            const opt = document.createElement('option');
+            opt.value = i.key;
+            opt.textContent = i.nome + ' (' + (i.unidade === 'un' ? 'un' : i.qtdEmbalagem + i.unidade) + ')';
+            opt.dataset.unidade      = i.unidade;
+            opt.dataset.preco        = i.preco;
+            opt.dataset.qtdEmbalagem = i.qtdEmbalagem;
+            opt.dataset.nome         = i.nome;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+// ====================== RECEITAS ======================
+let ingredientesReceita = [];
+
+function popularSelectReceitaSabor() {
+    const sel = document.getElementById('receitaSabor');
+    sel.innerHTML = '<option value="">Selecione o sabor</option>';
+    const todos = [
+        ...(DADOS_PEDIDOS?.sabores?.trads    || []),
+        ...(DADOS_PEDIDOS?.sabores?.gourmets || []),
+        ...(DADOS_PEDIDOS?.sabores?.frutas   || [])
+    ].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+    todos.forEach(nome => {
+        const opt = document.createElement('option');
+        opt.value = nome; opt.textContent = nome;
+        sel.appendChild(opt);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selInsumo = document.getElementById('receitaInsumoSel');
+    if (selInsumo) {
+        selInsumo.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            const hint = document.getElementById('receitaInsumoHint');
+            if (!opt.value) { hint.textContent = ''; return; }
+            const unidade = opt.dataset.unidade;
+            if (unidade === 'un') {
+                hint.textContent = 'Informe quantas unidades usar na receita base.';
+            } else {
+                hint.textContent = 'Informe a quantidade em ' + unidade + ' usada na receita base.';
+            }
+        });
+    }
+});
+
+function adicionarIngredienteReceita() {
+    const sel    = document.getElementById('receitaInsumoSel');
+    const qtdEl  = document.getElementById('receitaInsumoQtd');
+    const key    = sel.value;
+    const opt    = sel.options[sel.selectedIndex];
+    const qtd    = parseFloat(qtdEl.value) || 0;
+
+    if (!key)   { toast('❌ Selecione um insumo.', 'erro'); return; }
+    if (qtd<=0) { toast('❌ Informe a quantidade.', 'erro'); return; }
+
+    if (ingredientesReceita.find(i => i.insumoKey === key)) {
+        toast('⚠️ Insumo já adicionado. Remova e adicione novamente para alterar.', 'aviso');
+        return;
+    }
+
+    ingredientesReceita.push({
+        insumoKey:    key,
+        nome:         opt.dataset.nome,
+        unidade:      opt.dataset.unidade,
+        preco:        parseFloat(opt.dataset.preco),
+        qtdEmbalagem: parseFloat(opt.dataset.qtdEmbalagem),
+        qtdReceita:   qtd
+    });
+
+    sel.value   = '';
+    qtdEl.value = '';
+    document.getElementById('receitaInsumoHint').textContent = '';
+    renderizarIngredientesReceita();
+}
+
+function renderizarIngredientesReceita() {
+    const lista = document.getElementById('listaIngredientesReceita');
+    if (ingredientesReceita.length === 0) { lista.innerHTML = ''; return; }
+    lista.innerHTML = ingredientesReceita.map((ing, idx) => {
+        const custo = ing.unidade === 'un'
+            ? ing.preco * ing.qtdReceita
+            : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:0.84em;">
+            <div>
+                <strong>${escaparHTML(ing.nome)}</strong>
+                <span style="color:var(--brown-warm);margin-left:6px;">${ing.qtdReceita}${ing.unidade}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="color:var(--green);font-weight:700;">R$ ${custo.toFixed(2).replace('.',',')}</span>
+                <button class="btn-remove" style="padding:4px 10px;font-size:0.76em;" onclick="removerIngredienteReceita(${idx})">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function removerIngredienteReceita(idx) {
+    ingredientesReceita.splice(idx, 1);
+    renderizarIngredientesReceita();
+}
+
+function salvarReceita() {
+    const sabor      = document.getElementById('receitaSabor').value;
+    const rendimento = parseInt(document.getElementById('receitaRendimento').value) || 0;
+
+    if (!sabor)           { toast('❌ Selecione o sabor.', 'erro'); return; }
+    if (rendimento <= 0)  { toast('❌ Informe o rendimento.', 'erro'); return; }
+    if (ingredientesReceita.length === 0) { toast('❌ Adicione ao menos um ingrediente.', 'erro'); return; }
+
+    const custoTotal = ingredientesReceita.reduce((s, ing) => {
+        const c = ing.unidade === 'un'
+            ? ing.preco * ing.qtdReceita
+            : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+        return s + c;
+    }, 0);
+
+    const receita = {
+        sabor,
+        rendimento,
+        ingredientes: ingredientesReceita.map(ing => ({
+            insumoKey:    ing.insumoKey,
+            nome:         ing.nome,
+            unidade:      ing.unidade,
+            preco:        ing.preco,
+            qtdEmbalagem: ing.qtdEmbalagem,
+            qtdReceita:   ing.qtdReceita
+        })),
+        custoTotal,
+        custoPorUnidade: custoTotal / rendimento,
+        timestamp: Date.now()
+    };
+
+    database.ref('receitas').push(receita).then(() => {
+        toast('✅ Receita salva!');
+        document.getElementById('receitaSabor').value      = '';
+        document.getElementById('receitaRendimento').value = '';
+        ingredientesReceita = [];
+        renderizarIngredientesReceita();
+        carregarReceitasLista();
+    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
+
+function carregarReceitasLista() {
+    const lista = document.getElementById('lista-receitas');
+    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    database.ref('receitas').once('value', snapshot => {
+        const receitas = [];
+        snapshot.forEach(child => { const r = child.val(); r.key = child.key; receitas.push(r); });
+        receitas.sort((a,b) => a.sabor.localeCompare(b.sabor, 'pt-BR'));
+        if (receitas.length === 0) {
+            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p>';
+            return;
+        }
+        lista.innerHTML = '';
+        receitas.forEach(r => {
+            const custoPorUn = r.custoPorUnidade || (r.custoTotal / r.rendimento);
+            const card = document.createElement('div');
+            card.className = 'receita-card';
+            const ingsHTML = (r.ingredientes || []).map(ing => {
+                const custo = ing.unidade === 'un'
+                    ? ing.preco * ing.qtdReceita
+                    : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+                return `<div class="receita-ingrediente-linha">
+                    <span>${escaparHTML(ing.nome)} — ${ing.qtdReceita}${ing.unidade}</span>
+                    <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
+                </div>`;
+            }).join('');
+            card.innerHTML = `
+                <div class="receita-header">
+                    <div class="receita-sabor">🍫 ${escaparHTML(r.sabor)}</div>
+                    <span class="receita-custo-badge">R$ ${custoPorUn.toFixed(3).replace('.',',')} /un</span>
+                </div>
+                <div style="font-size:0.8em;color:var(--brown-warm);margin-bottom:10px;">Rendimento: ${r.rendimento} unidades · Custo receita base: R$ ${r.custoTotal.toFixed(2).replace('.',',')}</div>
+                ${ingsHTML}
+                <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+                    <button class="btn-remove" onclick="excluirReceita('${r.key}')">🗑️ Excluir receita</button>
+                </div>`;
+            lista.appendChild(card);
+        });
+    });
+}
+
+function excluirReceita(key) {
+    showConfirmModal('Excluir esta receita?', () => {
+        database.ref('receitas/' + key).remove()
+            .then(() => { toast('🗑️ Receita excluída.'); carregarReceitasLista(); })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
+}
+
+// ====================== CUSTO ESTIMADO DO PEDIDO ======================
+async function calcularCustoPedido() {
+    if (itens.length === 0) {
+        document.getElementById('custo-pedido-estimado').style.display = 'none';
+        return;
+    }
+
+    const snapshot = await database.ref('receitas').once('value');
+    const receitas = {};
+    snapshot.forEach(child => {
+        const r = child.val();
+        receitas[r.sabor] = r;
+    });
+
+    let linhasHTML   = '';
+    let custoTotal   = 0;
+    let algumCusto   = false;
+
+    itens.forEach(item => {
+        const receita = receitas[item.sabor];
+        if (!receita) return;
+        const custoPorUn   = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
+        const custoItem    = custoPorUn * item.quantidade;
+        custoTotal        += custoItem;
+        algumCusto         = true;
+        linhasHTML        += `<div class="custo-pedido-linha">
+            <span>${escaparHTML(item.sabor)} × ${item.quantidade} un</span>
+            <span>R$ ${custoItem.toFixed(2).replace('.',',')}</span>
+        </div>`;
+    });
+
+    if (!algumCusto) {
+        document.getElementById('custo-pedido-estimado').style.display = 'none';
+        return;
+    }
+
+    const valorTotalPedido = parseFloat(
+        (document.getElementById('valorTotal').value || 'R$ 0,00')
+            .replace('R$ ','').replace(/\./g,'').replace(',','.')
+    ) || 0;
+
+    const margem = valorTotalPedido > 0
+        ? ((valorTotalPedido - custoTotal) / valorTotalPedido * 100).toFixed(1)
+        : null;
+
+    document.getElementById('custo-pedido-linhas').innerHTML      = linhasHTML;
+    document.getElementById('custo-pedido-total-valor').textContent = 'R$ ' + custoTotal.toFixed(2).replace('.',',');
+    document.getElementById('custo-pedido-margem').textContent    = margem !== null
+        ? `💹 Margem bruta: ${margem}%  |  Lucro estimado: R$ ${(valorTotalPedido - custoTotal).toFixed(2).replace('.',',')}`
+        : '⚠️ Adicione o valor total para ver a margem';
+    document.getElementById('custo-pedido-estimado').style.display = 'block';
 }
 
 // ====================== INIT ======================
