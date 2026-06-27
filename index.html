@@ -1551,6 +1551,24 @@ function formatarValor(v) {
 function escaparHTML(str) {
     return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function formatarDataComDia(dataInput) {
+    if (!dataInput) return '';
+    const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+    
+    let iso = dataInput;
+    // Se vier em BR (DD/MM/AAAA), converte para ISO
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dataInput)) {
+        const [d, m, a] = dataInput.split('/');
+        iso = `${a}-${m}-${d}`;
+    }
+    
+    const [ano, mes, dia] = iso.split('-').map(Number);
+    const date = new Date(ano, mes - 1, dia); // sem UTC, evita bug de fuso
+    const nomeDia = diasSemana[date.getDay()];
+    const dataBR  = `${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+    
+    return `${dataBR} (${nomeDia})`;
+}
 
 // ====================== MÁSCARAS ======================
 function maskTelefone(v) {
@@ -1750,7 +1768,11 @@ function carregarAndamento() {
                 const p = d.split('/'); return p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : null;
             };
             const da = toDate(a.dataEntrega), db = toDate(b.dataEntrega);
-            if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return da - db;
+            if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
+            if (da - db !== 0) return da - db;
+            // Mesmo dia: ordena pelo horário
+            const ha = a.hora || '00:00', hb = b.hora || '00:00';
+            return ha.localeCompare(hb);
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
@@ -1881,8 +1903,7 @@ function criarCard(pedido, key, finalizado) {
     const infoTel = document.createElement('div');
     infoTel.className = 'pedido-info';
     infoTel.innerHTML = '<strong>Telefone:</strong> ' + escaparHTML(pedido.telefone || 'N/A');
-    const dataTexto = (converterDataParaBR(pedido.dataEntrega) || 'N/A') + (pedido.hora ? ' às ' + pedido.hora : '');
-    const infoData = document.createElement('div');
+    const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (pedido.hora ? ' às ' + pedido.hora + 'h' : '');    const infoData = document.createElement('div');
     infoData.className = 'pedido-info';
     infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo;
     const infoBrig = document.createElement('div');
@@ -2208,7 +2229,10 @@ function filtrarAndamentoPorMes() {
         if (pedidos.length === 0) { lista.innerHTML = `<p style="color:var(--brown-warm);">Nenhum pedido para ${meses[mesAtual]} de ${anoAtual}.</p>`; return; }
         pedidos.sort((a,b) => {
             const toDate = d => { if(!d) return null; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d+'T00:00:00'); const p=d.split('/'); return p.length===3?new Date(p[2],p[1]-1,p[0]):null; };
-            const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return da-db;
+            const da=toDate(a.dataEntrega),db=toDate(b.dataEntrega); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1;
+            if (da - db !== 0) return da - db;
+            const ha = a.hora || '00:00', hb = b.hora || '00:00';
+            return ha.localeCompare(hb);
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
@@ -2479,7 +2503,7 @@ function carregarResumoProd() {
                 const partes = iso.split('-');
                 const dataObj = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
                 const nomeDia = diasNome[dataObj.getDay()];
-                const labelDia = `${nomeDia}, ${String(dataObj.getDate()).padStart(2,'0')}/${mesesNome[dataObj.getMonth()]}`;
+                const labelDia = `${nomeDia}, ${String(dataObj.getDate()).padStart(2,'0')}/${mesesNome[dataObj.getMonth()]}/${anoAtual}`;
                 const { sabores, timeline } = porDia[iso];
                 const entries = Object.entries(sabores).sort((a,b) => b[1]-a[1]);
                 const totalDia = entries.reduce((s,e) => s+e[1], 0);
@@ -2586,7 +2610,7 @@ async function carregarDashboard() {
         let htmlPendentes='';
         pendentesOrdenados.forEach(({p,vPend})=>{
             const st=p.statusPagamento||'', vPago=limparValor(p.valorPago);
-            const dataFormatada=converterDataParaBR(p.dataEntrega);
+            const dataFormatada = formatarDataComDia(p.dataEntrega);
             const statusLabel=st==='Pago Parcialmente'?`<span style="color:var(--amber);font-size:0.75em;font-weight:700;">Parcial</span>`:`<span style="color:var(--red);font-size:0.75em;font-weight:700;">A pagar</span>`;
             htmlPendentes+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><strong>${escaparHTML(p.nome||'N/A')}</strong><span style="color:var(--brown-warm);font-size:0.82em;margin-left:6px;">📅 ${dataFormatada}</span><br>${statusLabel}${st==='Pago Parcialmente'&&vPago>0?`<span style="color:var(--brown-warm);font-size:0.75em;">(pago R$ ${vPago.toFixed(2).replace('.',',')})</span>`:''}</div><strong style="color:var(--amber);white-space:nowrap;margin-left:8px;">R$ ${vPend.toFixed(2).replace('.',',')}</strong></div>`;
         });
@@ -2922,7 +2946,7 @@ function imprimirComprovante(key) {
     database.ref('pedidos/'+key).once('value',snapshot=>{
         const p = snapshot.val();
         if(!p){toast('Pedido não encontrado.','erro');return;}
-        const dataBr = p.dataEntrega||p.data||'';
+        const dataBr = formatarDataComDia(p.dataEntrega || p.data || '');
         const horario = p.hora||'';
         const enderecoRetirada = `
             <div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;">
@@ -2933,8 +2957,8 @@ function imprimirComprovante(key) {
             </div>`;
         let enderecoHTML = '', tipoHTML = '';
         if(p.tipoEntrega === 'entrega' && p.endereco){
-            tipoHTML = `<div><strong>Tipo:</strong> Entrega</div>`;
-            enderecoHTML = `<div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;"><strong>🚚 Endereço de Entrega:</strong><br>${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)}<br>${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
+            tipoHTML = '';
+            enderecoHTML = `<div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;"><strong>🚚 Entrega em:</strong><br>${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)}<br>${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
         } else {
             tipoHTML = '';
             enderecoHTML = enderecoRetirada;
@@ -3041,15 +3065,22 @@ function imprimirComprovante(key) {
                 const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
 
                 // Mensagem para WhatsApp
-const mensagem = 
+const vTotalWpp = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
+const vPagoWpp  = parseFloat((p.valorPago || '').replace('R$','').replace(',','.').trim()) || 0;
+const vFaltaWpp = Math.max(0, vTotalWpp - vPagoWpp);
+
+const blocoPagemento = p.statusPagamento === 'Pago Parcialmente'
+    ? `⚠️ *Pago Parcialmente*\n💚 Pago: R$ ${vPagoWpp.toFixed(2).replace('.', ',')}\n🔴 Falta: R$ ${vFaltaWpp.toFixed(2).replace('.', ',')}`
+    : `💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}`;
+
+let mensagem = 
 `🌸 *Doces Flor — Comprovante*
 
 👤 *Cliente:* ${p.nome || '---'}
 📅 *Data:* ${dataBr}${horario ? ' às ' + horario : ''}
-${p.tipoEntrega === 'entrega' ? '🚚 *Entrega*' : '🏠 *Retirada*'}
 
-💰 *Total:* R$ ${typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00'}
-💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}`;
+💰 *Total:* R$ ${vTotalWpp.toFixed(2).replace('.', ',')}
+${blocoPagemento}`;
 
 if (p.observacoes && p.observacoes.trim()) {
     mensagem += `\n\n📝 *Obs:* ${p.observacoes.trim()}`;
