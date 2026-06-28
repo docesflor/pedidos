@@ -829,7 +829,6 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Histórico de entregas realizadas</span>
     </h2>
-    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
 <div id="totalizador-finalizados" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
     <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
     <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
@@ -1939,15 +1938,13 @@ function criarCard(pedido, key, finalizado) {
     infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeSemHorario;
     const infoBrig = document.createElement('div');
     infoBrig.className = 'pedido-info';
-    infoBrig.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-            <strong>Total:</strong>
-            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
-                <span style="white-space:nowrap;">${escaparHTML(valorFormatado)}</span>
-                <span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 8px;font-size:0.73em;font-weight:600;white-space:nowrap;">🍫 ${totalBrig} un.</span>
-                ${badgeTempo ? `<span style="display:block;width:100%;text-align:right;margin-top:2px;">${badgeTempo}</span>` : ''}
-            </div>
-        </div>`;
+    infoBrig.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:4px;">
+        <span><strong>Total:</strong> ${escaparHTML(valorFormatado)}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;flex-wrap:nowrap;">
+            <span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 8px;font-size:0.73em;font-weight:600;white-space:nowrap;">🍫 ${totalBrig} un.</span>
+            ${badgeTempo}
+        </div>
+    </div>`;
     resumo.appendChild(infoTel);
     resumo.appendChild(infoData);
     resumo.appendChild(infoBrig);
@@ -2569,6 +2566,19 @@ function verificarNotificacoes() {
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
 
 let _notificacaoSomDisparada = false;
+let _audioContextDesbloqueado = false;
+let _audioCtx = null;
+
+function desbloquearAudio() {
+    if (_audioContextDesbloqueado) return;
+    try {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        _audioContextDesbloqueado = true;
+    } catch(e) {}
+}
+document.addEventListener('touchstart', desbloquearAudio, { passive: true });
+document.addEventListener('click', desbloquearAudio, { passive: true });
 
 function dispararNotificacaoSensorial() {
     // Vibração
