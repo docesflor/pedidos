@@ -803,8 +803,8 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <span style="font-size:1em;font-weight:700;color:var(--amber);">📦 Em andamento: <span id="totalAndamentoContagem">0</span> pedidos</span>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;" oninput="filtrarAndamentoPorNome()">
-        <input type="text" id="buscaAndamentoData" placeholder="📅 dd/mm" style="margin-bottom:0;width:90px;flex-shrink:0;" oninput="filtrarAndamentoPorData()" maxlength="5">
+        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
+        <input type="text" id="buscaAndamentoData" placeholder="📅 dd/mm" style="margin-bottom:0;width:110px;min-width:100px;flex-shrink:0;" oninput="filtrarAndamentoPorData()" maxlength="5">
     </div>
     <div id="filtros-status" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
         <button class="chip-filtro active" onclick="filtrarStatus('todos',this)">Todos</button>
@@ -830,31 +830,35 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <span class="secao-sub">Histórico de entregas realizadas</span>
     </h2>
     <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
-    <div id="totalizador-finalizados" style="display:none;">
-        <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
-        <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
-        <select id="filtroFinalizadosMes" style="margin-bottom:0;flex:1;">
-            <option value="">Todos os meses</option>
-            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
-            <option value="2">Março</option><option value="3">Abril</option>
-            <option value="4">Maio</option><option value="5">Junho</option>
-            <option value="6">Julho</option><option value="7">Agosto</option>
-            <option value="8">Setembro</option><option value="9">Outubro</option>
-            <option value="10">Novembro</option><option value="11">Dezembro</option>
-        </select>
-        <select id="filtroFinalizadosAno" style="margin-bottom:0;width:90px;flex-shrink:0;">
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026" selected>2026</option>
-            <option value="2027">2027</option>
-        </select>
-        <button class="btn btn-marrom" style="white-space:nowrap;" onclick="filtrarFinalizadosPorPeriodo()">🔍 Filtrar</button>
-    </div>
-    <button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizados()">📅 Ver Calendário</button>
-    <div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
-    <div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
+<div id="totalizador-finalizados" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
+    <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
+    <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
+</div>
+
+<input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
+
+<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:nowrap;">
+    <select id="filtroFinalizadosMes" style="margin-bottom:0;flex:1;min-width:0;">
+        <option value="">Todos os meses</option>
+        <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+        <option value="2">Março</option><option value="3">Abril</option>
+        <option value="4">Maio</option><option value="5">Junho</option>
+        <option value="6">Julho</option><option value="7">Agosto</option>
+        <option value="8">Setembro</option><option value="9">Outubro</option>
+        <option value="10">Novembro</option><option value="11">Dezembro</option>
+    </select>
+    <select id="filtroFinalizadosAno" style="margin-bottom:0;width:95px;min-width:88px;flex-shrink:0;">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+    </select>
+    <button class="btn btn-marrom" style="white-space:nowrap;flex-shrink:0;" onclick="filtrarFinalizadosPorPeriodo()">🔍 Filtrar</button>
+</div>
+
+<button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizados()">📅 Ver Calendário</button>
+<div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
+<div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
 </section>
 
 <!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
@@ -1932,11 +1936,18 @@ function criarCard(pedido, key, finalizado) {
     const dataTexto = (formatarDataComDia(pedido.dataEntrega) || 'N/A') + (semHorario ? '' : ' às ' + pedido.hora.trim() + 'h');
     const badgeSemHorario = (!finalizado && semHorario) ? '<span style="background:#E0E0E0;color:#666;border-radius:50px;padding:2px 8px;font-size:0.7em;font-weight:600;margin-left:6px;">⏰ sem horário</span>' : '';    const infoData = document.createElement('div');
     infoData.className = 'pedido-info';
-    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeTempo + badgeSemHorario;
+    infoData.innerHTML = '<strong>Data:</strong> ' + escaparHTML(dataTexto) + badgeSemHorario;
     const infoBrig = document.createElement('div');
     infoBrig.className = 'pedido-info';
-    infoBrig.innerHTML = '<strong>Total:</strong> ' + escaparHTML(valorFormatado)
-        + ` <span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 10px;font-size:0.75em;font-weight:600;margin-left:6px;">🍫 ${totalBrig} un.</span>`;
+    infoBrig.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <strong>Total:</strong>
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+                <span style="white-space:nowrap;">${escaparHTML(valorFormatado)}</span>
+                <span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 8px;font-size:0.73em;font-weight:600;white-space:nowrap;">🍫 ${totalBrig} un.</span>
+                ${badgeTempo ? `<span style="display:block;width:100%;text-align:right;margin-top:2px;">${badgeTempo}</span>` : ''}
+            </div>
+        </div>`;
     resumo.appendChild(infoTel);
     resumo.appendChild(infoData);
     resumo.appendChild(infoBrig);
@@ -2537,7 +2548,15 @@ function verificarNotificacoes() {
         aviso.textContent = texto; aviso.style.display = texto ? 'block' : 'none';
         if (totalHoje > 0 && !_notificacaoSomDisparada) {
             _notificacaoSomDisparada = true;
-            dispararNotificacaoSensorial();
+            // Se o usuário já interagiu, toca agora; caso contrário, aguarda o primeiro toque
+            if (_audioContextDesbloqueado) {
+                dispararNotificacaoSensorial();
+            } else {
+                document.addEventListener('touchstart', function _dispararAposTouch() {
+                    document.removeEventListener('touchstart', _dispararAposTouch);
+                    setTimeout(dispararNotificacaoSensorial, 300);
+                }, { passive: true });
+            }
         }
         if (totalProximos > 0) { badge.textContent = totalProximos; badge.style.display = 'flex'; } else { badge.style.display = 'none'; }
         const btnAndamento = document.getElementById('btnAndamento');
@@ -2552,29 +2571,31 @@ setInterval(verificarNotificacoes, 10 * 60 * 1000);
 let _notificacaoSomDisparada = false;
 
 function dispararNotificacaoSensorial() {
-    // Vibração (Android; iOS ignora silenciosamente)
+    // Vibração
     if (navigator.vibrate) {
-        navigator.vibrate([300, 100, 300, 100, 300]);
+        try { navigator.vibrate([400, 150, 400, 150, 600]); } catch(e) {}
     }
-    // Som via Web Audio API
+    // Som — só toca se o usuário já tocou na tela
+    if (!_audioContextDesbloqueado || !_audioCtx) return;
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _audioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
         const tocar = (freq, inicio, duracao) => {
-            const osc = ctx.createOscillator();
+            const osc  = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.frequency.value = freq;
             osc.type = 'sine';
             gain.gain.setValueAtTime(0, ctx.currentTime + inicio);
-            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + inicio + 0.02);
+            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + inicio + 0.03);
             gain.gain.linearRampToValueAtTime(0, ctx.currentTime + inicio + duracao);
             osc.start(ctx.currentTime + inicio);
-            osc.stop(ctx.currentTime + inicio + duracao);
+            osc.stop(ctx.currentTime + inicio + duracao + 0.05);
         };
-        tocar(880, 0,    0.18);
-        tocar(880, 0.22, 0.18);
-        tocar(1100,0.44, 0.28);
+        tocar(880,  0,    0.2);
+        tocar(880,  0.25, 0.2);
+        tocar(1100, 0.5,  0.3);
     } catch(e) {}
 }
 
