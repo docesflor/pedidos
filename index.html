@@ -1043,24 +1043,21 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     <div id="dashboard-resultado" style="display:none;">
         <div class="form-card">
             <p class="form-card-titulo">💰 Resumo Financeiro</p>
-            <div class="linha-dupla" style="margin-bottom:12px;">
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Faturamento</p>
                     <p id="dashFaturamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
-                    <p id="dashCarteira" style="font-size:0.78em;color:var(--brown-warm);margin-top:2px;">📂 Carteira: <strong id="dashCarteiraValor">R$ 0,00</strong></p>
                     <p id="dashFaturamentoComparativo" style="font-size:0.72em;margin-top:4px;font-weight:600;"></p>
                 </div>
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Ticket Médio</p>
                     <p id="dashTicket" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
                 </div>
-            </div>
-            <div class="linha-dupla">
-                <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
+                <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                     <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Gastos</p>
                     <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
                 </div>
-                <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;">
+                <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
                     <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Lucro Líquido</p>
                     <p id="dashLucro" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
                 </div>
@@ -2120,7 +2117,7 @@ function abrirTemplates(key) {
         const total    = typeof p.valorTotal === 'number' ? 'R$ ' + p.valorTotal.toFixed(2).replace('.', ',') : (p.valorTotal || '');
         const vPago    = parseFloat((p.valorPago || '').replace('R$','').replace(',','.').trim()) || 0;
         const itensResumo = (p.itens || []).map(i => `${i.quantidade}x ${i.sabor || i.nome}`).join(', ');
-        const tipoLocal = p.tipoEntrega === 'entrega' ? 'entregues no endereço combinado' : 'prontos para retirada';
+        const tipoLocal = p.tipoEntrega === 'entrega' ? 'entregues no endereço combinado' : 'disponíveis para retirada';
         const enderecoRetirada = 'Rua Martim Kochella, 350, AP D508 — Ilha da Figueira, Jaraguá do Sul';
 
         const templates = [
@@ -2846,7 +2843,6 @@ async function carregarDashboard() {
         });
         const ticket = entregues>0?faturamento/entregues:0;
         document.getElementById('dashFaturamento').textContent = 'R$ '+faturamento.toFixed(2).replace('.',',');
-        document.getElementById('dashCarteiraValor').textContent = 'R$ '+(faturamento+totalPendente).toFixed(2).replace('.',',');
         const elComp = document.getElementById('dashFaturamentoComparativo');
         const mesesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         if(mes!==null&&faturamentoMesAnterior>0){const diff=((faturamento-faturamentoMesAnterior)/faturamentoMesAnterior)*100;const seta=diff>=0?'↑':'↓';elComp.style.color=diff>=0?'var(--green)':'var(--red)';elComp.textContent=`${seta} ${Math.abs(diff).toFixed(0)}% vs ${mesesNome[mesAnterior]}`;}
@@ -2985,7 +2981,43 @@ async function carregarDashboard() {
                 document.getElementById('dashLucro').textContent = 'R$ ' + lucro.toFixed(2).replace('.', ',');
                 document.getElementById('dashLucro').style.color = lucro >= 0 ? '#065F46' : 'var(--red)';
                 document.getElementById('dashFaturamento').textContent = 'R$ ' + faturamentoTotal.toFixed(2).replace('.', ',');
-                document.getElementById('dashCarteiraValor').textContent = 'R$ ' + (faturamentoTotal + totalPendente).toFixed(2).replace('.', ',');
+
+                // ── Projeção do mês ──
+                let projecao = 0;
+                if (mes !== null) {
+                    snapshot.forEach(child => {
+                        const p = child.val();
+                        if (!p.dataEntrega) return;
+                        const st = p.statusPagamento || '';
+                        if (st === 'entregue' || st === 'Pago') return;
+                        let dataP;
+                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) {
+                            const pts = p.dataEntrega.split('/');
+                            dataP = new Date(pts[2], pts[1]-1, pts[0]);
+                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) {
+                            const pts = p.dataEntrega.split('-');
+                            dataP = new Date(pts[0], pts[1]-1, pts[2]);
+                        } else return;
+                        if (dataP.getFullYear() !== ano || dataP.getMonth() !== mes) return;
+                        projecao += limparValor(p.valorTotal);
+                    });
+                }
+                let elProjecao = document.getElementById('dashProjecao');
+                if (!elProjecao) {
+                    elProjecao = document.createElement('p');
+                    elProjecao.id = 'dashProjecao';
+                    elProjecao.style.cssText = 'font-size:0.82em;margin-top:6px;font-weight:600;padding:6px 10px;background:rgba(232,148,58,0.12);border-radius:8px;';
+                    document.getElementById('dashFaturamento').parentElement.appendChild(elProjecao);
+                }
+                if (mes !== null && projecao > 0) {
+                    const totalComProjecao = faturamentoTotal + projecao;
+                    elProjecao.style.color = 'var(--brown-warm)';
+                    elProjecao.style.display = 'block';
+                    elProjecao.innerHTML = '📈 Projeção: <strong style="color:var(--brown-dark);">R$ ' + totalComProjecao.toFixed(2).replace('.', ',') + '</strong>'
+                        + ' <span style="font-size:0.85em;opacity:0.8;">(+R$ ' + projecao.toFixed(2).replace('.', ',') + ' em aberto)</span>';
+                } else {
+                    elProjecao.style.display = 'none';
+                }
                 const cardEventos = document.getElementById('cardEventosDash');
                 const listaEventos = document.getElementById('dashEventosLista');
                 const totalEventosEl = document.getElementById('dashEventosTotal');
