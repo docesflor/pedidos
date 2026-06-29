@@ -1300,19 +1300,19 @@ function precoUnitario(sabor, qtd) {
 function precoUnitarioPorFaixa(cat, qtdTotal) {
     if (cat === 'trad') {
         if (qtdTotal >= 100) return 1.10;
-        if (qtdTotal >= 75)  return 1.13;
+        if (qtdTotal >= 75)  return 85/75;
         if (qtdTotal >= 50)  return 1.20;
         if (qtdTotal >= 25)  return 1.40;
         return 1.50;
     } else if (cat === 'frutas') {
         if (qtdTotal >= 100) return 1.25;
-        if (qtdTotal >= 75)  return 1.33;
+        if (qtdTotal >= 75)  return 100/75;
         if (qtdTotal >= 50)  return 1.40;
         if (qtdTotal >= 25)  return 1.60;
         return 1.75;
     } else {
         if (qtdTotal >= 100) return 1.40;
-        if (qtdTotal >= 75)  return 1.53;
+        if (qtdTotal >= 75)  return 115/75;
         if (qtdTotal >= 50)  return 1.60;
         if (qtdTotal >= 25)  return 1.80;
         return 2.00;
