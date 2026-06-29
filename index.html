@@ -667,24 +667,34 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <select id="sabor">
             <option value="">Selecione o sabor</option>
             <optgroup label="Tradicionais">
-                <option value="Amendoim">Amendoim</option>
-                <option value="Beijinho">Beijinho</option>
-                <option value="Brigadeiro">Brigadeiro</option>
-                <option value="Café">Café</option>
-                <option value="Dois Amores">Dois Amores</option>
-                <option value="Leite Ninho">Leite Ninho</option>
-                <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
-                <option value="Prestígio">Prestígio</option>
-                <option value="Sensação">Sensação</option>
+            <option value="Amendoim">Amendoim</option>
+            <option value="Beijinho">Beijinho</option>
+            <option value="Brigadeiro">Brigadeiro</option>
+            <option value="Café">Café</option>
+            <option value="Chocotone">Chocotone</option>
+            <option value="Dois Amores">Dois Amores</option>
+            <option value="Leite Ninho">Leite Ninho</option>
+            <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
+            <option value="Prestígio">Prestígio</option>
+            <option value="Quebra Queixo">Quebra Queixo</option>
+            <option value="Sensação">Sensação</option>
+            <option value="Tapioca">Tapioca</option>
             </optgroup>
             <optgroup label="Gourmet">
-                <option value="Chocolate Gourmet Preto">Chocolate Gourmet Preto</option>
-                <option value="Churros">Churros</option>
-                <option value="Confete">Confete</option>
-                <option value="Ferrero Rocher">Ferrero Rocher</option>
-                <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
-                <option value="Negresco">Negresco</option>
-                <option value="Ovomaltine">Ovomaltine</option>
+            <option value="Banoffee">Banoffee</option>
+            <option value="Black Cacau">Black Cacau</option>
+            <option value="Canjica">Canjica</option>
+            <option value="Chocolate Gourmet">Chocolate Gourmet</option>
+            <option value="Churros">Churros</option>
+            <option value="Confete">Confete</option>
+            <option value="Doritos">Doritos</option>
+            <option value="Ferrero Rocher">Ferrero Rocher</option>
+            <option value="Floresta Negra">Floresta Negra</option>
+            <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
+            <option value="Menta">Menta</option>
+            <option value="Negresco">Negresco</option>
+            <option value="Nutella">Nutella</option>
+            <option value="Ovomaltine">Ovomaltine</option>
             </optgroup>
             <optgroup label="Frutas">
                 <option value="Amora">Amora</option>
@@ -693,6 +703,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
                 <option value="Frutas Vermelhas">Frutas Vermelhas</option>
                 <option value="Limão">Limão</option>
                 <option value="Maracujá">Maracujá</option>
+                <option value="Milho">Milho</option>
                 <option value="Uva">Uva</option>
             </optgroup>
         </select>
@@ -1175,9 +1186,9 @@ let DADOS_PEDIDOS = null;
 async function carregarDadosPedidos() {
     DADOS_PEDIDOS = {
         "sabores": {
-            "trads":    ["Amendoim","Beijinho","Brigadeiro","Café","Dois Amores","Leite Ninho","Moranguinho (Nesquik)","Prestígio","Sensação"],
-            "gourmets": ["Chocolate Gourmet Preto","Churros","Confete","Ferrero Rocher","Leite Ninho com Nutella","Negresco","Ovomaltine"],
-            "frutas":   ["Amora","Banana","Cereja","Frutas Vermelhas","Limão","Maracujá","Uva"]
+            "trads": ["Amendoim","Beijinho","Brigadeiro","Café","Chocotone","Dois Amores","Leite Ninho","Moranguinho (Nesquik)","Prestígio","Quebra Queixo","Sensação","Tapioca"],
+            "gourmets": ["Banoffee","Black Cacau","Canjica","Chocolate Gourmet","Churros","Confete","Doritos","Ferrero Rocher","Floresta Negra","Leite Ninho com Nutella","Menta","Negresco","Nutella","Ovomaltine"],
+            "frutas": ["Amora","Banana","Cereja","Frutas Vermelhas","Limão","Maracujá","Milho","Uva"]
         },
         "precos": {
             "trad":    {"25":35,"50":60,"75":85,"100":110,"avulso":1.50},
@@ -1275,7 +1286,7 @@ const TABELA_PRECOS = {
 const CATEGORIA_SABOR = {
     'Amendoim':'trad','Beijinho':'trad','Brigadeiro':'trad','Café':'trad',
     'Dois Amores':'trad','Leite Ninho':'trad','Moranguinho (Nesquik)':'trad','Prestígio':'trad','Sensação':'trad',
-    'Chocolate Gourmet Preto':'gourmet','Confete':'gourmet','Churros':'gourmet',
+    'Chocolate Gourmet':'gourmet','Confete':'gourmet','Churros':'gourmet',
     'Ferrero Rocher':'gourmet','Leite Ninho com Nutella':'gourmet','Negresco':'gourmet','Ovomaltine':'gourmet',
     'Amora':'frutas','Banana':'frutas','Cereja':'frutas',
     'Frutas Vermelhas':'frutas','Limão':'frutas','Maracujá':'frutas','Uva':'frutas'
@@ -1403,7 +1414,7 @@ function renderizarItens() {
             const precoAuto    = grupo.precoAuto;
             const precoEfetivo = item.precoManual !== undefined ? item.precoManual : precoAuto;
             const subtotal     = (precoEfetivo * item.quantidade).toFixed(2).replace('.', ',');
-            const nomeSabor    = item.sabor.replace('Chocolate Gourmet Preto', 'Choc. Preto');
+            const nomeSabor    = item.sabor.replace('Chocolate Gourmet', 'Choc. Gourmet');
             const temDesconto  = item.precoManual !== undefined && item.precoManual < precoAuto;
             const opcoesHTML   = grupo.faixas.map(f => {
                 const partes = f.label.split(' — ');
@@ -2125,7 +2136,7 @@ function editarPedido(key) {
 function reenviarWhatsApp(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
         const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
-        function abreviar(s) { return (s||'').replace('Chocolate Gourmet Preto','Choc. Preto'); }
+        function abreviar(s) { return (s||'').replace('Chocolate Gourmet', 'Choc. Gourmet'); }
         let msg = `Pedidos - Doces Flor\n\nNome: ${p.nome||''}\nTelefone: ${p.telefone||''}\nData: ${formatarDataComDia(p.dataEntrega||'')}${p.hora && p.hora.trim() ? ' às ' + p.hora.trim() + 'h' : ''}\n`;
         if (p.tipoEntrega === 'entrega' && p.endereco) {
             const e = p.endereco;
