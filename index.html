@@ -408,7 +408,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     .pedido-header { flex-direction: column; align-items: flex-start; gap: 6px; }
     .pedido-nome { font-size: 1.15em; }
     .pedido-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
-    .pedido-botoes .btn { min-width: unset; width: 100%; font-size: 0.73em; padding: 7px 4px; text-align: center; }
+    .pedido-botoes .btn { min-width: unset; width: 100%; font-size: 0.70em; padding: 7px 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .btn-bloco { font-size: 0.88em; padding: 12px; }
     .calendario-header h3 { font-size: 0.95em; }
     .btn-mes { padding: 6px 10px; font-size: 0.76em; }
@@ -424,6 +424,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     .secao-titulo { font-size: 1.2rem; }
     .pedido-botoes { grid-template-columns: 1fr; }
     #dashboard-resultado .linha-dupla { flex-direction: column; }
+    #dashboard-resultado > .form-card div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
     .linha-dupla { flex-direction: column; gap: 0; }
     .linha-dupla > div, .linha-dupla > div.estreito { flex: 1; width: 100%; }
 }
