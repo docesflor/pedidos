@@ -1328,6 +1328,24 @@ function precoUnitarioPorFaixa(cat, qtdTotal) {
     }
 }
 
+// ── Combo Misto (Tradicional + Gourmet) ──
+function calcularDescontoCombo(qtdTrad, qtdGourmet, qtdFrutas, precoTradAuto, precoGourmetAuto) {
+    // Combo só se aplica se nenhum item tiver preço manual aplicado
+    if (itens.some(i => i.precoManual !== undefined)) return 0;
+    // Combo só vale para trad + gourmet (sem frutas misturadas)
+    if (qtdFrutas > 0) return 0;
+
+    if (qtdTrad === 50 && qtdGourmet === 50) {
+        const soma = (precoTradAuto * 50) + (precoGourmetAuto * 50);
+        return Math.max(0, soma - 125); // Cento Misto = R$ 125,00
+    }
+    if (qtdTrad === 25 && qtdGourmet === 25) {
+        const soma = (precoTradAuto * 25) + (precoGourmetAuto * 25);
+        return Math.max(0, soma - 70); // Caixa Mista 50 un = R$ 70,00
+    }
+    return 0;
+}
+
 function faixaMaisProxima(pctGour) {
     const faixas = [0, 25, 50, 75, 100];
     return faixas.reduce((prev, curr) => Math.abs(curr - pctGour) < Math.abs(prev - pctGour) ? curr : prev);
@@ -1471,6 +1489,7 @@ function resetarPreco(id) {
 }
 
 function recalcularDescontoManual() {
+    delete document.getElementById('valorDesconto').dataset.comboAuto;
     const qtdTrad    = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='trad').reduce((s,i)=>s+i.quantidade,0);
     const qtdFrutas  = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='frutas').reduce((s,i)=>s+i.quantidade,0);
     const qtdGourmet = itens.filter(i => CATEGORIA_SABOR[i.sabor]==='gourmet').reduce((s,i)=>s+i.quantidade,0);
@@ -1559,7 +1578,25 @@ function atualizarValorBrigadeiros() {
         document.getElementById('infoTrad').innerHTML    = qtdTrad + ' un. × R$ ' + precoTradAuto.toFixed(2).replace('.',',') + '<br><strong>R$ ' + (precoTradAuto * qtdTrad).toFixed(2).replace('.',',') + '</strong>';
         document.getElementById('infoFrutas').innerHTML  = qtdFrutas + ' un. × R$ ' + precoFrutasAuto.toFixed(2).replace('.',',') + '<br><strong>R$ ' + (precoFrutasAuto * qtdFrutas).toFixed(2).replace('.',',') + '</strong>';
         document.getElementById('infoGourmet').innerHTML = qtdGourmet + ' un. × R$ ' + precoGourmetAuto.toFixed(2).replace('.',',') + '<br><strong>R$ ' + (precoGourmetAuto * qtdGourmet).toFixed(2).replace('.',',') + '</strong>';
-    } else { contador.style.display = 'none'; }
+} else { contador.style.display = 'none'; }
+
+    // ── Aplica desconto automático se for Combo Misto ──
+    const campoDescontoCombo = document.getElementById('valorDesconto');
+    const descontoCombo = calcularDescontoCombo(qtdTrad, qtdGourmet, qtdFrutas, precoTradAuto, precoGourmetAuto);
+    if (descontoCombo > 0) {
+        campoDescontoCombo.value = 'R$ ' + descontoCombo.toFixed(2).replace('.', ',');
+        campoDescontoCombo.readOnly = true;
+        campoDescontoCombo.style.color = 'var(--green)';
+        campoDescontoCombo.style.fontWeight = '700';
+        campoDescontoCombo.dataset.comboAuto = '1';
+    } else if (campoDescontoCombo.dataset.comboAuto === '1') {
+        campoDescontoCombo.value = '';
+        campoDescontoCombo.readOnly = false;
+        campoDescontoCombo.style.color = '';
+        campoDescontoCombo.style.fontWeight = '';
+        delete campoDescontoCombo.dataset.comboAuto;
+    }
+
     atualizarTotal();
 }
 
