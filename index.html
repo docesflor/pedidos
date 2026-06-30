@@ -1914,6 +1914,7 @@ async function abaterEstoquePorPedido(itensPedido) {
     if (avisosEstoque.length > 0) {
         toast('⚠️ Estoque baixo: ' + avisosEstoque.join(', '), 'aviso');
     }
+    verificarEstoqueBaixo();
 }
 
 // ====================== CARREGAR ANDAMENTO ======================
@@ -2213,7 +2214,9 @@ function criarCard(pedido, key, finalizado) {
     wrapper.appendChild(card);
     return wrapper;
 }
-
+function removerAcentos(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
 function gerarPayloadPix(chave, nomeRecebedor, cidade, valor, txId) {
     function tlv(id, value) {
         const len = String(value.length).padStart(2, '0');
@@ -2255,9 +2258,9 @@ function gerarCobrancaPix(key) {
         const vRestante = Math.max(0, vTotal - vPago);
 
         // ⚠️ TROQUE pelos seus dados reais de chave Pix:
-        const CHAVE_PIX = '47992745896'; // sua chave Pix real (CPF, telefone, e-mail ou aleatória)
-        const NOME_RECEBEDOR = 'ALANA NERIS DE OLIVEIRA'; // exatamente como está no banco, sem acento
-        const CIDADE = 'JARAGUÁ DO SUL';
+        const CHAVE_PIX = '+5547992745896'; // chave tipo telefone PRECISA do +55 na frente
+        const NOME_RECEBEDOR = removerAcentos('ALANA NERIS DE OLIVEIRA');
+        const CIDADE = removerAcentos('JARAGUA DO SUL');
 
         const payload = gerarPayloadPix(CHAVE_PIX, NOME_RECEBEDOR, CIDADE, vRestante, 'PED' + key.substr(-8));
 
@@ -2874,10 +2877,15 @@ setInterval(verificarNotificacoes, 10 * 60 * 1000);
 function verificarEstoqueBaixo() {
     database.ref('insumos').once('value', snapshot => {
         let qtdBaixo = 0;
+        const nomesBaixo = [];
         snapshot.forEach(child => {
             const i = child.val();
-            if (i.estoqueMinimo > 0 && (i.estoqueAtual || 0) <= i.estoqueMinimo) qtdBaixo++;
+            if (i.estoqueMinimo > 0 && (i.estoqueAtual || 0) <= i.estoqueMinimo) {
+                qtdBaixo++;
+                nomesBaixo.push(i.nome);
+            }
         });
+        // Badge na gaveta (mobile)
         const gbtn = document.getElementById('gbtnGastos');
         if (gbtn) {
             let badge = gbtn.querySelector('.gaveta-badge');
@@ -2885,6 +2893,26 @@ function verificarEstoqueBaixo() {
                 if (!badge) { badge = document.createElement('span'); badge.className='gaveta-badge'; gbtn.appendChild(badge); }
                 badge.style.display = 'flex'; badge.textContent = qtdBaixo;
             } else if (badge) { badge.style.display = 'none'; }
+        }
+        // Badge no menu de topo (desktop) — botão "💸 Gastos"
+        const btnTopoGastos = [...document.querySelectorAll('.menu-btn')].find(b => b.getAttribute('onclick')?.includes("'gastos'"));
+        if (btnTopoGastos) {
+            const wrapper = btnTopoGastos.closest('.menu-btn-wrapper') || btnTopoGastos.parentElement;
+            wrapper.style.position = 'relative';
+            let badgeTopo = wrapper.querySelector('.badge-estoque');
+            if (qtdBaixo > 0) {
+                if (!badgeTopo) {
+                    badgeTopo = document.createElement('span');
+                    badgeTopo.className = 'badge badge-estoque';
+                    wrapper.appendChild(badgeTopo);
+                }
+                badgeTopo.textContent = qtdBaixo;
+                badgeTopo.style.display = 'flex';
+            } else if (badgeTopo) { badgeTopo.style.display = 'none'; }
+        }
+        // Aviso fixo no topo, igual ao de pedidos urgentes
+        if (qtdBaixo > 0) {
+            toast('⚠️ ' + qtdBaixo + ' insumo(s) com estoque baixo: ' + nomesBaixo.slice(0,3).join(', ') + (nomesBaixo.length > 3 ? '...' : ''), 'aviso');
         }
     });
 }
@@ -4622,7 +4650,16 @@ async function abrirPrevisaoCompra() {
         const estoqueAtual = insumo.estoqueAtual || 0;
         const falta = necessario - estoqueAtual;
         if (falta > 0) {
-            itensComprar.push({ nome: insumo.nome, unidade: insumo.unidade, necessario, estoqueAtual, falta, custoEstimado: (insumo.preco / insumo.qtdEmbalagem) * falta });
+            const qtdEmbalagem = insumo.qtdEmbalagem || 1;
+            const embalagensNecessarias = insumo.unidade === 'un' ? Math.ceil(falta) : Math.ceil(falta / qtdEmbalagem);
+            itensComprar.push({
+                nome: insumo.nome,
+                unidade: insumo.unidade,
+                necessario, estoqueAtual, falta,
+                qtdEmbalagem,
+                embalagensNecessarias,
+                custoEstimado: (insumo.preco / qtdEmbalagem) * falta
+            });
         }
     });
 
@@ -4636,13 +4673,17 @@ async function abrirPrevisaoCompra() {
     const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
     let html = '<div class="form-card"><p class="form-card-titulo">🛒 Lista de Compras Sugerida</p>';
     itensComprar.forEach(i => {
+        const labelEmbalagem = i.unidade === 'un'
+            ? `${i.embalagensNecessarias} un.`
+            : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
             <div>
                 <strong>${escaparHTML(i.nome)}</strong>
                 <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${i.necessario.toFixed(1)}${i.unidade} | Em estoque: ${i.estoqueAtual}${i.unidade}</div>
             </div>
             <div style="text-align:right;">
-                <div style="font-weight:700;color:#92400E;">Comprar: ${i.falta.toFixed(1)}${i.unidade}</div>
+                <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
+                <div style="font-size:0.72em;color:var(--brown-warm);">(${i.falta.toFixed(0)}${i.unidade} faltando)</div>
                 <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
             </div>
         </div>`;
