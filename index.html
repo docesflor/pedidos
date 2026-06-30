@@ -470,8 +470,8 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .evento-card-completo.evento-finalizado { border-color: #86EFAC; box-shadow: 0 4px 18px rgba(74,124,89,0.12); }
 .evento-card-completo.evento-finalizado .evento-card-nome { color: #065F46; }
 /* Templates de mensagem */
-.modal-templates { position:fixed;inset:0;background:rgba(43,18,6,0.6);display:flex;align-items:flex-end;justify-content:center;z-index:3000;backdrop-filter:blur(4px); }
-.modal-templates-box { background:var(--cream);border-radius:24px 24px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;box-shadow:0 -8px 40px rgba(0,0,0,0.2); }
+.modal-templates { position:fixed;inset:0;background:rgba(43,18,6,0.6);display:flex;align-items:center;justify-content:center;z-index:3000;backdrop-filter:blur(4px); }
+.modal-templates-box { background:var(--cream);border-radius:24px;padding:24px 20px 32px;width:100%;max-width:480px;box-shadow:0 30px 80px rgba(0,0,0,0.4); }
 .modal-templates-titulo { font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center; }
 .template-btn { display:flex;align-items:flex-start;gap:12px;width:100%;background:var(--white);border:1.5px solid var(--cream-dark);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;transition:all 0.2s;font-family:'DM Sans',sans-serif; }
 .template-btn:hover { border-color:var(--amber);background:rgba(232,148,58,0.05); }
@@ -1884,16 +1884,31 @@ async function salvarPedido() {
         valorPago: getVal('valorPago'), statusPagamento: getVal('statusPagamento'),
         observacoes: getVal('observacoes'), timestamp: Date.now()
     };
-    const refPath = window.pedidoEmEdicao ? 'pedidos/' + window.pedidoEmEdicao : 'pedidos/' + Date.now();
-    const ehNovoPedido = !window.pedidoEmEdicao;
-    database.ref(refPath).set(pedido).then(() => {
-        toast(window.pedidoEmEdicao ? '✅ Pedido atualizado!' : '✅ Pedido salvo!');
-        if (ehNovoPedido) abaterEstoquePorPedido(pedido.itens);
-        limparFormulario();
-    }).catch(err => toast('❌ Erro ao salvar: ' + err.message, 'erro'));
+const refPath = window.pedidoEmEdicao ? 'pedidos/' + window.pedidoEmEdicao : 'pedidos/' + Date.now();
+const ehNovoPedido = !window.pedidoEmEdicao;
+
+async function salvarEAjustarEstoque() {
+    let itensAntigos = null;
+    if (!ehNovoPedido) {
+        const snapAntigo = await database.ref(refPath).once('value');
+        const pedidoAntigo = snapAntigo.val();
+        itensAntigos = pedidoAntigo ? pedidoAntigo.itens : null;
+    }
+    await database.ref(refPath).set(pedido);
+    toast(window.pedidoEmEdicao ? '✅ Pedido atualizado!' : '✅ Pedido salvo!');
+    if (ehNovoPedido) {
+        await ajustarEstoquePorPedido(pedido.itens, 'abater');
+    } else {
+        if (itensAntigos) await ajustarEstoquePorPedido(itensAntigos, 'devolver');
+        await ajustarEstoquePorPedido(pedido.itens, 'abater');
+    }
+    limparFormulario();
+}
+salvarEAjustarEstoque().catch(err => toast('❌ Erro ao salvar: ' + err.message, 'erro'));
 }
 
-async function abaterEstoquePorPedido(itensPedido) {
+async function ajustarEstoquePorPedido(itensPedido, operacao) {
+    // operacao: 'abater' (consome estoque) ou 'devolver' (repõe estoque)
     if (!itensPedido || itensPedido.length === 0) return;
     const snapshotReceitas = await database.ref('receitas').once('value');
     const receitasMap = {};
@@ -1906,7 +1921,8 @@ async function abaterEstoquePorPedido(itensPedido) {
     const consumoTotal = {};
 
     itensPedido.forEach(item => {
-        const receita = receitasMap[item.sabor];
+        const sabor = item.sabor || item.nome;
+        const receita = receitasMap[sabor];
         if (!receita || !receita.ingredientes) return;
         const fator = item.quantidade / receita.rendimento;
         receita.ingredientes.forEach(ing => {
@@ -1920,11 +1936,16 @@ async function abaterEstoquePorPedido(itensPedido) {
     Object.entries(consumoTotal).forEach(([insumoKey, consumido]) => {
         const insumo = insumosAtuais[insumoKey];
         if (!insumo) return;
-        const novoEstoque = Math.max(0, (insumo.estoqueAtual || 0) - consumido);
-        updates['insumos/' + insumoKey + '/estoqueAtual'] = novoEstoque;
-        if (insumo.estoqueMinimo > 0 && novoEstoque <= insumo.estoqueMinimo) {
-            avisosEstoque.push(insumo.nome);
+        let novoEstoque;
+        if (operacao === 'devolver') {
+            novoEstoque = (insumo.estoqueAtual || 0) + consumido;
+        } else {
+            novoEstoque = Math.max(0, (insumo.estoqueAtual || 0) - consumido);
+            if (insumo.estoqueMinimo > 0 && novoEstoque <= insumo.estoqueMinimo) {
+                avisosEstoque.push(insumo.nome);
+            }
         }
+        updates['insumos/' + insumoKey + '/estoqueAtual'] = novoEstoque;
     });
 
     if (Object.keys(updates).length > 0) {
@@ -2322,11 +2343,18 @@ function finalizarPedido(key) {
 }
 
 function excluirPedido(key) {
-    showConfirmModal('⚠️ Excluir este pedido? Ação irreversível.', function() {
-        database.ref('pedidos/' + key).remove().then(() => {
-            toast('🗑️ Pedido excluído.'); carregarAndamento(); carregarFinalizados();
+    showConfirmModal('⚠️ Excluir este pedido? Ação irreversível.', async function() {
+        try {
+            const snap = await database.ref('pedidos/' + key).once('value');
+            const pedido = snap.val();
+            await database.ref('pedidos/' + key).remove();
+            if (pedido && pedido.itens) await ajustarEstoquePorPedido(pedido.itens, 'devolver');
+            toast('🗑️ Pedido excluído. Estoque restituído.');
+            carregarAndamento(); carregarFinalizados();
             if (mesAtual !== undefined) renderizarCalendario();
-        }).catch(err => toast('Erro: ' + err.message, 'erro'));
+        } catch (err) {
+            toast('Erro: ' + err.message, 'erro');
+        }
     });
 }
 
@@ -4634,9 +4662,7 @@ function carregarInsumos() {
         }
         lista.innerHTML = '';
         insumos.forEach(i => {
-            const precoPorUnidade = i.unidade === 'un'
-                ? 'R$ ' + i.preco.toFixed(2).replace('.', ',') + '/un'
-                : 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + i.unidade;
+            const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
             const estoqueAtual  = i.estoqueAtual || 0;
             const estoqueMinimo = i.estoqueMinimo || 0;
             const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
@@ -4886,9 +4912,7 @@ function renderizarIngredientesReceita() {
     const lista = document.getElementById('listaIngredientesReceita');
     if (ingredientesReceita.length === 0) { lista.innerHTML = ''; return; }
     lista.innerHTML = ingredientesReceita.map((ing, idx) => {
-        const custo = ing.unidade === 'un'
-            ? ing.preco * ing.qtdReceita
-            : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+        const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:0.84em;">
             <div>
                 <strong>${escaparHTML(ing.nome)}</strong>
@@ -4916,9 +4940,7 @@ function salvarReceita() {
     if (ingredientesReceita.length === 0) { toast('❌ Adicione ao menos um ingrediente.', 'erro'); return; }
 
     const custoTotal = ingredientesReceita.reduce((s, ing) => {
-        const c = ing.unidade === 'un'
-            ? ing.preco * ing.qtdReceita
-            : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+        const c = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
         return s + c;
     }, 0);
 
@@ -4965,9 +4987,7 @@ function carregarReceitasLista() {
             const card = document.createElement('div');
             card.className = 'receita-card';
             const ingsHTML = (r.ingredientes || []).map(ing => {
-                const custo = ing.unidade === 'un'
-                    ? ing.preco * ing.qtdReceita
-                    : (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+                const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
                 return `<div class="receita-ingrediente-linha">
                     <span>${escaparHTML(ing.nome)} — ${ing.qtdReceita}${ing.unidade}</span>
                     <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
