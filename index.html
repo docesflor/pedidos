@@ -3427,9 +3427,9 @@ function calcularAvaliacoes(ano, mes) {
             const emoji = EMOJI_NOTA[a.nota] || '😐';
             const label = LABEL_NOTA[a.nota] || '';
             const dataFormatada = formatarDataComDia(a.dataEntrega).split(' (')[0];
-            html += `<div style="padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;">
+            html += `<div style="padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;" onclick="irParaPedidoEspecifico('${a.key}')" onmouseover="this.style.background='#F0E6D3'" onmouseout="this.style.background='var(--cream)'">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-                    <strong style="font-size:0.86em;color:var(--brown-dark);">${escaparHTML(a.nome)}</strong>
+                    <strong style="font-size:0.86em;color:var(--brown-dark);">${escaparHTML(a.nome)} <span style="font-size:0.85em;color:var(--amber);">↗</span></strong>
                     <span style="font-size:1em;" title="${label}">${emoji}</span>
                 </div>
                 <div style="font-size:0.72em;color:var(--brown-warm);margin-bottom:${a.comentario ? '4px' : '0'};">📅 ${dataFormatada}</div>
@@ -3534,6 +3534,31 @@ function exportarDashboardPDF() {
 
     doc.save(`relatorio-doces-flor-${periodo.replace(' ','-')}.pdf`);
     toast('📄 PDF exportado!');
+}
+
+function irParaPedidoEspecifico(key) {
+    document.querySelectorAll('.secao').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('secao-finalizados').classList.add('active');
+    window.scrollTo(0, 0);
+    const lista = document.getElementById('lista-finalizados');
+    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    database.ref('pedidos/' + key).once('value', snapshot => {
+        const p = snapshot.val();
+        if (!p) { lista.innerHTML = '<p style="color:var(--brown-warm);">Pedido não encontrado.</p>'; return; }
+        lista.innerHTML = '';
+        const pInfo = document.createElement('p');
+        pInfo.style.cssText = 'color:var(--brown-warm);font-size:0.85em;margin-bottom:12px;';
+        pInfo.innerHTML = '⭐ Pedido da avaliação — <a href="#" onclick="carregarFinalizados();return false;" style="color:var(--amber);">ver todos</a>';
+        lista.appendChild(pInfo);
+        const card = criarCard(p, key, true);
+        lista.appendChild(card);
+        setTimeout(() => {
+            const header = card.querySelector('.pedido-header');
+            if (header) header.click();
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    });
 }
 
 function irParaPedidosDash(tipo) {
