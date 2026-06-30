@@ -46,10 +46,12 @@ const pedidoKey = params.get('pedido');
 let notaSelecionada = 0;
 
 if (pedidoKey) {
-    database.ref('pedidos/' + pedidoKey).once('value', snap => {
-        const p = snap.val();
-        if (p) document.getElementById('nomeCliente').textContent = 'Olá, ' + p.nome + '!';
-    });
+    database.ref('pedidos/' + pedidoKey).once('value')
+        .then(snap => {
+            const p = snap.val();
+            if (p) document.getElementById('nomeCliente').textContent = 'Olá, ' + p.nome + '!';
+        })
+        .catch(() => { /* sem permissão pública — segue sem mostrar o nome */ });
 }
 
 document.querySelectorAll('.estrela').forEach(el => {
