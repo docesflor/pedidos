@@ -11,6 +11,8 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════
@@ -895,6 +897,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Controle seus custos operacionais</span>
     </h2>
+    <button class="btn btn-marrom btn-bloco" onclick="exportarBackupCompleto()">💾 Fazer Backup Completo (JSON)</button>
     <div class="form-card">
         <p class="form-card-titulo">➕ Novo Gasto</p>
         <div class="linha-dupla">
@@ -968,8 +971,20 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             <label for="insumoQtd">Quantidade por embalagem</label>
             <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
         </div>
+        <div class="linha-dupla">
+            <div>
+                <label for="insumoEstoqueAtual">Estoque Atual</label>
+                <input type="number" id="insumoEstoqueAtual" placeholder="Ex: 3950" min="0">
+            </div>
+            <div>
+                <label for="insumoEstoqueMinimo">Estoque Mínimo (alerta)</label>
+                <input type="number" id="insumoEstoqueMinimo" placeholder="Ex: 800" min="0">
+            </div>
+        </div>
         <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
         <button class="btn btn-marrom btn-bloco" onclick="abrirImportacaoPadrao()">📦 Importar Lista Padrão</button>
+        <button class="btn btn-azul btn-bloco" onclick="abrirPrevisaoCompra()">🛒 Previsão de Compras (15 dias)</button>
+        <div id="painel-previsao-compra" style="display:none;"></div>
     <div id="painel-importacao" style="display:none;margin-top:16px;">
         <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.04em;">📦 Selecione e preencha os preços</p>
         <div id="lista-importacao"></div>
@@ -1041,6 +1056,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         </div>
         <button class="btn btn-laranja btn-bloco" onclick="carregarDashboard()">Gerar Relatório</button>
         <button class="btn btn-marrom btn-bloco" id="btnExportarCSV" onclick="exportarDashboardCSV()" style="display:none;">📥 Exportar CSV</button>
+        <button class="btn btn-vermelho btn-bloco" id="btnExportarPDF" onclick="exportarDashboardPDF()" style="display:none;">📄 Exportar PDF</button>
     </div>
     <div id="dashboard-resultado" style="display:none;">
         <div class="form-card">
@@ -1102,6 +1118,10 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <div class="form-card">
             <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
             <div id="dashSabores"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
+            <div id="dashLucratividadeSabores"></div>
         </div>
         <div class="form-card" id="cardEventosDash" style="display:none;">
             <p class="form-card-titulo">🔒 Eventos do Período</p>
@@ -1186,6 +1206,7 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const auth = firebase.auth();
 const VALIDAR_DATA_PASSADA = true;
+let PAPEL_USUARIO = 'admin';
 
 let graficoFaturamento = null;
 
@@ -1243,7 +1264,13 @@ function toast(msg, tipo) {
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('tela-login').style.display = 'none';
+        database.ref('usuarios/' + user.uid).once('value', snap => {
+            const dados = snap.val();
+            PAPEL_USUARIO = dados ? dados.papel : 'admin';
+            aplicarPermissoesPapel();
+        });
         verificarNotificacoes();
+        verificarEstoqueBaixo();
     } else {
         document.getElementById('tela-login').style.display = 'flex';
     }
@@ -1284,6 +1311,21 @@ function recuperarSenha() {
 
 function fazerLogout() {
     if (confirm('Deseja sair?')) auth.signOut();
+}
+
+function aplicarPermissoesPapel() {
+    if (PAPEL_USUARIO === 'producao') {
+        const abasEsconder = ['dashboard', 'gastos'];
+        abasEsconder.forEach(secao => {
+            const btnTopo = [...document.querySelectorAll('.menu-btn')].find(b => b.getAttribute('onclick')?.includes(`'${secao}'`));
+            if (btnTopo) btnTopo.style.display = 'none';
+            const btnGaveta = document.getElementById('gbtn' + secao.charAt(0).toUpperCase() + secao.slice(1));
+            if (btnGaveta) btnGaveta.style.display = 'none';
+        });
+        document.querySelectorAll('.pedido-info').forEach(el => {
+            if (el.textContent.includes('Total:')) el.style.display = 'none';
+        });
+    }
 }
 
 // ====================== PREÇOS ======================
@@ -1759,6 +1801,7 @@ function _navegarPara(secao, btn) {
         document.getElementById('dashMes').value = agora.getMonth();
         document.getElementById('dashAno').value = agora.getFullYear();
     }
+    setTimeout(aplicarPermissoesPapel, 300);
 }
 
 function _syncGavetaBtns(secao) {
@@ -1823,10 +1866,54 @@ async function salvarPedido() {
         observacoes: getVal('observacoes'), timestamp: Date.now()
     };
     const refPath = window.pedidoEmEdicao ? 'pedidos/' + window.pedidoEmEdicao : 'pedidos/' + Date.now();
+    const ehNovoPedido = !window.pedidoEmEdicao;
     database.ref(refPath).set(pedido).then(() => {
         toast(window.pedidoEmEdicao ? '✅ Pedido atualizado!' : '✅ Pedido salvo!');
+        if (ehNovoPedido) abaterEstoquePorPedido(pedido.itens);
         limparFormulario();
     }).catch(err => toast('❌ Erro ao salvar: ' + err.message, 'erro'));
+}
+
+async function abaterEstoquePorPedido(itensPedido) {
+    if (!itensPedido || itensPedido.length === 0) return;
+    const snapshotReceitas = await database.ref('receitas').once('value');
+    const receitasMap = {};
+    snapshotReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
+
+    const snapshotInsumos = await database.ref('insumos').once('value');
+    const insumosAtuais = {};
+    snapshotInsumos.forEach(child => { insumosAtuais[child.key] = child.val(); });
+
+    const consumoTotal = {};
+
+    itensPedido.forEach(item => {
+        const receita = receitasMap[item.sabor];
+        if (!receita || !receita.ingredientes) return;
+        const fator = item.quantidade / receita.rendimento;
+        receita.ingredientes.forEach(ing => {
+            const consumo = ing.qtdReceita * fator;
+            consumoTotal[ing.insumoKey] = (consumoTotal[ing.insumoKey] || 0) + consumo;
+        });
+    });
+
+    const updates = {};
+    let avisosEstoque = [];
+    Object.entries(consumoTotal).forEach(([insumoKey, consumido]) => {
+        const insumo = insumosAtuais[insumoKey];
+        if (!insumo) return;
+        const novoEstoque = Math.max(0, (insumo.estoqueAtual || 0) - consumido);
+        updates['insumos/' + insumoKey + '/estoqueAtual'] = novoEstoque;
+        if (insumo.estoqueMinimo > 0 && novoEstoque <= insumo.estoqueMinimo) {
+            avisosEstoque.push(insumo.nome);
+        }
+    });
+
+    if (Object.keys(updates).length > 0) {
+        await database.ref().update(updates);
+    }
+    if (avisosEstoque.length > 0) {
+        toast('⚠️ Estoque baixo: ' + avisosEstoque.join(', '), 'aviso');
+    }
 }
 
 // ====================== CARREGAR ANDAMENTO ======================
@@ -1969,6 +2056,7 @@ function criarCard(pedido, key, finalizado) {
          : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+            <button class="btn btn-azul"     onclick="gerarCobrancaPix('${key}')">💸 Pix</button>
             <button class="btn btn-marrom"   onclick="abrirTemplates('${key}')">📋 Templates</button>
             <button class="btn btn-laranja btn-swipe-ocultar-mobile" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
             <button class="btn btn-vermelho btn-swipe-ocultar-mobile" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
@@ -2085,6 +2173,15 @@ function criarCard(pedido, key, finalizado) {
         obsEl.innerHTML = '<strong>Obs:</strong> ' + escaparHTML(pedido.observacoes);
         detalhes.appendChild(obsEl);
     }
+    if (pedido.avaliacao) {
+        const av = pedido.avaliacao;
+        const estrelas = '⭐'.repeat(av.nota) + '☆'.repeat(5 - av.nota);
+        const avEl = document.createElement('div');
+        avEl.className = 'pedido-info';
+        avEl.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:8px;';
+        avEl.innerHTML = `<strong>Avaliação:</strong> ${estrelas} ${av.comentario ? '<br>"' + escaparHTML(av.comentario) + '"' : ''}`;
+        detalhes.appendChild(avEl);
+    }
     header.addEventListener('click', function() {
         const aberto = detalhes.style.display !== 'none';
         detalhes.style.display = aberto ? 'none' : 'block';
@@ -2115,6 +2212,72 @@ function criarCard(pedido, key, finalizado) {
     card.appendChild(botoesDiv);
     wrapper.appendChild(card);
     return wrapper;
+}
+
+function gerarPayloadPix(chave, nomeRecebedor, cidade, valor, txId) {
+    function tlv(id, value) {
+        const len = String(value.length).padStart(2, '0');
+        return id + len + value;
+    }
+    const valorFormatado = valor.toFixed(2);
+    const merchantAccount = tlv('00','BR.GOV.BCB.PIX') + tlv('01', chave);
+    const payload =
+        tlv('00','01') +
+        tlv('26', merchantAccount) +
+        tlv('52','0000') +
+        tlv('53','986') +
+        tlv('54', valorFormatado) +
+        tlv('58','BR') +
+        tlv('59', nomeRecebedor.substring(0,25)) +
+        tlv('60', cidade.substring(0,15)) +
+        tlv('62', tlv('05', txId.substring(0,25))) ;
+    const semCRC = payload + '6304';
+    const crc = crc16(semCRC);
+    return semCRC + crc;
+}
+function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i=0;i<str.length;i++) {
+        crc ^= str.charCodeAt(i) << 8;
+        for (let j=0;j<8;j++) {
+            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+            crc &= 0xFFFF;
+        }
+    }
+    return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+
+function gerarCobrancaPix(key) {
+    database.ref('pedidos/' + key).once('value', snapshot => {
+        const p = snapshot.val(); if (!p) return;
+        const vTotal = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
+        const vPago  = parseFloat((p.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
+        const vRestante = Math.max(0, vTotal - vPago);
+
+        // ⚠️ TROQUE pelos seus dados reais de chave Pix:
+        const CHAVE_PIX = '47992745896'; // sua chave Pix real (CPF, telefone, e-mail ou aleatória)
+        const NOME_RECEBEDOR = 'ALANA NERIS DE OLIVEIRA'; // exatamente como está no banco, sem acento
+        const CIDADE = 'JARAGUÁ DO SUL';
+
+        const payload = gerarPayloadPix(CHAVE_PIX, NOME_RECEBEDOR, CIDADE, vRestante, 'PED' + key.substr(-8));
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'modalPix';
+        overlay.innerHTML = `
+            <div class="modal-box" style="max-width:340px;">
+                <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:6px;">💸 Cobrança Pix</p>
+                <p style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;">${escaparHTML(p.nome)} — R$ ${vRestante.toFixed(2).replace('.',',')}</p>
+                <div id="qrcode-pix" style="display:flex;justify-content:center;margin-bottom:14px;"></div>
+                <textarea readonly style="font-size:0.7em;height:70px;" id="pix-copia-cola">${payload}</textarea>
+                <div class="modal-botoes">
+                    <button class="btn btn-cinza" onclick="document.getElementById('modalPix').remove()">Fechar</button>
+                    <button class="btn btn-verde" onclick="copiarParaClipboard(document.getElementById('pix-copia-cola').value).then(()=>toast('📋 Código Pix copiado!'))">Copiar Código</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        QRCode.toCanvas(document.getElementById('qrcode-pix'), payload, { width: 220 });
+    });
 }
 
 function fecharSwipe(key) {
@@ -2177,6 +2340,12 @@ function abrirTemplates(key) {
                 label: 'Pedido pronto',
                 preview: `Avisa que os brigadeiros estão prontos`,
                 msg: `Olá, ${primeiroNome}! 🌸\n\nSeus brigadeiros estão prontos e ${tipoLocal}! 🎉\n\n${p.tipoEntrega !== 'entrega' ? `📍 *Endereço para retirada:*\n${enderecoRetirada}\n\n` : ''}🍫 *Itens:* ${itensResumo}\n\nNos vemos em breve! — *Doces Flor* 🌸`
+            },
+            {
+                emoji: '⭐',
+                label: 'Pedir avaliação',
+                preview: `Envia o link de avaliação pós-entrega`,
+                msg: `Olá, ${primeiroNome}! 🌸\n\nEsperamos que tenha gostado dos brigadeiros! 💛\n\nVocê poderia avaliar seu pedido? Leva só 30 segundos:\nhttps://docesflor.github.io/pedidos/avaliacao.html?pedido=${key}\n\nMuito obrigada! — *Doces Flor* 🌸`
             }
         ];
 
@@ -2702,6 +2871,24 @@ function verificarNotificacoes() {
     });
 }
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
+function verificarEstoqueBaixo() {
+    database.ref('insumos').once('value', snapshot => {
+        let qtdBaixo = 0;
+        snapshot.forEach(child => {
+            const i = child.val();
+            if (i.estoqueMinimo > 0 && (i.estoqueAtual || 0) <= i.estoqueMinimo) qtdBaixo++;
+        });
+        const gbtn = document.getElementById('gbtnGastos');
+        if (gbtn) {
+            let badge = gbtn.querySelector('.gaveta-badge');
+            if (qtdBaixo > 0) {
+                if (!badge) { badge = document.createElement('span'); badge.className='gaveta-badge'; gbtn.appendChild(badge); }
+                badge.style.display = 'flex'; badge.textContent = qtdBaixo;
+            } else if (badge) { badge.style.display = 'none'; }
+        }
+    });
+}
+setInterval(verificarEstoqueBaixo, 10 * 60 * 1000);
 
 let _notificacaoSomDisparada = false;
 let _audioContextDesbloqueado = false;
@@ -2969,6 +3156,7 @@ async function carregarDashboard() {
         const saboresOrdenados=Object.entries(sabores).sort((a,b)=>b[1]-a[1]);
         const maxSabor=saboresOrdenados[0]?.[1]||1;
         document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
+        calcularLucratividadeSabores(sabores, receitasMap, faturamento, totalBrigadeiros);
         document.getElementById('dashPagamentos').innerHTML=Object.entries(pagamentos).length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':Object.entries(pagamentos).map(([sk,qtd])=>{const nomes={'entregue':'Entregue','A pagar':'A pagar','Pago Parcialmente':'Pago Parcialmente','Pago':'Pago'};return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.88em;"><span>${nomes[sk]||sk}</span><strong>${qtd} pedido${qtd>1?'s':''}</strong></div>`;}).join('');
         let custoProducaoEstimado = 0;
         snapshot.forEach(child => {
@@ -3121,9 +3309,105 @@ async function carregarDashboard() {
                 graficoFaturamento=new Chart(ctx,{type:'bar',data:{labels:mesesNomeG,datasets:[{label:'Faturamento',data:Object.values(fatMensal),backgroundColor:coresBarra,borderColor:'rgba(232,148,58,1)',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' R$ '+ctx.parsed.y.toFixed(2).replace('.',',')}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+v.toFixed(0)}}}}});
                 document.getElementById('dashboard-resultado').style.display='block';
                 document.getElementById('btnExportarCSV').style.display='block';
+                document.getElementById('btnExportarPDF').style.display='block';
             });
         });
     });
+}
+
+function calcularLucratividadeSabores(saboresQtd, receitasMap, faturamentoTotal, totalBrigTotal) {
+    const div = document.getElementById('dashLucratividadeSabores');
+    if (!div) return;
+    const dados = [];
+
+    Object.entries(saboresQtd).forEach(([sabor, qtd]) => {
+        const receita = receitasMap[sabor];
+        if (!receita) return;
+        const custoPorUn = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
+        const cat = CATEGORIA_SABOR[sabor] || 'trad';
+        const precoVendaUn = precoUnitarioPorFaixa(cat, qtd);
+        const lucroUn = precoVendaUn - custoPorUn;
+        const lucroTotalSabor = lucroUn * qtd;
+        const margemPct = precoVendaUn > 0 ? (lucroUn / precoVendaUn * 100) : 0;
+        dados.push({ sabor, qtd, custoPorUn, precoVendaUn, lucroUn, lucroTotalSabor, margemPct });
+    });
+
+    if (dados.length === 0) {
+        div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Cadastre receitas para ver a lucratividade por sabor.</p>';
+        return;
+    }
+
+    dados.sort((a,b) => b.lucroTotalSabor - a.lucroTotalSabor);
+
+    div.innerHTML = dados.map((d, idx) => {
+        const corMargem = d.margemPct >= 50 ? '#065F46' : d.margemPct >= 30 ? '#92400E' : '#DC2626';
+        const medalha = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;">
+            <div>
+                <strong>${medalha} ${escaparHTML(d.sabor)}</strong>
+                <div style="font-size:0.76em;color:var(--brown-warm);">
+                    Custo: R$ ${d.custoPorUn.toFixed(3).replace('.',',')}/un · Venda: R$ ${d.precoVendaUn.toFixed(2).replace('.',',')}/un · ${d.qtd} un vendidas
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-weight:700;color:${corMargem};">R$ ${d.lucroTotalSabor.toFixed(2).replace('.',',')}</div>
+                <div style="font-size:0.76em;color:${corMargem};">${d.margemPct.toFixed(0)}% margem</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function exportarDashboardPDF() {
+    const mesVal = document.getElementById('dashMes').value;
+    const ano = document.getElementById('dashAno').value;
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const periodo = mesVal === 'geral' ? 'Ano ' + ano : meses[parseInt(mesVal)] + ' de ' + ano;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.setTextColor(43, 18, 6);
+    doc.text('Doces Flor — Relatório Financeiro', 14, y); y += 8;
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text('Período: ' + periodo, 14, y); y += 12;
+
+    const linhas = [
+        ['Faturamento', document.getElementById('dashFaturamento').textContent],
+        ['Ticket Médio', document.getElementById('dashTicket').textContent],
+        ['Gastos', document.getElementById('dashGastos').textContent],
+        ['Lucro Líquido', document.getElementById('dashLucro').textContent],
+        ['Pedidos Entregues', document.getElementById('dashEntregues').textContent],
+        ['Pedidos em Andamento', document.getElementById('dashAndamento').textContent],
+        ['Total Brigadeiros Produzidos', document.getElementById('dashTotalBrig').textContent],
+    ];
+
+    doc.setFontSize(12);
+    doc.setTextColor(43,18,6);
+    linhas.forEach(([label, valor]) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(label + ':', 14, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(String(valor), 90, y);
+        y += 8;
+    });
+
+    y += 6;
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Sabores Mais Vendidos', 14, y); y += 8;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    document.querySelectorAll('#dashSabores > div').forEach(div => {
+        const texto = div.querySelector('span')?.textContent + ' — ' + div.querySelector('strong')?.textContent;
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text('• ' + texto, 16, y); y += 6;
+    });
+
+    doc.save(`relatorio-doces-flor-${periodo.replace(' ','-')}.pdf`);
+    toast('📄 PDF exportado!');
 }
 
 function irParaPedidosDash(tipo) {
@@ -3258,6 +3542,30 @@ function excluirGasto(key) {
 }
 
 // ====================== EXPORTAR CSV ======================
+async function exportarBackupCompleto() {
+    toast('⏳ Gerando backup...', 'aviso');
+    try {
+        const nos = ['pedidos', 'gastos', 'insumos', 'receitas', 'eventos'];
+        const backup = {};
+        for (const no of nos) {
+            const snap = await database.ref(no).once('value');
+            backup[no] = snap.val() || {};
+        }
+        backup._geradoEm = new Date().toISOString();
+
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup-doces-flor-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('✅ Backup gerado com sucesso!');
+    } catch (err) {
+        toast('❌ Erro ao gerar backup: ' + err.message, 'erro');
+    }
+}
+
 function exportarDashboardCSV() {
     const mesVal=document.getElementById('dashMes').value;
     const ano=parseInt(document.getElementById('dashAno').value);
@@ -4143,17 +4451,21 @@ function salvarInsumo() {
     const preco   = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
     const unidade = document.getElementById('insumoUnidade').value;
     const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 1;
+    const estoqueAtual  = parseFloat(document.getElementById('insumoEstoqueAtual').value) || 0;
+    const estoqueMinimo = parseFloat(document.getElementById('insumoEstoqueMinimo').value) || 0;
 
     if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
     if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
     if (qtd<=0)   { toast('❌ Informe a quantidade por embalagem.', 'erro'); return; }
 
-    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, timestamp: Date.now() };
+    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
     database.ref('insumos').push(insumo).then(() => {
         toast('✅ Insumo salvo!');
         document.getElementById('insumoNome').value  = '';
         document.getElementById('insumoPreco').value = '';
         document.getElementById('insumoQtd').value   = '';
+        document.getElementById('insumoEstoqueAtual').value = '';
+        document.getElementById('insumoEstoqueMinimo').value = '';
         carregarInsumos();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
 }
@@ -4174,20 +4486,62 @@ function carregarInsumos() {
             const precoPorUnidade = i.unidade === 'un'
                 ? 'R$ ' + i.preco.toFixed(2).replace('.', ',') + '/un'
                 : 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + i.unidade;
+            const estoqueAtual  = i.estoqueAtual || 0;
+            const estoqueMinimo = i.estoqueMinimo || 0;
+            const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
             const div = document.createElement('div');
             div.className = 'insumo-card';
+            div.style.flexDirection = 'column';
+            div.style.alignItems = 'stretch';
+            if (alerta) div.style.border = '2px solid #DC2626';
             div.innerHTML = `
-                <div class="insumo-info">
-                    <div class="insumo-nome">${escaparHTML(i.nome)}</div>
-                    <div class="insumo-detalhe">
-                        R$ ${i.preco.toFixed(2).replace('.',',')} 
-                        ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
-                        &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
+                    <div class="insumo-info">
+                        <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
+                        <div class="insumo-detalhe">
+                            R$ ${i.preco.toFixed(2).replace('.',',')} 
+                            ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
+                            &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
+                        </div>
+                        <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
+                            📦 Estoque: ${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}
+                            ${estoqueMinimo > 0 ? ' (mín: ' + estoqueMinimo + i.unidade + ')' : ''}
+                        </div>
                     </div>
+                    <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>
                 </div>
-                <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>`;
+                <div style="display:flex;gap:6px;margin-top:10px;">
+                    <input type="number" id="entrada-${i.key}" placeholder="Qtd a adicionar" style="margin-bottom:0;flex:1;font-size:0.85em;padding:8px 12px;">
+                    <button class="btn btn-verde" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
+                    <button class="btn btn-cinza" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="editarEstoqueManual('${i.key}', ${estoqueAtual})">✏️ Ajustar</button>
+                </div>`;
             lista.appendChild(div);
         });
+    });
+}
+
+function darEntradaEstoque(key) {
+    const input = document.getElementById('entrada-' + key);
+    const qtdAdicionar = parseFloat(input.value) || 0;
+    if (qtdAdicionar <= 0) { toast('❌ Informe uma quantidade válida.', 'erro'); return; }
+    database.ref('insumos/' + key).once('value', snap => {
+        const i = snap.val();
+        const novoEstoque = (i.estoqueAtual || 0) + qtdAdicionar;
+        database.ref('insumos/' + key).update({ estoqueAtual: novoEstoque }).then(() => {
+            toast('✅ Estoque atualizado: +' + qtdAdicionar);
+            carregarInsumos();
+        });
+    });
+}
+
+function editarEstoqueManual(key, estoqueAtual) {
+    const novoValor = prompt('Ajustar estoque atual para:', estoqueAtual);
+    if (novoValor === null) return;
+    const valor = parseFloat(novoValor);
+    if (isNaN(valor) || valor < 0) { toast('❌ Valor inválido.', 'erro'); return; }
+    database.ref('insumos/' + key).update({ estoqueAtual: valor }).then(() => {
+        toast('✅ Estoque ajustado.');
+        carregarInsumos();
     });
 }
 
@@ -4217,6 +4571,86 @@ function popularSelectInsumos() {
             sel.appendChild(opt);
         });
     });
+}
+
+async function abrirPrevisaoCompra() {
+    const painel = document.getElementById('painel-previsao-compra');
+    const aberto = painel.style.display === 'block';
+    if (aberto) { painel.style.display = 'none'; return; }
+    painel.style.display = 'block';
+    painel.innerHTML = '<p style="color:var(--brown-warm);padding:14px;">Calculando...</p>';
+
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const limite = new Date(hoje); limite.setDate(limite.getDate() + 15);
+
+    const [snapPedidos, snapReceitas, snapInsumos] = await Promise.all([
+        database.ref('pedidos').once('value'),
+        database.ref('receitas').once('value'),
+        database.ref('insumos').once('value')
+    ]);
+
+    const receitasMap = {};
+    snapReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
+    const insumosMap = {};
+    snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
+
+    const necessidadeTotal = {};
+
+    snapPedidos.forEach(child => {
+        const p = child.val();
+        if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
+        let dataP;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+        else return;
+        if (dataP < hoje || dataP > limite) return;
+
+        (p.itens || []).forEach(item => {
+            const receita = receitasMap[item.sabor];
+            if (!receita || !receita.ingredientes) return;
+            const fator = item.quantidade / receita.rendimento;
+            receita.ingredientes.forEach(ing => {
+                necessidadeTotal[ing.insumoKey] = (necessidadeTotal[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
+            });
+        });
+    });
+
+    const itensComprar = [];
+    Object.entries(necessidadeTotal).forEach(([insumoKey, necessario]) => {
+        const insumo = insumosMap[insumoKey];
+        if (!insumo) return;
+        const estoqueAtual = insumo.estoqueAtual || 0;
+        const falta = necessario - estoqueAtual;
+        if (falta > 0) {
+            itensComprar.push({ nome: insumo.nome, unidade: insumo.unidade, necessario, estoqueAtual, falta, custoEstimado: (insumo.preco / insumo.qtdEmbalagem) * falta });
+        }
+    });
+
+    itensComprar.sort((a,b) => b.falta - a.falta);
+
+    if (itensComprar.length === 0) {
+        painel.innerHTML = '<div class="form-card"><p style="color:var(--green);font-weight:700;text-align:center;padding:20px;">✅ Estoque suficiente para os próximos 15 dias!</p></div>';
+        return;
+    }
+
+    const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
+    let html = '<div class="form-card"><p class="form-card-titulo">🛒 Lista de Compras Sugerida</p>';
+    itensComprar.forEach(i => {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
+            <div>
+                <strong>${escaparHTML(i.nome)}</strong>
+                <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${i.necessario.toFixed(1)}${i.unidade} | Em estoque: ${i.estoqueAtual}${i.unidade}</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-weight:700;color:#92400E;">Comprar: ${i.falta.toFixed(1)}${i.unidade}</div>
+                <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
+            </div>
+        </div>`;
+    });
+    html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
+        <span>Custo total estimado da compra</span><span style="color:var(--amber);">R$ ${custoTotalCompra.toFixed(2).replace('.',',')}</span>
+    </div></div>`;
+    painel.innerHTML = html;
 }
 
 // ====================== RECEITAS ======================
