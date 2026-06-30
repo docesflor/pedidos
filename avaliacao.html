@@ -4,30 +4,161 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avalie seu pedido — Doces Flor</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <style>
-body{font-family:sans-serif;background:#FDF8F0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}
-.box{background:white;border-radius:20px;padding:30px;max-width:380px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.1);}
-.estrelas{font-size:2.5em;margin:20px 0;cursor:pointer;}
-.estrela{opacity:0.3;transition:opacity 0.2s;}
-.estrela.ativa{opacity:1;}
-textarea{width:100%;padding:12px;border-radius:12px;border:2px solid #eee;margin-top:14px;box-sizing:border-box;}
-button{background:#E8943A;color:white;border:none;padding:14px;border-radius:50px;width:100%;margin-top:14px;font-weight:700;cursor:pointer;}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --brown-dark:  #2B1206;
+    --brown-mid:   #5C2A0E;
+    --brown-warm:  #8B4513;
+    --amber:       #E8943A;
+    --amber-light: #F5B563;
+    --cream:       #FDF8F0;
+    --cream-dark:  #F0E6D3;
+    --green:       #4A7C59;
+    --white:       #FFFFFF;
+    --red:         #DC2626;
+}
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--brown-dark);
+    color: #3D2010;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    overflow-x: hidden;
+}
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(232,148,58,0.18) 0%, transparent 70%),
+        repeating-linear-gradient(-45deg, transparent 0px, transparent 18px, rgba(255,255,255,0.02) 18px, rgba(255,255,255,0.02) 19px);
+    pointer-events: none;
+}
+
+.box {
+    position: relative;
+    z-index: 1;
+    background: var(--cream);
+    border-radius: 24px;
+    padding: 40px 32px 32px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+.logo-ring {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    border: 3px solid var(--amber);
+    padding: 4px;
+    background: var(--brown-dark);
+    box-shadow: 0 0 0 1px rgba(232,148,58,0.3), 0 12px 30px rgba(0,0,0,0.4);
+    margin: 0 auto 18px;
+}
+.logo-ring img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+
+h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--brown-dark);
+    margin-bottom: 4px;
+}
+
+#nomeCliente {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--brown-warm);
+    font-size: 1rem;
+    margin-bottom: 22px;
+}
+
+.estrelas { font-size: 2.6em; margin: 8px 0 22px; cursor: pointer; user-select: none; }
+.estrela { opacity: 0.25; transition: opacity 0.2s, transform 0.15s; display: inline-block; }
+.estrela.ativa { opacity: 1; }
+.estrela:active { transform: scale(0.9); }
+
+textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 2px solid var(--cream-dark);
+    background: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    color: var(--brown-dark);
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+textarea:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(232,148,58,0.15); }
+textarea::placeholder { color: var(--brown-warm); opacity: 0.6; }
+
+button.enviar {
+    width: 100%;
+    background: var(--amber);
+    color: var(--white);
+    border: none;
+    padding: 15px;
+    border-radius: 50px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.96rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: background 0.2s, transform 0.15s;
+    letter-spacing: 0.02em;
+}
+button.enviar:hover { background: #C9522A; transform: translateY(-1px); }
+button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.sucesso-icon { font-size: 3rem; margin-bottom: 10px; }
+.sucesso-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--brown-dark);
+    margin-bottom: 8px;
+}
+.sucesso-texto { color: var(--brown-warm); font-size: 0.92rem; line-height: 1.5; }
+
+.rodape {
+    margin-top: 22px;
+    font-size: 0.74rem;
+    color: var(--brown-warm);
+    opacity: 0.7;
+    letter-spacing: 0.04em;
+}
 </style>
 </head>
 <body>
-<div class="box">
+
+<div class="box" id="caixaPrincipal">
+    <div class="logo-ring"><img src="icone.png" alt="Doces Flor"></div>
     <h2>Como foi seu pedido? 🌸</h2>
-    <p id="nomeCliente" style="color:#888;"></p>
+    <p id="nomeCliente"></p>
     <div class="estrelas" id="estrelas">
         <span class="estrela" data-v="1">⭐</span><span class="estrela" data-v="2">⭐</span>
         <span class="estrela" data-v="3">⭐</span><span class="estrela" data-v="4">⭐</span>
         <span class="estrela" data-v="5">⭐</span>
     </div>
     <textarea id="comentario" placeholder="Quer deixar um comentário? (opcional)"></textarea>
-    <button onclick="enviarAvaliacao()">Enviar Avaliação</button>
+    <button class="enviar" id="btnEnviar" onclick="enviarAvaliacao()">Enviar Avaliação</button>
+    <p class="rodape">Doces Flor · Feito com amor, entregue com carinho ♥</p>
 </div>
+
 <script>
 const firebaseConfig = {
     apiKey: "AIzaSyCYqic9IlxUXlS_yEuMLZvmg16wGh5_Ing",
@@ -46,10 +177,10 @@ const pedidoKey = params.get('pedido');
 let notaSelecionada = 0;
 
 if (pedidoKey) {
-    database.ref('pedidos/' + pedidoKey).once('value')
+    database.ref('pedidos/' + pedidoKey + '/nome').once('value')
         .then(snap => {
-            const p = snap.val();
-            if (p) document.getElementById('nomeCliente').textContent = 'Olá, ' + p.nome + '!';
+            const nome = snap.val();
+            if (nome) document.getElementById('nomeCliente').textContent = 'Olá, ' + nome + '!';
         })
         .catch(() => { /* sem permissão pública — segue sem mostrar o nome */ });
 }
@@ -67,12 +198,24 @@ function enviarAvaliacao() {
     if (notaSelecionada === 0) { alert('Selecione uma nota de 1 a 5 estrelas.'); return; }
     if (!pedidoKey) { alert('Link inválido.'); return; }
     const comentario = document.getElementById('comentario').value.trim();
+    const btn = document.getElementById('btnEnviar');
+    btn.textContent = 'Enviando...';
+    btn.disabled = true;
+
     database.ref('pedidos/' + pedidoKey + '/avaliacao').set({
         nota: notaSelecionada,
         comentario,
         timestamp: Date.now()
     }).then(() => {
-        document.querySelector('.box').innerHTML = '<h2>Obrigada! 💛</h2><p>Sua avaliação foi enviada com sucesso.</p>';
+        document.getElementById('caixaPrincipal').innerHTML = `
+            <div class="sucesso-icon">💛</div>
+            <div class="sucesso-titulo">Obrigada!</div>
+            <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>`;
+    }).catch(err => {
+        console.error(err);
+        alert('Não foi possível enviar sua avaliação. Tente novamente em instantes.');
+        btn.textContent = 'Enviar Avaliação';
+        btn.disabled = false;
     });
 }
 </script>
