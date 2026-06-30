@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avalie seu pedido — Doces Flor</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<style>
+body{font-family:sans-serif;background:#FDF8F0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}
+.box{background:white;border-radius:20px;padding:30px;max-width:380px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.1);}
+.estrelas{font-size:2.5em;margin:20px 0;cursor:pointer;}
+.estrela{opacity:0.3;transition:opacity 0.2s;}
+.estrela.ativa{opacity:1;}
+textarea{width:100%;padding:12px;border-radius:12px;border:2px solid #eee;margin-top:14px;box-sizing:border-box;}
+button{background:#E8943A;color:white;border:none;padding:14px;border-radius:50px;width:100%;margin-top:14px;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="box">
+    <h2>Como foi seu pedido? 🌸</h2>
+    <p id="nomeCliente" style="color:#888;"></p>
+    <div class="estrelas" id="estrelas">
+        <span class="estrela" data-v="1">⭐</span><span class="estrela" data-v="2">⭐</span>
+        <span class="estrela" data-v="3">⭐</span><span class="estrela" data-v="4">⭐</span>
+        <span class="estrela" data-v="5">⭐</span>
+    </div>
+    <textarea id="comentario" placeholder="Quer deixar um comentário? (opcional)"></textarea>
+    <button onclick="enviarAvaliacao()">Enviar Avaliação</button>
+</div>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCYqic9IlxUXlS_yEuMLZvmg16wGh5_Ing",
+    authDomain: "doces-flor.firebaseapp.com",
+    databaseURL: "https://doces-flor-default-rtdb.firebaseio.com",
+    projectId: "doces-flor",
+    storageBucket: "doces-flor.firebasestorage.app",
+    messagingSenderId: "430929421910",
+    appId: "1:430929421910:web:2f1bea78c78602c3387df7"
+};
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+const params = new URLSearchParams(window.location.search);
+const pedidoKey = params.get('pedido');
+let notaSelecionada = 0;
+
+if (pedidoKey) {
+    database.ref('pedidos/' + pedidoKey).once('value', snap => {
+        const p = snap.val();
+        if (p) document.getElementById('nomeCliente').textContent = 'Olá, ' + p.nome + '!';
+    });
+}
+
+document.querySelectorAll('.estrela').forEach(el => {
+    el.addEventListener('click', function() {
+        notaSelecionada = parseInt(this.dataset.v);
+        document.querySelectorAll('.estrela').forEach(e => {
+            e.classList.toggle('ativa', parseInt(e.dataset.v) <= notaSelecionada);
+        });
+    });
+});
+
+function enviarAvaliacao() {
+    if (notaSelecionada === 0) { alert('Selecione uma nota de 1 a 5 estrelas.'); return; }
+    if (!pedidoKey) { alert('Link inválido.'); return; }
+    const comentario = document.getElementById('comentario').value.trim();
+    database.ref('pedidos/' + pedidoKey + '/avaliacao').set({
+        nota: notaSelecionada,
+        comentario,
+        timestamp: Date.now()
+    }).then(() => {
+        document.querySelector('.box').innerHTML = '<h2>Obrigada! 💛</h2><p>Sua avaliação foi enviada com sucesso.</p>';
+    });
+}
+</script>
+</body>
+</html>
