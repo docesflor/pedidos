@@ -572,7 +572,9 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             </div>
             <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
             <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
-            <button class="menu-btn" onclick="irPara('gastos', this)">💸 Gastos</button>
+            <div class="menu-btn-wrapper">
+                <button class="menu-btn" onclick="irPara('gastos', this)">💸 Gastos</button>
+            </div>
             <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
         </div>
     </div>
@@ -1123,6 +1125,10 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
             <div id="dashLucratividadeSabores"></div>
         </div>
+        <div class="form-card">
+            <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
+            <div id="dashAvaliacoes"></div>
+        </div>
         <div class="form-card" id="cardEventosDash" style="display:none;">
             <p class="form-card-titulo">🔒 Eventos do Período</p>
             <div id="dashEventosLista"></div>
@@ -1268,6 +1274,11 @@ auth.onAuthStateChanged(user => {
             const dados = snap.val();
             PAPEL_USUARIO = dados ? dados.papel : 'admin';
             aplicarPermissoesPapel();
+            if (PAPEL_USUARIO === 'producao') {
+                document.querySelectorAll('.secao').forEach(s => s.classList.remove('active'));
+                document.getElementById('secao-eventos').classList.add('active');
+                carregarEventos();
+            }
         });
         verificarNotificacoes();
         verificarEstoqueBaixo();
@@ -1315,10 +1326,13 @@ function fazerLogout() {
 
 function aplicarPermissoesPapel() {
     if (PAPEL_USUARIO === 'producao') {
-        const abasEsconder = ['dashboard', 'gastos'];
+        const abasEsconder = ['criar', 'andamento', 'finalizados', 'dashboard', 'gastos'];
         abasEsconder.forEach(secao => {
             const btnTopo = [...document.querySelectorAll('.menu-btn')].find(b => b.getAttribute('onclick')?.includes(`'${secao}'`));
-            if (btnTopo) btnTopo.style.display = 'none';
+            if (btnTopo) {
+                const wrapper = btnTopo.closest('.menu-btn-wrapper');
+                if (wrapper) wrapper.style.display = 'none'; else btnTopo.style.display = 'none';
+            }
             const btnGaveta = document.getElementById('gbtn' + secao.charAt(0).toUpperCase() + secao.slice(1));
             if (btnGaveta) btnGaveta.style.display = 'none';
         });
@@ -1787,6 +1801,11 @@ function irPara(secao, btn) {
 }
 
 function _navegarPara(secao, btn) {
+    if (PAPEL_USUARIO === 'producao' && secao !== 'eventos') {
+        toast('🔒 Acesso restrito à aba Eventos.', 'aviso');
+        secao = 'eventos';
+        btn = null;
+    }
     document.querySelectorAll('.secao').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('secao-' + secao).classList.add('active');
@@ -2051,7 +2070,7 @@ function criarCard(pedido, key, finalizado) {
         }
     }
     const botoesHTML = finalizado
-         ? `<button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
+         ? `<button class="btn btn-verde"    onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação</button>
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
@@ -2176,11 +2195,11 @@ function criarCard(pedido, key, finalizado) {
     }
     if (pedido.avaliacao) {
         const av = pedido.avaliacao;
-        const estrelas = '⭐'.repeat(av.nota) + '☆'.repeat(5 - av.nota);
+        const emojiAv = av.nota >= 5 ? '😊' : av.nota >= 3 ? '😐' : '😞';
         const avEl = document.createElement('div');
         avEl.className = 'pedido-info';
         avEl.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:8px;';
-        avEl.innerHTML = `<strong>Avaliação:</strong> ${estrelas} ${av.comentario ? '<br>"' + escaparHTML(av.comentario) + '"' : ''}`;
+        avEl.innerHTML = `<strong>Avaliação:</strong> ${emojiAv} ${av.comentario ? '<br>"' + escaparHTML(av.comentario) + '"' : ''}`;
         detalhes.appendChild(avEl);
     }
     header.addEventListener('click', function() {
@@ -2343,12 +2362,6 @@ function abrirTemplates(key) {
                 label: 'Pedido pronto',
                 preview: `Avisa que os brigadeiros estão prontos`,
                 msg: `Olá, ${primeiroNome}! 🌸\n\nSeus brigadeiros estão prontos e ${tipoLocal}! 🎉\n\n${p.tipoEntrega !== 'entrega' ? `📍 *Endereço para retirada:*\n${enderecoRetirada}\n\n` : ''}🍫 *Itens:* ${itensResumo}\n\nNos vemos em breve! — *Doces Flor* 🌸`
-            },
-            {
-                emoji: '⭐',
-                label: 'Pedir avaliação',
-                preview: `Envia o link de avaliação pós-entrega`,
-                msg: `Olá, ${primeiroNome}! 🌸\n\nEsperamos que tenha gostado dos brigadeiros! 💛\n\nVocê poderia avaliar seu pedido? Leva só 30 segundos:\nhttps://docesflor.github.io/pedidos/avaliacao.html?pedido=${key}\n\nMuito obrigada! — *Doces Flor* 🌸`
             }
         ];
 
@@ -2429,6 +2442,20 @@ function editarPedido(key) {
         setTimeout(() => { renderizarItens(); atualizarValorBrigadeiros(); atualizarTotal(); }, 50);
         document.getElementById('btnEnviar').textContent = '✏️ Atualizar Pedido';
         window.pedidoEmEdicao = key;
+    });
+}
+
+function enviarAvaliacaoWhatsApp(key) {
+    database.ref('pedidos/' + key).once('value', snapshot => {
+        const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
+        const primeiroNome = (p.nome || 'Cliente').split(' ')[0];
+        const msg = `Olá, ${primeiroNome}! 🌸\n\nEsperamos que tenha gostado dos brigadeiros! 💛\n\nVocê poderia avaliar seu pedido? Leva só 30 segundos:\nhttps://docesflor.github.io/pedidos/avaliacao.html?pedido=${key}\n\nMuito obrigada! — *Doces Flor* 🌸`;
+        const telefone = (p.telefone || '').replace(/\D/g, '');
+        const fone = telefone.startsWith('55') ? telefone : '55' + telefone;
+        copiarParaClipboard(msg).then(() => toast('📋 Mensagem copiada!'));
+        setTimeout(() => {
+            window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
+        }, 400);
     });
 }
 
@@ -3185,6 +3212,7 @@ async function carregarDashboard() {
         const maxSabor=saboresOrdenados[0]?.[1]||1;
         document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
         calcularLucratividadeSabores(sabores, receitasMap, faturamento, totalBrigadeiros);
+        calcularAvaliacoes(ano, mes);
         document.getElementById('dashPagamentos').innerHTML=Object.entries(pagamentos).length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':Object.entries(pagamentos).map(([sk,qtd])=>{const nomes={'entregue':'Entregue','A pagar':'A pagar','Pago Parcialmente':'Pago Parcialmente','Pago':'Pago'};return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.88em;"><span>${nomes[sk]||sk}</span><strong>${qtd} pedido${qtd>1?'s':''}</strong></div>`;}).join('');
         let custoProducaoEstimado = 0;
         snapshot.forEach(child => {
@@ -3340,6 +3368,76 @@ async function carregarDashboard() {
                 document.getElementById('btnExportarPDF').style.display='block';
             });
         });
+    });
+}
+
+function calcularAvaliacoes(ano, mes) {
+    const div = document.getElementById('dashAvaliacoes');
+    if (!div) return;
+    div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
+
+    database.ref('pedidos').once('value', snapshot => {
+        const avaliacoes = [];
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.avaliacao || !p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== ano) return;
+            if (mes !== null && dataP.getMonth() !== mes) return;
+            avaliacoes.push({ nome: p.nome || 'Cliente', dataEntrega: p.dataEntrega, key: child.key, ...p.avaliacao });
+        });
+
+        if (avaliacoes.length === 0) {
+            div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Nenhuma avaliação recebida neste período.</p>';
+            return;
+        }
+
+        const EMOJI_NOTA = { 1: '😞', 3: '😐', 5: '😊' };
+        const LABEL_NOTA = { 1: 'Não gostou', 3: 'Bom', 5: 'Adorou' };
+
+        const media = avaliacoes.reduce((s,a) => s + (a.nota||0), 0) / avaliacoes.length;
+        const distribuicao = {5:0,3:0,1:0};
+        avaliacoes.forEach(a => { if (distribuicao[a.nota] !== undefined) distribuicao[a.nota]++; });
+
+        avaliacoes.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+        const emojiMedia = media >= 4.3 ? '😊' : media >= 2.3 ? '😐' : '😞';
+        let html = `<div style="display:flex;align-items:center;gap:16px;padding:14px;background:#FEF3C7;border-radius:14px;margin-bottom:14px;">
+            <div style="text-align:center;">
+                <div style="font-size:2.2em;line-height:1;">${emojiMedia}</div>
+                <div style="font-size:0.7em;color:#92400E;margin-top:4px;font-weight:700;">${media.toFixed(1)}/5</div>
+            </div>
+            <div style="flex:1;">`;
+        [5,3,1].forEach(n => {
+            const qtd = distribuicao[n];
+            const pct = avaliacoes.length > 0 ? Math.round((qtd/avaliacoes.length)*100) : 0;
+            html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                <span style="font-size:0.9em;width:22px;">${EMOJI_NOTA[n]}</span>
+                <div style="flex:1;background:rgba(146,64,14,0.15);border-radius:6px;height:6px;"><div style="background:#92400E;height:6px;border-radius:6px;width:${pct}%;"></div></div>
+                <span style="font-size:0.7em;color:#92400E;width:18px;text-align:right;">${qtd}</span>
+            </div>`;
+        });
+        html += `</div></div>`;
+        html += `<p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:10px;">${avaliacoes.length} avaliação${avaliacoes.length>1?'ões':''} no período</p>`;
+
+        avaliacoes.forEach(a => {
+            const emoji = EMOJI_NOTA[a.nota] || '😐';
+            const label = LABEL_NOTA[a.nota] || '';
+            const dataFormatada = formatarDataComDia(a.dataEntrega).split(' (')[0];
+            html += `<div style="padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <strong style="font-size:0.86em;color:var(--brown-dark);">${escaparHTML(a.nome)}</strong>
+                    <span style="font-size:1em;" title="${label}">${emoji}</span>
+                </div>
+                <div style="font-size:0.72em;color:var(--brown-warm);margin-bottom:${a.comentario ? '4px' : '0'};">📅 ${dataFormatada}</div>
+                ${a.comentario ? `<div style="font-size:0.84em;color:var(--brown-dark);font-style:italic;">"${escaparHTML(a.comentario)}"</div>` : ''}
+            </div>`;
+        });
+
+        div.innerHTML = html;
     });
 }
 
