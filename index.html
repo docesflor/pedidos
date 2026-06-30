@@ -1330,20 +1330,20 @@ function precoUnitarioPorFaixa(cat, qtdTotal) {
 
 // ── Combo Misto (Tradicional + Gourmet) ──
 function calcularDescontoCombo(qtdTrad, qtdGourmet, qtdFrutas, precoTradAuto, precoGourmetAuto) {
-    // Combo só se aplica se nenhum item tiver preço manual aplicado
     if (itens.some(i => i.precoManual !== undefined)) return 0;
-    // Combo só vale para trad + gourmet (sem frutas misturadas)
     if (qtdFrutas > 0) return 0;
 
-    if (qtdTrad === 50 && qtdGourmet === 50) {
-        const soma = (precoTradAuto * 50) + (precoGourmetAuto * 50);
-        return Math.max(0, soma - 125); // Cento Misto = R$ 125,00
-    }
-    if (qtdTrad === 25 && qtdGourmet === 25) {
-        const soma = (precoTradAuto * 25) + (precoGourmetAuto * 25);
-        return Math.max(0, soma - 70); // Caixa Mista 50 un = R$ 70,00
-    }
-    return 0;
+    const TABELA_COMBO = {
+        '25-25': 70,   // Caixa Mista 50 un
+        '50-50': 125,  // Cento Misto 100 un
+        '75-25': 120,  // Cento Misto — maioria Trad
+        '25-75': 130   // Cento Misto — maioria Gourmet
+    };
+    const chave = qtdTrad + '-' + qtdGourmet;
+    if (TABELA_COMBO[chave] === undefined) return 0;
+
+    const soma = (precoTradAuto * qtdTrad) + (precoGourmetAuto * qtdGourmet);
+    return Math.max(0, soma - TABELA_COMBO[chave]);
 }
 
 function faixaMaisProxima(pctGour) {
