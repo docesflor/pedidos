@@ -213,12 +213,7 @@ function enviarAvaliacao() {
         avaliacaoRespondida: true
     })
     .then(() => {
-        // 2. Aguarda a contagem de estatísticas
-        return database.ref('estatisticas-avaliacoes/nota' + notaSelecionada)
-            .transaction(atual => (atual || 0) + 1);
-    })
-    .then(() => {
-        // 3. Se for nota 3 com comentário, salva depoimento público
+        // 2. Se for nota 3 com comentário, salva depoimento público
         if (notaSelecionada === 3 && comentario !== '') {
             return database.ref('depoimentos-publicos').push({
                 nome: primeiroNomeCliente,
@@ -229,7 +224,7 @@ function enviarAvaliacao() {
         }
     })
     .then(() => {
-        // 4. Só mostra sucesso quando TUDO foi salvo
+        // 3. Mostra a tela de sucesso
         mostrarTelaSucesso();
     })
     .catch(err => {
