@@ -2109,7 +2109,7 @@ function criarCard(pedido, key, finalizado) {
         }
     }
     const botoesHTML = finalizado
-    ? `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="${pedido.avaliacaoEnviada ? '' : `enviarAvaliacaoWhatsApp('${key}')`}" ${pedido.avaliacaoEnviada ? 'disabled' : ''}>⭐ Avaliação${pedido.avaliacaoRespondida ? ' ✓✓' : ''}</button>
+    ? `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação${pedido.avaliacaoRespondida ? ' ✓✓' : ''}</button>
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
