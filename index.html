@@ -2229,7 +2229,8 @@ function criarCard(pedido, key, finalizado) {
     }
     if (pedido.avaliacao) {
         const av = pedido.avaliacao;
-        const emojiNota = av && av.nota === 3 ? '😊' : av && av.nota === 2 ? '😐' : av && av.nota === 1 ? '😞' : '⚪';
+        const nota = av?.nota ? parseInt(av.nota) : 0;
+        const emojiNota = nota === 3 ? '😊' : nota === 2 ? '😐' : nota === 1 ? '😞' : '⚪';
         const avEl = document.createElement('div');
         avEl.className = 'pedido-info';
         avEl.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:8px;';
