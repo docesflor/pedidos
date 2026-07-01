@@ -201,42 +201,50 @@ document.querySelectorAll('.carinha').forEach(el => {
 function enviarAvaliacao() {
     if (notaSelecionada === 0) { alert('Toque em uma das opções para avaliar.'); return; }
     if (!pedidoKey) { alert('Link inválido.'); return; }
+    
     const comentario = document.getElementById('comentario').value.trim();
     const btn = document.getElementById('btnEnviar');
     btn.textContent = 'Enviando...';
     btn.disabled = true;
 
+    // 1. Atualiza o pedido
     database.ref('pedidos/' + pedidoKey).update({
-        avaliacao: {
-            nota: notaSelecionada,
-            comentario,
-            timestamp: Date.now()
-        },
+        avaliacao: { nota: notaSelecionada, comentario, timestamp: Date.now() },
         avaliacaoRespondida: true
-    }).then(() => {
-        // ── Contador público (todas as notas, sem dados pessoais) ──
-        database.ref('estatisticas-avaliacoes/nota' + notaSelecionada).transaction(atual => (atual || 0) + 1);
-
-        // ── Se for nota máxima (3) COM comentário, alimenta a vitrine pública de depoimentos ──
+    })
+    .then(() => {
+        // 2. Aguarda a contagem de estatísticas
+        return database.ref('estatisticas-avaliacoes/nota' + notaSelecionada)
+            .transaction(atual => (atual || 0) + 1);
+    })
+    .then(() => {
+        // 3. Se for nota 3 com comentário, salva depoimento público
         if (notaSelecionada === 3 && comentario !== '') {
-            database.ref('depoimentos-publicos').push({
+            return database.ref('depoimentos-publicos').push({
                 nome: primeiroNomeCliente,
                 comentario,
                 nota: 3,
                 timestamp: Date.now()
-            }).catch(err => console.error('Erro ao salvar depoimento público:', err));
+            });
         }
-
-        document.getElementById('caixaPrincipal').innerHTML = `
-            <div class="sucesso-icon">💛</div>
-            <div class="sucesso-titulo">Obrigada!</div>
-            <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>`;
-    }).catch(err => {
+    })
+    .then(() => {
+        // 4. Só mostra sucesso quando TUDO foi salvo
+        mostrarTelaSucesso();
+    })
+    .catch(err => {
         console.error(err);
         alert('Não foi possível enviar sua avaliação. Tente novamente em instantes.');
         btn.textContent = 'Enviar Avaliação';
         btn.disabled = false;
     });
+}
+
+function mostrarTelaSucesso() {
+    document.getElementById('caixaPrincipal').innerHTML = `
+        <div class="sucesso-icon">💛</div>
+        <div class="sucesso-titulo">Obrigada!</div>
+        <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>`;
 }
 </script>
 </body>
