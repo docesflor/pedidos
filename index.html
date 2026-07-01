@@ -2229,7 +2229,7 @@ function criarCard(pedido, key, finalizado) {
     }
     if (pedido.avaliacao) {
         const av = pedido.avaliacao;
-        const emojiAv = av.nota >= 5 ? '😊' : av.nota >= 3 ? '😐' : '😞';
+        const emojiAv = av.nota === 3 ? '😊' : av.nota === 2 ? '😐' : '😞';
         const avEl = document.createElement('div');
         avEl.className = 'pedido-info';
         avEl.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:8px;';
@@ -3440,23 +3440,23 @@ function calcularAvaliacoes(ano, mes) {
             return;
         }
 
-        const EMOJI_NOTA = { 1: '😞', 3: '😐', 5: '😊' };
-        const LABEL_NOTA = { 1: 'Não gostou', 3: 'Bom', 5: 'Adorou' };
+        const EMOJI_NOTA = { 1: '😞', 2: '😐', 3: '😊' };
+        const LABEL_NOTA = { 1: 'Não gostou', 2: 'Bom', 3: 'Adorou' };
 
         const media = avaliacoes.reduce((s,a) => s + (a.nota||0), 0) / avaliacoes.length;
-        const distribuicao = {5:0,3:0,1:0};
+        const distribuicao = {3:0,2:0,1:0};
         avaliacoes.forEach(a => { if (distribuicao[a.nota] !== undefined) distribuicao[a.nota]++; });
 
         avaliacoes.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
 
-        const emojiMedia = media >= 4.3 ? '😊' : media >= 2.3 ? '😐' : '😞';
+        const emojiMedia = media >= 2.6 ? '😊' : media >= 1.6 ? '😐' : '😞';
         let html = `<div style="display:flex;align-items:center;gap:16px;padding:14px;background:#FEF3C7;border-radius:14px;margin-bottom:14px;">
             <div style="text-align:center;">
                 <div style="font-size:2.2em;line-height:1;">${emojiMedia}</div>
-                <div style="font-size:0.7em;color:#92400E;margin-top:4px;font-weight:700;">${media.toFixed(1)}/5</div>
+                <div style="font-size:0.7em;color:#92400E;margin-top:4px;font-weight:700;">${media.toFixed(1)}/3</div>
             </div>
             <div style="flex:1;">`;
-        [5,3,1].forEach(n => {
+        [3,2,1].forEach(n => {
             const qtd = distribuicao[n];
             const pct = avaliacoes.length > 0 ? Math.round((qtd/avaliacoes.length)*100) : 0;
             html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
