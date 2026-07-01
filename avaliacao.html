@@ -151,8 +151,8 @@ button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
     <p id="nomeCliente"></p>
     <div class="carinhas" id="carinhas">
         <span class="carinha" data-v="1">😞</span>
-        <span class="carinha" data-v="3">😐</span>
-        <span class="carinha" data-v="5">😊</span>
+        <span class="carinha" data-v="2">😐</span>
+        <span class="carinha" data-v="3">😊</span>
     </div>
     <textarea id="comentario" placeholder="Quer deixar um comentário? (opcional)"></textarea>
     <button class="enviar" id="btnEnviar" onclick="enviarAvaliacao()">Enviar Avaliação</button>
@@ -214,11 +214,15 @@ function enviarAvaliacao() {
         },
         avaliacaoRespondida: true
     }).then(() => {
-        // ── Se for nota máxima (5) COM comentário, alimenta a vitrine pública de depoimentos ──
-        if (notaSelecionada === 5 && comentario !== '') {
+        // ── Contador público (todas as notas, sem dados pessoais) ──
+        database.ref('estatisticas-avaliacoes/nota' + notaSelecionada).transaction(atual => (atual || 0) + 1);
+
+        // ── Se for nota máxima (3) COM comentário, alimenta a vitrine pública de depoimentos ──
+        if (notaSelecionada === 3 && comentario !== '') {
             database.ref('depoimentos-publicos').push({
                 nome: primeiroNomeCliente,
                 comentario,
+                nota: 3,
                 timestamp: Date.now()
             }).catch(err => console.error('Erro ao salvar depoimento público:', err));
         }
