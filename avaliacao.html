@@ -202,10 +202,13 @@ function enviarAvaliacao() {
     btn.textContent = 'Enviando...';
     btn.disabled = true;
 
-    database.ref('pedidos/' + pedidoKey + '/avaliacao').set({
-        nota: notaSelecionada,
-        comentario,
-        timestamp: Date.now()
+    database.ref('pedidos/' + pedidoKey).update({
+        avaliacao: {
+            nota: notaSelecionada,
+            comentario,
+            timestamp: Date.now()
+        },
+        avaliacaoRespondida: true  // ← ADICIONE ESTA LINHA
     }).then(() => {
         document.getElementById('caixaPrincipal').innerHTML = `
             <div class="sucesso-icon">💛</div>
