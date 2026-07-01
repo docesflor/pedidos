@@ -175,12 +175,16 @@ const database = firebase.database();
 const params = new URLSearchParams(window.location.search);
 const pedidoKey = params.get('pedido');
 let notaSelecionada = 0;
+let primeiroNomeCliente = 'Cliente';
 
 if (pedidoKey) {
     database.ref('pedidos/' + pedidoKey + '/nome').once('value')
         .then(snap => {
             const nome = snap.val();
-            if (nome) document.getElementById('nomeCliente').textContent = 'Olá, ' + nome + '!';
+            if (nome) {
+                document.getElementById('nomeCliente').textContent = 'Olá, ' + nome + '!';
+                primeiroNomeCliente = nome.trim().split(' ')[0] || 'Cliente';
+            }
         })
         .catch(() => { /* sem permissão pública — segue sem mostrar o nome */ });
 }
@@ -208,8 +212,17 @@ function enviarAvaliacao() {
             comentario,
             timestamp: Date.now()
         },
-        avaliacaoRespondida: true  // ← ADICIONE ESTA LINHA
+        avaliacaoRespondida: true
     }).then(() => {
+        // ── Se for nota máxima (5) COM comentário, alimenta a vitrine pública de depoimentos ──
+        if (notaSelecionada === 5 && comentario !== '') {
+            database.ref('depoimentos-publicos').push({
+                nome: primeiroNomeCliente,
+                comentario,
+                timestamp: Date.now()
+            }).catch(err => console.error('Erro ao salvar depoimento público:', err));
+        }
+
         document.getElementById('caixaPrincipal').innerHTML = `
             <div class="sucesso-icon">💛</div>
             <div class="sucesso-titulo">Obrigada!</div>
