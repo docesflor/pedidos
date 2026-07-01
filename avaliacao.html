@@ -201,7 +201,7 @@ document.querySelectorAll('.carinha').forEach(el => {
 function enviarAvaliacao() {
     if (notaSelecionada === 0) { alert('Toque em uma das opções para avaliar.'); return; }
     if (!pedidoKey) { alert('Link inválido.'); return; }
-    
+
     const comentario = document.getElementById('comentario').value.trim();
     const btn = document.getElementById('btnEnviar');
     btn.textContent = 'Enviando...';
@@ -222,9 +222,14 @@ function enviarAvaliacao() {
                 timestamp: Date.now()
             });
         }
+        return Promise.resolve(); // ← AQUI! Retorna uma Promise resolvida
     })
     .then(() => {
-        // 3. Mostra a tela de sucesso
+        // 3. Incrementa contador de avaliações
+        return database.ref('estatisticas-avaliacoes/nota' + notaSelecionada).transaction(atual => (atual || 0) + 1);
+    })
+    .then(() => {
+        // 4. Mostra a tela de sucesso
         mostrarTelaSucesso();
     })
     .catch(err => {
