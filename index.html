@@ -2233,7 +2233,7 @@ function criarCard(pedido, key, finalizado) {
         const avEl = document.createElement('div');
         avEl.className = 'pedido-info';
         avEl.style.cssText = 'background:#FEF3C7;border-radius:10px;padding:8px 12px;margin-top:8px;';
-        avEl.innerHTML = `<strong>Avaliação:</strong> ${emojiAv} ${av.comentario ? '<br>"' + escaparHTML(av.comentario) + '"' : ''}`;
+        avEl.innerHTML = `<strong>Avaliação:</strong> ${emojiNota} ${av.comentario ? '<br>"' + escaparHTML(av.comentario) + '"' : ''}`;
         detalhes.appendChild(avEl);
     }
     header.addEventListener('click', function() {
