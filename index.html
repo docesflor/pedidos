@@ -252,6 +252,24 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .btn-cinza:hover    { background: #ddd0c0; }
 .btn-bloco { display: block; width: 100%; margin-bottom: 10px; text-align: center; padding: 13px 18px; }
 
+/* Botão de avaliação ANTES de enviar (laranja) */
+.btn-avaliacao-enviada {
+    background-color: #4CAF50 !important; /* verde */
+    color: white !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    opacity: 0.8 !important;
+}
+
+.btn-avaliacao-enviada::after {
+    content: " ✓";
+    font-weight: bold;
+}
+
+/* Garante que botões normais fiquem laranja */
+.btn.btn-verde:not(.btn-avaliacao-enviada) {
+    background-color: #E8943A !important;
+}
 /* ═══════════════════════════════════════════
    ITENS DO PEDIDO
 ═══════════════════════════════════════════ */
@@ -2091,7 +2109,7 @@ function criarCard(pedido, key, finalizado) {
         }
     }
     const botoesHTML = finalizado
-         ? `<button class="btn btn-verde"    onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação</button>
+    ? `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="${pedido.avaliacaoEnviada ? '' : `enviarAvaliacaoWhatsApp('${key}')`}" ${pedido.avaliacaoEnviada ? 'disabled' : ''}>⭐ Avaliação${pedido.avaliacaoRespondida ? ' ✓✓' : ''}</button>
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
@@ -2475,7 +2493,8 @@ function editarPedido(key) {
 
 function enviarAvaliacaoWhatsApp(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
-        const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
+        const p = snapshot.val(); 
+        if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
         const primeiroNome = (p.nome || 'Cliente').split(' ')[0];
         const msg = `Olá, ${primeiroNome}! 🌸\n\nEsperamos que tenha gostado dos brigadeiros! 💛\n\nVocê poderia avaliar seu pedido? Leva só 30 segundos:\nhttps://docesflor.github.io/pedidos/avaliacao.html?pedido=${key}\n\nMuito obrigada! — *Doces Flor* 🌸`;
         const telefone = (p.telefone || '').replace(/\D/g, '');
@@ -2483,6 +2502,9 @@ function enviarAvaliacaoWhatsApp(key) {
         copiarParaClipboard(msg).then(() => toast('📋 Mensagem copiada!'));
         setTimeout(() => {
             window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
+            // Marca a avaliação como enviada no Firebase
+            database.ref('pedidos/' + key).update({ avaliacaoEnviada: true })
+                .then(() => carregarFinalizados()); // Recarrega a lista de pedidos finalizados
         }, 400);
     });
 }
