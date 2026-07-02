@@ -1845,6 +1845,8 @@ function _syncGavetaBtns(secao) {
 
 // ====================== SALVAR PEDIDO ======================
 async function salvarPedido() {
+    const btnSalvar = document.getElementById('btnEnviar');
+    if (btnSalvar.disabled) return; // ignora duplo clique/toque
     document.querySelectorAll('.campo-erro').forEach(el => el.classList.remove('campo-erro'));
     document.querySelectorAll('.msg-erro-campo').forEach(el => el.remove());
     function marcarErro(id, msg) {
@@ -1860,6 +1862,7 @@ async function salvarPedido() {
     if (!getVal('dataEntrega'))        { marcarErro('dataEntrega', '⚠️ Informe a data'); temErro = true; }
     if (!itens || itens.length === 0) { toast('❌ Adicione pelo menos um item!', 'erro'); temErro = true; }
     if (temErro) return;
+    btnSalvar.disabled = true;
     const dataRawCheck = getVal('dataEntrega');
     if (dataRawCheck) {
         if (VALIDAR_DATA_PASSADA && !window.pedidoEmEdicao) {
@@ -1868,6 +1871,7 @@ async function salvarPedido() {
             const dataSelecionada = new Date(dataRawCheck + 'T00:00:00');
             if (dataSelecionada < hoje) {
                 marcarErro('dataEntrega', '⚠️ Não selecione uma data passada');
+                btnSalvar.disabled = false;
                 return;
             }
         }
@@ -1876,6 +1880,7 @@ async function salvarPedido() {
             const inicioBR = eventoBloq.inicio.split('-').reverse().join('/');
             const fimBR    = eventoBloq.fim.split('-').reverse().join('/');
             toast(`🔒 Data bloqueada: ${eventoBloq.nome} (${inicioBR} a ${fimBR})`, 'erro');
+            btnSalvar.disabled = false;
             return;
         }
     }
@@ -1897,7 +1902,7 @@ async function salvarPedido() {
         valorPago: getVal('valorPago'), statusPagamento: getVal('statusPagamento'),
         observacoes: getVal('observacoes'), timestamp: Date.now()
     };
-const refPath = window.pedidoEmEdicao ? 'pedidos/' + window.pedidoEmEdicao : 'pedidos/' + Date.now();
+const refPath = window.pedidoEmEdicao ? 'pedidos/' + window.pedidoEmEdicao : 'pedidos/' + database.ref('pedidos').push().key;
 const ehNovoPedido = !window.pedidoEmEdicao;
 
 async function salvarEAjustarEstoque() {
@@ -1917,7 +1922,9 @@ async function salvarEAjustarEstoque() {
     }
     limparFormulario();
 }
-salvarEAjustarEstoque().catch(err => toast('❌ Erro ao salvar: ' + err.message, 'erro'));
+salvarEAjustarEstoque()
+    .catch(err => toast('❌ Erro ao salvar: ' + err.message, 'erro'))
+    .finally(() => { btnSalvar.disabled = false; });
 }
 
 async function ajustarEstoquePorPedido(itensPedido, operacao) {
@@ -1927,12 +1934,7 @@ async function ajustarEstoquePorPedido(itensPedido, operacao) {
     const receitasMap = {};
     snapshotReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
 
-    const snapshotInsumos = await database.ref('insumos').once('value');
-    const insumosAtuais = {};
-    snapshotInsumos.forEach(child => { insumosAtuais[child.key] = child.val(); });
-
     const consumoTotal = {};
-
     itensPedido.forEach(item => {
         const sabor = item.sabor || item.nome;
         const receita = receitasMap[sabor];
@@ -1944,26 +1946,28 @@ async function ajustarEstoquePorPedido(itensPedido, operacao) {
         });
     });
 
-    const updates = {};
     let avisosEstoque = [];
-    Object.entries(consumoTotal).forEach(([insumoKey, consumido]) => {
-        const insumo = insumosAtuais[insumoKey];
-        if (!insumo) return;
-        let novoEstoque;
-        if (operacao === 'devolver') {
-            novoEstoque = (insumo.estoqueAtual || 0) + consumido;
-        } else {
-            novoEstoque = Math.max(0, (insumo.estoqueAtual || 0) - consumido);
-            if (insumo.estoqueMinimo > 0 && novoEstoque <= insumo.estoqueMinimo) {
-                avisosEstoque.push(insumo.nome);
+
+    // Cada insumo é ajustado com transaction() — evita que dois pedidos
+    // salvos ao mesmo tempo "pisem" um no ajuste do outro.
+    for (const [insumoKey, consumido] of Object.entries(consumoTotal)) {
+        const resultado = await database.ref('insumos/' + insumoKey).transaction(insumo => {
+            if (!insumo) return insumo; // insumo não existe mais, não mexe
+            const atual = insumo.estoqueAtual || 0;
+            insumo.estoqueAtual = operacao === 'devolver'
+                ? atual + consumido
+                : Math.max(0, atual - consumido);
+            return insumo;
+        });
+
+        if (resultado.committed && resultado.snapshot.exists()) {
+            const insumoFinal = resultado.snapshot.val();
+            if (operacao === 'abater' && insumoFinal.estoqueMinimo > 0 && insumoFinal.estoqueAtual <= insumoFinal.estoqueMinimo) {
+                avisosEstoque.push(insumoFinal.nome);
             }
         }
-        updates['insumos/' + insumoKey + '/estoqueAtual'] = novoEstoque;
-    });
-
-    if (Object.keys(updates).length > 0) {
-        await database.ref().update(updates);
     }
+
     if (avisosEstoque.length > 0) {
         toast('⚠️ Estoque baixo: ' + avisosEstoque.join(', '), 'aviso');
     }
