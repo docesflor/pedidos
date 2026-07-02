@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
 /* ═══════════════════════════════════════════
@@ -2325,24 +2325,28 @@ function gerarCobrancaPix(key) {
             <div class="modal-box" style="max-width:340px;">
                 <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:6px;">💸 Cobrança Pix</p>
                 <p style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;">${escaparHTML(p.nome)} — R$ ${vRestante.toFixed(2).replace('.',',')}</p>
-                <div style="display:flex;justify-content:center;margin-bottom:14px;">
-    <img id="qrcode-pix-img" style="width:220px;height:220px;border-radius:8px;" alt="QR Code Pix">
-</div>                <textarea readonly style="font-size:0.7em;height:70px;" id="pix-copia-cola">${payload}</textarea>
+                <div id="qrcode-pix" style="display:flex;justify-content:center;margin-bottom:14px;"></div>                <textarea readonly style="font-size:0.7em;height:70px;" id="pix-copia-cola">${payload}</textarea>
                 <div class="modal-botoes">
                     <button class="btn btn-cinza" onclick="document.getElementById('modalPix').remove()">Fechar</button>
                     <button class="btn btn-verde" onclick="copiarParaClipboard(document.getElementById('pix-copia-cola').value).then(()=>toast('📋 Código Pix copiado!'))">Copiar Código</button>
                 </div>
             </div>`;
         document.body.appendChild(overlay);
-        QRCode.toDataURL(payload, { width: 220, margin: 1 }, function (error, url) {
-    if (error) {
-        console.error('Erro ao gerar QR Code Pix:', error);
-        toast('⚠️ Não foi possível gerar o QR Code. Use o código copia-e-cola.', 'aviso');
-        return;
+        if (typeof QRCode === 'undefined') {
+    console.error('Biblioteca QRCode não carregada.');
+    toast('⚠️ QR Code indisponível no momento. Use o código copia-e-cola.', 'aviso');
+} else {
+    const qrDiv = document.getElementById('qrcode-pix');
+    if (qrDiv) {
+        qrDiv.innerHTML = '';
+        new QRCode(qrDiv, {
+            text: payload,
+            width: 220,
+            height: 220,
+            correctLevel: QRCode.CorrectLevel.M
+        });
     }
-    const img = document.getElementById('qrcode-pix-img');
-    if (img) img.src = url;
-});
+}
     });
 }
 
