@@ -1226,8 +1226,42 @@ const database = firebase.database();
 const auth = firebase.auth();
 const VALIDAR_DATA_PASSADA = true;
 let PAPEL_USUARIO = 'admin';
+const FILA_OFFLINE_KEY = 'docesflor_fila_pedidos_offline';
 
 let graficoFaturamento = null;
+
+// ====================== FILA OFFLINE ======================
+function salvarNaFilaOffline(item) {
+    let fila = [];
+    try { fila = JSON.parse(localStorage.getItem(FILA_OFFLINE_KEY)) || []; } catch(e) { fila = []; }
+    fila.push(item);
+    localStorage.setItem(FILA_OFFLINE_KEY, JSON.stringify(fila));
+}
+
+async function processarFilaOffline() {
+    let fila = [];
+    try { fila = JSON.parse(localStorage.getItem(FILA_OFFLINE_KEY)) || []; } catch(e) { fila = []; }
+    if (fila.length === 0) return;
+    toast('📶 Conexão restabelecida. Sincronizando ' + fila.length + ' pedido(s) pendente(s)...', 'aviso');
+    for (const item of fila) {
+        try {
+            await database.ref(item.refPath).set(item.pedido);
+            if (item.ehNovoPedido) {
+                await ajustarEstoquePorPedido(item.pedido.itens, 'abater');
+            } else {
+                if (item.itensAntigos) await ajustarEstoquePorPedido(item.itensAntigos, 'devolver');
+                await ajustarEstoquePorPedido(item.pedido.itens, 'abater');
+            }
+        } catch (err) {
+            console.error('Erro ao sincronizar pedido da fila offline:', err);
+        }
+    }
+    localStorage.removeItem(FILA_OFFLINE_KEY);
+    toast('✅ Todos os pedidos pendentes foram sincronizados!');
+    carregarAndamento();
+}
+
+window.addEventListener('online', processarFilaOffline);
 
 // ====================== DADOS DINÂMICOS ======================
 let DADOS_PEDIDOS = null;
@@ -1907,12 +1941,28 @@ const ehNovoPedido = !window.pedidoEmEdicao;
 
 async function salvarEAjustarEstoque() {
     let itensAntigos = null;
-    if (!ehNovoPedido) {
+    if (!ehNovoPedido && navigator.onLine) {
         const snapAntigo = await database.ref(refPath).once('value');
         const pedidoAntigo = snapAntigo.val();
         itensAntigos = pedidoAntigo ? pedidoAntigo.itens : null;
     }
-    await database.ref(refPath).set(pedido);
+
+    if (!navigator.onLine) {
+        salvarNaFilaOffline({ refPath, pedido, ehNovoPedido, itensAntigos });
+        toast('📵 Sem conexão. Pedido salvo localmente e será enviado assim que a internet voltar.', 'aviso');
+        limparFormulario();
+        return;
+    }
+
+    try {
+        await database.ref(refPath).set(pedido);
+    } catch (err) {
+        // conexão caiu bem na hora de gravar — cai pra fila também
+        salvarNaFilaOffline({ refPath, pedido, ehNovoPedido, itensAntigos });
+        toast('📵 Falha de conexão. Pedido salvo localmente e será enviado em breve.', 'aviso');
+        limparFormulario();
+        return;
+    }
     toast(window.pedidoEmEdicao ? '✅ Pedido atualizado!' : '✅ Pedido salvo!');
     if (ehNovoPedido) {
         await ajustarEstoquePorPedido(pedido.itens, 'abater');
@@ -2107,8 +2157,11 @@ function criarCard(pedido, key, finalizado) {
             else                 badgeTempo = `<span style="background:var(--cream-dark);color:var(--brown-warm);border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:600;margin-left:8px;">em ${diff} dias</span>`;
         }
     }
+    const avaliacaoBtnHTML = pedido.avaliacaoRespondida
+        ? `<button class="btn btn-avaliacao-enviada" disabled style="cursor:not-allowed;opacity:0.85;">⭐ Avaliação ✓✓</button>`
+        : `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação</button>`;
     const botoesHTML = finalizado
-    ? `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação${pedido.avaliacaoRespondida ? ' ✓✓' : ''}</button>
+    ? `${avaliacaoBtnHTML}
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
@@ -2964,6 +3017,23 @@ function verificarNotificacoes() {
     });
 }
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
+
+// ====================== AUTO-REFRESH (atualização quase em tempo real) ======================
+setInterval(function() {
+    if (document.hidden) return;               // aba em segundo plano, não atualiza
+    if (window.pedidoEmEdicao) return;          // não atualiza durante edição de pedido
+    const secaoAndamentoAtiva = document.getElementById('secao-andamento')?.classList.contains('active');
+    const secaoEventosAtiva   = document.getElementById('secao-eventos')?.classList.contains('active');
+    const calendarioAberto    = document.getElementById('calendario-wrapper')?.style.display === 'block';
+    const buscaVazia = !document.getElementById('buscaAndamento')?.value.trim()
+                     && !document.getElementById('buscaAndamentoData')?.value.trim();
+    if (secaoAndamentoAtiva && buscaVazia && !calendarioAberto) {
+        carregarAndamento();
+    }
+    if (secaoEventosAtiva) {
+        carregarEventos();
+    }
+}, 45 * 1000);
 function verificarEstoqueBaixo() {
     database.ref('insumos').once('value', snapshot => {
         let qtdBaixo = 0;
