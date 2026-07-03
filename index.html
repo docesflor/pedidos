@@ -963,6 +963,36 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
 <!-- ── ABA INSUMOS ── -->
 <div id="aba-insumos" style="display:none;">
+    <div class="form-card" style="border:2px solid var(--amber);">
+        <p class="form-card-titulo">🛒 Registrar Compra</p>
+        <label for="compraInsumoSel">Insumo</label>
+        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
+            <option value="">Selecione o insumo</option>
+        </select>
+        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
+        <div class="linha-dupla">
+            <div>
+                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
+                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
+            </div>
+            <div>
+                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
+                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
+            </div>
+        </div>
+        <label for="compraCategoria">Categoria do gasto</label>
+        <select id="compraCategoria">
+            <option value="Ingredientes">🧴 Ingredientes</option>
+            <option value="Embalagens">📦 Embalagens</option>
+            <option value="Gás/Energia">🔥 Gás/Energia</option>
+            <option value="Entrega">🚗 Entrega</option>
+            <option value="Outros">📋 Outros</option>
+        </select>
+        <label for="compraData">Data da compra</label>
+        <input type="date" id="compraData">
+        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
+    </div>
     <div class="form-card">
         <p class="form-card-titulo">➕ Novo Insumo</p>
         <label for="insumoNome">Nome do Insumo</label>
@@ -974,7 +1004,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             </div>
             <div>
                 <label for="insumoUnidade">Unidade</label>
-                <select id="insumoUnidade">
+                <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
                     <option value="un">Unidade (un)</option>
                     <option value="g">Gramas (g)</option>
                     <option value="ml">Mililitros (ml)</option>
@@ -986,16 +1016,24 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             <label for="insumoQtd">Quantidade por embalagem</label>
             <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
         </div>
+        <div id="wrapperNomeEmbalagem">
+            <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
+            <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
+                💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
+            </p>
+        </div>
         <div class="linha-dupla">
             <div>
-                <label for="insumoEstoqueAtual">Estoque Atual</label>
+                <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
                 <input type="number" id="insumoEstoqueAtual" placeholder="Ex: 3950" min="0">
             </div>
             <div>
-                <label for="insumoEstoqueMinimo">Estoque Mínimo (alerta)</label>
+                <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
                 <input type="number" id="insumoEstoqueMinimo" placeholder="Ex: 800" min="0">
             </div>
         </div>
+        <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
         <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
         <button class="btn btn-marrom btn-bloco" onclick="abrirImportacaoPadrao()">📦 Importar Lista Padrão</button>
         <button class="btn btn-azul btn-bloco" onclick="abrirPrevisaoCompra()">🛒 Previsão de Compras (15 dias)</button>
@@ -4483,6 +4521,11 @@ function mostrarAbaGastos(aba, btn) {
         if (aba === 'insumos') {
             document.getElementById('aba-insumos').style.display = 'block';
             carregarInsumos();
+            const campoData = document.getElementById('compraData');
+            if (campoData && !campoData.value) {
+                const hoje = new Date();
+                campoData.value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+            }
         } else if (aba === 'receitas') {
             document.getElementById('aba-receitas').style.display = 'block';
             carregarReceitasLista();
@@ -4495,11 +4538,11 @@ function mostrarAbaGastos(aba, btn) {
 // ====================== BASE DE INSUMOS PADRÃO ======================
 const INSUMOS_PADRAO = [
     // ── BASES LÁCTEAS ──
-    { nome: 'Leite condensado 395g',        qtdEmbalagem: 395,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
-    { nome: 'Leite condensado 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
-    { nome: 'Creme de leite 200g',          qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
-    { nome: 'Creme de leite 1kg',           qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
-    { nome: 'Manteiga sem sal 200g',        qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
+    { nome: 'Leite condensado 395g',        qtdEmbalagem: 395,  unidade: 'g',  categoria: '🥛 Bases Lácteas', nomeEmbalagem: 'caixinha' },
+    { nome: 'Leite condensado 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas', nomeEmbalagem: 'pacote' },
+    { nome: 'Creme de leite 200g',          qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas', nomeEmbalagem: 'caixinha' },
+    { nome: 'Creme de leite 1kg',           qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas', nomeEmbalagem: 'pacote' },
+    { nome: 'Manteiga sem sal 200g',        qtdEmbalagem: 200,  unidade: 'g',  categoria: '🥛 Bases Lácteas', nomeEmbalagem: 'tablete' },
     { nome: 'Manteiga sem sal 500g',        qtdEmbalagem: 500,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
     { nome: 'Manteiga sem sal 1kg',         qtdEmbalagem: 1000, unidade: 'g',  categoria: '🥛 Bases Lácteas' },
     { nome: 'Leite em pó integral 400g',    qtdEmbalagem: 400,  unidade: 'g',  categoria: '🥛 Bases Lácteas' },
@@ -4729,27 +4772,68 @@ function fecharImportacao() {
 }
 
 // ====================== INSUMOS ======================
-function salvarInsumo() {
-    const nome    = document.getElementById('insumoNome').value.trim();
-    const precoRaw= document.getElementById('insumoPreco').value;
-    const preco   = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
+function toggleNomeEmbalagem() {
     const unidade = document.getElementById('insumoUnidade').value;
-    const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 1;
-    const estoqueAtual  = parseFloat(document.getElementById('insumoEstoqueAtual').value) || 0;
-    const estoqueMinimo = parseFloat(document.getElementById('insumoEstoqueMinimo').value) || 0;
+    const wrapper = document.getElementById('wrapperNomeEmbalagem');
+    wrapper.style.display = unidade === 'un' ? 'none' : 'block';
+    if (unidade === 'un') document.getElementById('insumoNomeEmbalagem').value = '';
+    atualizarDicaEstoqueEmbalagem();
+}
+
+function atualizarDicaEstoqueEmbalagem() {
+    const nomeEmb = document.getElementById('insumoNomeEmbalagem').value.trim();
+    const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 0;
+    const labelAtual  = document.getElementById('labelEstoqueAtual');
+    const labelMinimo = document.getElementById('labelEstoqueMinimo');
+    const dica = document.getElementById('dicaEstoqueEmbalagem');
+    const campoAtual = document.getElementById('insumoEstoqueAtual');
+    const campoMinimo = document.getElementById('insumoEstoqueMinimo');
+    if (nomeEmb) {
+        labelAtual.textContent  = `Estoque Atual (em ${nomeEmb}s)`;
+        labelMinimo.textContent = `Estoque Mínimo (em ${nomeEmb}s)`;
+        campoAtual.placeholder  = 'Ex: 27';
+        campoMinimo.placeholder = 'Ex: 5';
+        if (qtd > 0) {
+            dica.style.display = 'block';
+            dica.textContent = `💡 Cada ${nomeEmb} tem ${qtd}${document.getElementById('insumoUnidade').value}. Informe aqui a quantidade de ${nomeEmb}s, não o peso.`;
+        } else { dica.style.display = 'none'; }
+    } else {
+        labelAtual.textContent  = 'Estoque Atual';
+        labelMinimo.textContent = 'Estoque Mínimo (alerta)';
+        campoAtual.placeholder  = 'Ex: 3950';
+        campoMinimo.placeholder = 'Ex: 800';
+        dica.style.display = 'none';
+    }
+}
+
+function salvarInsumo() {
+    const nome     = document.getElementById('insumoNome').value.trim();
+    const precoRaw = document.getElementById('insumoPreco').value;
+    const preco    = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
+    const unidade  = document.getElementById('insumoUnidade').value;
+    const qtd      = parseFloat(document.getElementById('insumoQtd').value) || 1;
+    const nomeEmbalagem = document.getElementById('insumoNomeEmbalagem').value.trim();
+    const estoqueAtualInput  = parseFloat(document.getElementById('insumoEstoqueAtual').value) || 0;
+    const estoqueMinimoInput = parseFloat(document.getElementById('insumoEstoqueMinimo').value) || 0;
 
     if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
     if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
     if (qtd<=0)   { toast('❌ Informe a quantidade por embalagem.', 'erro'); return; }
 
-    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
+    // Se tem nome de embalagem, o que foi digitado é em "caixinhas" — converte para a unidade base (g/ml)
+    const estoqueAtual  = nomeEmbalagem ? estoqueAtualInput  * qtd : estoqueAtualInput;
+    const estoqueMinimo = nomeEmbalagem ? estoqueMinimoInput * qtd : estoqueMinimoInput;
+
+    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
     database.ref('insumos').push(insumo).then(() => {
         toast('✅ Insumo salvo!');
         document.getElementById('insumoNome').value  = '';
         document.getElementById('insumoPreco').value = '';
         document.getElementById('insumoQtd').value   = '';
+        document.getElementById('insumoNomeEmbalagem').value = '';
         document.getElementById('insumoEstoqueAtual').value = '';
         document.getElementById('insumoEstoqueMinimo').value = '';
+        atualizarDicaEstoqueEmbalagem();
         carregarInsumos();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
 }
@@ -4761,6 +4845,7 @@ function carregarInsumos() {
         const insumos = [];
         snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
         insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        popularSelectCompraInsumo(insumos);
         if (insumos.length === 0) {
             lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
             return;
@@ -4771,6 +4856,23 @@ function carregarInsumos() {
             const estoqueAtual  = i.estoqueAtual || 0;
             const estoqueMinimo = i.estoqueMinimo || 0;
             const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
+            const temEmbalagem = !!i.nomeEmbalagem;
+
+            // Exibição do estoque: em embalagens (caixinhas) quando o insumo tem nome de embalagem definido
+            let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
+            if (temEmbalagem) {
+                const embalagens = i.estoqueAtual / i.qtdEmbalagem;
+                const embalagensMin = i.estoqueMinimo ? (i.estoqueMinimo / i.qtdEmbalagem) : 0;
+                const embFormatado = Number.isInteger(embalagens) ? embalagens : embalagens.toFixed(1);
+                estoqueLinha = `${embFormatado} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
+                estoqueMinimoTexto = embalagensMin > 0 ? ` (mín: ${embalagensMin} ${i.nomeEmbalagem}s)` : '';
+                placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
+            } else {
+                estoqueLinha = `${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}`;
+                estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${estoqueMinimo}${i.unidade})` : '';
+                placeholderEntrada = 'Qtd a adicionar';
+            }
+
             const div = document.createElement('div');
             div.className = 'insumo-card';
             div.style.flexDirection = 'column';
@@ -4786,16 +4888,15 @@ function carregarInsumos() {
                             &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
                         </div>
                         <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
-                            📦 Estoque: ${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}
-                            ${estoqueMinimo > 0 ? ' (mín: ' + estoqueMinimo + i.unidade + ')' : ''}
+                            📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
                         </div>
                     </div>
                     <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:10px;">
-                    <input type="number" id="entrada-${i.key}" placeholder="Qtd a adicionar" style="margin-bottom:0;flex:1;font-size:0.85em;padding:8px 12px;">
+                    <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;font-size:0.85em;padding:8px 12px;">
                     <button class="btn btn-verde" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
-                    <button class="btn btn-cinza" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="editarEstoqueManual('${i.key}', ${estoqueAtual})">✏️ Ajustar</button>
+                    <button class="btn btn-cinza" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="editarEstoqueManual('${i.key}')">✏️ Ajustar</button>
                 </div>`;
             lista.appendChild(div);
         });
@@ -4808,22 +4909,33 @@ function darEntradaEstoque(key) {
     if (qtdAdicionar <= 0) { toast('❌ Informe uma quantidade válida.', 'erro'); return; }
     database.ref('insumos/' + key).once('value', snap => {
         const i = snap.val();
-        const novoEstoque = (i.estoqueAtual || 0) + qtdAdicionar;
+        // Se o insumo é controlado por embalagem, o número digitado é em "caixinhas" — converte pra unidade base
+        const qtdBase = i.nomeEmbalagem ? qtdAdicionar * i.qtdEmbalagem : qtdAdicionar;
+        const novoEstoque = (i.estoqueAtual || 0) + qtdBase;
         database.ref('insumos/' + key).update({ estoqueAtual: novoEstoque }).then(() => {
-            toast('✅ Estoque atualizado: +' + qtdAdicionar);
+            toast('✅ Estoque atualizado: +' + qtdAdicionar + (i.nomeEmbalagem ? ' ' + i.nomeEmbalagem + '(s)' : ''));
             carregarInsumos();
         });
     });
 }
 
-function editarEstoqueManual(key, estoqueAtual) {
-    const novoValor = prompt('Ajustar estoque atual para:', estoqueAtual);
-    if (novoValor === null) return;
-    const valor = parseFloat(novoValor);
-    if (isNaN(valor) || valor < 0) { toast('❌ Valor inválido.', 'erro'); return; }
-    database.ref('insumos/' + key).update({ estoqueAtual: valor }).then(() => {
-        toast('✅ Estoque ajustado.');
-        carregarInsumos();
+function editarEstoqueManual(key) {
+    database.ref('insumos/' + key).once('value', snap => {
+        const i = snap.val();
+        const temEmbalagem = !!i.nomeEmbalagem;
+        const valorAtualExibido = temEmbalagem ? (i.estoqueAtual / i.qtdEmbalagem) : (i.estoqueAtual || 0);
+        const labelPrompt = temEmbalagem
+            ? `Ajustar estoque atual para (em ${i.nomeEmbalagem}s):`
+            : 'Ajustar estoque atual para:';
+        const novoValor = prompt(labelPrompt, valorAtualExibido);
+        if (novoValor === null) return;
+        const valorDigitado = parseFloat(novoValor);
+        if (isNaN(valorDigitado) || valorDigitado < 0) { toast('❌ Valor inválido.', 'erro'); return; }
+        const valorFinal = temEmbalagem ? valorDigitado * i.qtdEmbalagem : valorDigitado;
+        database.ref('insumos/' + key).update({ estoqueAtual: valorFinal }).then(() => {
+            toast('✅ Estoque ajustado.');
+            carregarInsumos();
+        });
     });
 }
 
@@ -4833,6 +4945,160 @@ function excluirInsumo(key) {
             .then(() => { toast('🗑️ Insumo excluído.'); carregarInsumos(); })
             .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
     });
+}
+
+function popularSelectCompraInsumo(insumosList) {
+    const sel = document.getElementById('compraInsumoSel');
+    if (!sel) return;
+    const valorAtual = sel.value;
+    sel.innerHTML = '<option value="">Selecione o insumo</option>';
+    insumosList.forEach(i => {
+        const opt = document.createElement('option');
+        opt.value = i.key;
+        opt.textContent = i.nome;
+        opt.dataset.unidade = i.unidade;
+        opt.dataset.estoque = i.estoqueAtual || 0;
+        opt.dataset.custoun = i.qtdEmbalagem > 0 ? (i.preco / i.qtdEmbalagem) : 0;
+        opt.dataset.qtdembalagem = i.qtdEmbalagem || 1;
+        opt.dataset.nomeembalagem = i.nomeEmbalagem || '';
+        sel.appendChild(opt);
+    });
+    if (valorAtual) sel.value = valorAtual;
+}
+
+function atualizarInfoCompraInsumo() {
+    const sel  = document.getElementById('compraInsumoSel');
+    const opt  = sel.options[sel.selectedIndex];
+    const info = document.getElementById('compraInsumoInfo');
+    const labelQtd   = document.getElementById('labelCompraQtd');
+    const labelValor = document.getElementById('labelCompraValor');
+    const campoQtd   = document.getElementById('compraQtd');
+
+    if (!opt || !opt.value) { info.textContent = ''; calcularPreviewCompra(); return; }
+
+    const unidade   = opt.dataset.unidade;
+    const nomeEmb   = opt.dataset.nomeembalagem;
+    const qtdEmb    = parseFloat(opt.dataset.qtdembalagem) || 1;
+    const estoqueG  = parseFloat(opt.dataset.estoque) || 0;
+    const custoUn   = parseFloat(opt.dataset.custoun) || 0;
+    const labelUn   = unidade === 'un' ? 'un' : unidade;
+
+    if (nomeEmb) {
+        const estoqueEmb = estoqueG / qtdEmb;
+        const estoqueEmbFmt = Number.isInteger(estoqueEmb) ? estoqueEmb : estoqueEmb.toFixed(1);
+        info.textContent = `📦 Estoque atual: ${estoqueEmbFmt} ${nomeEmb}(s) · Cada ${nomeEmb} tem ${qtdEmb}${labelUn}`;
+        labelQtd.textContent   = `Quantidade de ${nomeEmb}s compradas`;
+        labelValor.textContent = `Valor por ${nomeEmb} (R$)`;
+        campoQtd.placeholder = `Ex: 27 ${nomeEmb}s`;
+    } else {
+        info.textContent = `📦 Estoque atual: ${estoqueG}${labelUn} · Custo atual: R$ ${custoUn.toFixed(4).replace('.',',')}/${labelUn}`;
+        labelQtd.textContent   = 'Quantidade comprada';
+        labelValor.textContent = 'Valor pago (R$)';
+        campoQtd.placeholder = 'Ex: 1000';
+    }
+    calcularPreviewCompra();
+}
+
+// Converte os campos do formulário pra unidade base (g/ml), considerando se é por embalagem ou não
+function _lerCompraEmBase(opt) {
+    const nomeEmb   = opt.dataset.nomeembalagem;
+    const qtdEmb    = parseFloat(opt.dataset.qtdembalagem) || 1;
+    const qtdDigitada = parseFloat(document.getElementById('compraQtd').value) || 0;
+    const valorDigitado = parseFloat((document.getElementById('compraValor').value||'').replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
+
+    if (nomeEmb) {
+        // qtdDigitada = nº de embalagens · valorDigitado = preço por embalagem
+        return {
+            qtdComprada_base: qtdDigitada * qtdEmb,
+            valorPagoTotal: valorDigitado * qtdDigitada
+        };
+    }
+    // comportamento antigo: qtdDigitada já é em unidade base, valorDigitado é o total pago
+    return { qtdComprada_base: qtdDigitada, valorPagoTotal: valorDigitado };
+}
+
+function calcularPreviewCompra() {
+    const sel     = document.getElementById('compraInsumoSel');
+    const opt     = sel.options[sel.selectedIndex];
+    const preview = document.getElementById('compraPreview');
+    if (!opt || !opt.value) { preview.textContent = ''; return; }
+
+    const { qtdComprada_base, valorPagoTotal } = _lerCompraEmBase(opt);
+    if (qtdComprada_base <= 0 || valorPagoTotal <= 0) { preview.textContent = ''; return; }
+
+    const unidade       = opt.dataset.unidade;
+    const nomeEmb       = opt.dataset.nomeembalagem;
+    const qtdEmb        = parseFloat(opt.dataset.qtdembalagem) || 1;
+    const labelUn       = unidade === 'un' ? 'un' : unidade;
+    const estoqueAntigo = parseFloat(opt.dataset.estoque) || 0;
+    const custoUnAntigo = parseFloat(opt.dataset.custoun) || 0;
+    const custoUnNovo   = valorPagoTotal / qtdComprada_base;
+    const estoqueTotal  = estoqueAntigo + qtdComprada_base;
+    const custoUnMedio  = estoqueTotal > 0
+        ? ((custoUnAntigo * estoqueAntigo) + (custoUnNovo * qtdComprada_base)) / estoqueTotal
+        : custoUnNovo;
+
+    if (nomeEmb) {
+        const estoqueEmbTotal = estoqueTotal / qtdEmb;
+        const estoqueEmbFmt = Number.isInteger(estoqueEmbTotal) ? estoqueEmbTotal : estoqueEmbTotal.toFixed(1);
+        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueEmbFmt} ${nomeEmb}(s)</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong> · Total pago: <strong>R$ ${valorPagoTotal.toFixed(2).replace('.',',')}</strong>`;
+    } else {
+        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueTotal}${labelUn}</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong>`;
+    }
+}
+
+async function registrarCompraInsumo() {
+    const key       = document.getElementById('compraInsumoSel').value;
+    const sel       = document.getElementById('compraInsumoSel');
+    const opt       = sel.options[sel.selectedIndex];
+    const categoria = document.getElementById('compraCategoria').value;
+    const data      = document.getElementById('compraData').value || new Date().toISOString().split('T')[0];
+
+    if (!key) { toast('❌ Selecione um insumo.', 'erro'); return; }
+
+    const { qtdComprada_base, valorPagoTotal } = _lerCompraEmBase(opt);
+    if (qtdComprada_base <= 0) { toast('❌ Informe a quantidade comprada.', 'erro'); return; }
+    if (valorPagoTotal <= 0)   { toast('❌ Informe o valor pago.', 'erro'); return; }
+
+    const btn = document.getElementById('btnRegistrarCompra');
+    if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
+
+    try {
+        const snap   = await database.ref('insumos/' + key).once('value');
+        const insumo = snap.val();
+        if (!insumo) { toast('❌ Insumo não encontrado.', 'erro'); return; }
+
+        const estoqueAntigo = insumo.estoqueAtual || 0;
+        const custoUnAntigo = insumo.qtdEmbalagem > 0 ? (insumo.preco / insumo.qtdEmbalagem) : 0;
+        const custoUnNovo   = valorPagoTotal / qtdComprada_base;
+        const estoqueTotal  = estoqueAntigo + qtdComprada_base;
+        const custoUnMedio  = estoqueTotal > 0
+            ? ((custoUnAntigo * estoqueAntigo) + (custoUnNovo * qtdComprada_base)) / estoqueTotal
+            : custoUnNovo;
+        const novoPreco = custoUnMedio * insumo.qtdEmbalagem;
+
+        await database.ref('insumos/' + key).update({ estoqueAtual: estoqueTotal, preco: novoPreco });
+        await database.ref('gastos').push({
+            data, categoria,
+            descricao: insumo.nome,
+            quantidade: qtdComprada_base,
+            valor: valorPagoTotal,
+            timestamp: Date.now()
+        });
+
+        toast('✅ Compra registrada! Estoque e custo médio atualizados.');
+        document.getElementById('compraInsumoSel').value = '';
+        document.getElementById('compraQtd').value = '';
+        document.getElementById('compraValor').value = '';
+        document.getElementById('compraInsumoInfo').textContent = '';
+        document.getElementById('compraPreview').textContent = '';
+        carregarInsumos();
+        verificarEstoqueBaixo();
+    } catch (err) {
+        toast('❌ Erro: ' + err.message, 'erro');
+    } finally {
+        if (btn) { btn.textContent = '✅ Registrar Compra'; btn.disabled = false; }
+    }
 }
 
 function popularSelectInsumos() {
@@ -4845,10 +5111,11 @@ function popularSelectInsumos() {
         insumos.forEach(i => {
             const opt = document.createElement('option');
             opt.value = i.key;
-            opt.textContent = i.nome + ' (' + (i.unidade === 'un' ? 'un' : i.qtdEmbalagem + i.unidade) + ')';
+            opt.textContent = i.nome + (i.nomeEmbalagem ? ` (${i.nomeEmbalagem} de ${i.qtdEmbalagem}${i.unidade})` : ' (' + (i.unidade === 'un' ? 'un' : i.qtdEmbalagem + i.unidade) + ')');
             opt.dataset.unidade      = i.unidade;
             opt.dataset.preco        = i.preco;
             opt.dataset.qtdEmbalagem = i.qtdEmbalagem;
+            opt.dataset.nomeEmbalagem = i.nomeEmbalagem || '';
             opt.dataset.nome         = i.nome;
             sel.appendChild(opt);
         });
@@ -4909,6 +5176,7 @@ async function abrirPrevisaoCompra() {
             itensComprar.push({
                 nome: insumo.nome,
                 unidade: insumo.unidade,
+                nomeEmbalagem: insumo.nomeEmbalagem || '',
                 necessario, estoqueAtual, falta,
                 qtdEmbalagem,
                 embalagensNecessarias,
@@ -4927,17 +5195,30 @@ async function abrirPrevisaoCompra() {
     const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
     let html = '<div class="form-card"><p class="form-card-titulo">🛒 Lista de Compras Sugerida</p>';
     itensComprar.forEach(i => {
-        const labelEmbalagem = i.unidade === 'un'
-            ? `${i.embalagensNecessarias} un.`
-            : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
+        const labelEmbalagem = i.nomeEmbalagem
+            ? `${i.embalagensNecessarias} ${i.nomeEmbalagem}${i.embalagensNecessarias > 1 ? 's' : ''}`
+            : i.unidade === 'un'
+                ? `${i.embalagensNecessarias} un.`
+                : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
+
+        const necessarioTexto = i.nomeEmbalagem
+            ? `${(i.necessario / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+            : `${i.necessario.toFixed(1)}${i.unidade}`;
+        const estoqueTexto = i.nomeEmbalagem
+            ? `${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+            : `${i.estoqueAtual}${i.unidade}`;
+        const faltaTexto = i.nomeEmbalagem
+            ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+            : `${i.falta.toFixed(0)}${i.unidade}`;
+
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
             <div>
                 <strong>${escaparHTML(i.nome)}</strong>
-                <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${i.necessario.toFixed(1)}${i.unidade} | Em estoque: ${i.estoqueAtual}${i.unidade}</div>
+                <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${necessarioTexto} | Em estoque: ${estoqueTexto}</div>
             </div>
             <div style="text-align:right;">
                 <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
-                <div style="font-size:0.72em;color:var(--brown-warm);">(${i.falta.toFixed(0)}${i.unidade} faltando)</div>
+                <div style="font-size:0.72em;color:var(--brown-warm);">(${faltaTexto} faltando)</div>
                 <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
             </div>
         </div>`;
@@ -4972,12 +5253,19 @@ document.addEventListener('DOMContentLoaded', function() {
         selInsumo.addEventListener('change', function() {
             const opt = this.options[this.selectedIndex];
             const hint = document.getElementById('receitaInsumoHint');
+            const qtdInput = document.getElementById('receitaInsumoQtd');
             if (!opt.value) { hint.textContent = ''; return; }
             const unidade = opt.dataset.unidade;
-            if (unidade === 'un') {
+            const nomeEmb = opt.dataset.nomeEmbalagem;
+            if (nomeEmb) {
+                hint.textContent = `Quantas ${nomeEmb}s essa receita usa? (Ex: 1)`;
+                qtdInput.placeholder = 'Ex: 1';
+            } else if (unidade === 'un') {
                 hint.textContent = 'Informe quantas unidades usar na receita base.';
+                qtdInput.placeholder = 'Ex: 2';
             } else {
                 hint.textContent = 'Informe a quantidade em ' + unidade + ' usada na receita base.';
+                qtdInput.placeholder = 'Ex: 80';
             }
         });
     }
@@ -4988,23 +5276,30 @@ function adicionarIngredienteReceita() {
     const qtdEl  = document.getElementById('receitaInsumoQtd');
     const key    = sel.value;
     const opt    = sel.options[sel.selectedIndex];
-    const qtd    = parseFloat(qtdEl.value) || 0;
+    const qtdDigitada = parseFloat(qtdEl.value) || 0;
 
-    if (!key)   { toast('❌ Selecione um insumo.', 'erro'); return; }
-    if (qtd<=0) { toast('❌ Informe a quantidade.', 'erro'); return; }
+    if (!key)          { toast('❌ Selecione um insumo.', 'erro'); return; }
+    if (qtdDigitada<=0){ toast('❌ Informe a quantidade.', 'erro'); return; }
 
     if (ingredientesReceita.find(i => i.insumoKey === key)) {
         toast('⚠️ Insumo já adicionado. Remova e adicione novamente para alterar.', 'aviso');
         return;
     }
 
+    const nomeEmb = opt.dataset.nomeEmbalagem;
+    const qtdEmbalagem = parseFloat(opt.dataset.qtdEmbalagem);
+    // Se o insumo é por embalagem, o valor digitado (ex: 1) é convertido pra unidade base (ex: 395g)
+    const qtdReceitaBase = nomeEmb ? qtdDigitada * qtdEmbalagem : qtdDigitada;
+
     ingredientesReceita.push({
-        insumoKey:    key,
-        nome:         opt.dataset.nome,
-        unidade:      opt.dataset.unidade,
-        preco:        parseFloat(opt.dataset.preco),
-        qtdEmbalagem: parseFloat(opt.dataset.qtdEmbalagem),
-        qtdReceita:   qtd
+        insumoKey:      key,
+        nome:           opt.dataset.nome,
+        unidade:        opt.dataset.unidade,
+        preco:          parseFloat(opt.dataset.preco),
+        qtdEmbalagem:   qtdEmbalagem,
+        nomeEmbalagem:  nomeEmb,
+        qtdEmbReceita:  nomeEmb ? qtdDigitada : null,  // quantas caixinhas, pra exibição
+        qtdReceita:     qtdReceitaBase                 // sempre em unidade base, pra cálculo
     });
 
     sel.value   = '';
@@ -5018,10 +5313,13 @@ function renderizarIngredientesReceita() {
     if (ingredientesReceita.length === 0) { lista.innerHTML = ''; return; }
     lista.innerHTML = ingredientesReceita.map((ing, idx) => {
         const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+        const qtdExibida = ing.nomeEmbalagem
+            ? `${ing.qtdEmbReceita} ${ing.nomeEmbalagem}${ing.qtdEmbReceita === 1 ? '' : 's'}`
+            : `${ing.qtdReceita}${ing.unidade}`;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:0.84em;">
             <div>
                 <strong>${escaparHTML(ing.nome)}</strong>
-                <span style="color:var(--brown-warm);margin-left:6px;">${ing.qtdReceita}${ing.unidade}</span>
+                <span style="color:var(--brown-warm);margin-left:6px;">${qtdExibida}</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <span style="color:var(--green);font-weight:700;">R$ ${custo.toFixed(2).replace('.',',')}</span>
@@ -5093,8 +5391,11 @@ function carregarReceitasLista() {
             card.className = 'receita-card';
             const ingsHTML = (r.ingredientes || []).map(ing => {
                 const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
+                const qtdExibida = ing.nomeEmbalagem
+                    ? `${ing.qtdEmbReceita} ${ing.nomeEmbalagem}${ing.qtdEmbReceita === 1 ? '' : 's'}`
+                    : `${ing.qtdReceita}${ing.unidade}`;
                 return `<div class="receita-ingrediente-linha">
-                    <span>${escaparHTML(ing.nome)} — ${ing.qtdReceita}${ing.unidade}</span>
+                    <span>${escaparHTML(ing.nome)} — ${qtdExibida}</span>
                     <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
                 </div>`;
             }).join('');
@@ -5218,6 +5519,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('cor').addEventListener('change', function() {
         document.getElementById('corCustomizada').style.display=this.value==='Outra'?'block':'none';
     });
+    const campoInsumoQtd = document.getElementById('insumoQtd');
+    const campoInsumoNomeEmb = document.getElementById('insumoNomeEmbalagem');
+    if (campoInsumoQtd)    campoInsumoQtd.addEventListener('input', atualizarDicaEstoqueEmbalagem);
+    if (campoInsumoNomeEmb) campoInsumoNomeEmb.addEventListener('input', atualizarDicaEstoqueEmbalagem);
     let _debounceFinalizados = null;
     document.getElementById('buscaFinalizados').addEventListener('input', function() {
         clearTimeout(_debounceFinalizados);
