@@ -586,7 +586,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
             <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
             <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
             <div class="menu-btn-wrapper">
-                <button class="menu-btn" onclick="irPara('gastos', this)">💸 Gastos</button>
+                <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
             </div>
             <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
         </div>
@@ -609,7 +609,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         </button>
         <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
         <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
-        <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">💸 Gastos</button>
+        <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
         <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
         <hr class="gaveta-separador">
         <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
@@ -903,16 +903,16 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 <!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
 <section id="secao-gastos" class="secao">
     <div class="custos-tabs">
-        <button class="custos-tab active" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
-        <button class="custos-tab" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
-        <button class="custos-tab" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
+        <button class="custos-tab active" id="custosTabInsumos" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
+        <button class="custos-tab" id="custosTabReceitas" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
+        <button class="custos-tab" id="custosTabGastos" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
     </div>
     <h2 class="secao-titulo">
-        💸 Gastos
+        🧮 Custos & Produção
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Controle seus custos operacionais</span>
+        <span class="secao-sub">Insumos, receitas e gastos em um só lugar</span>
     </h2>
-    <button class="btn btn-marrom btn-bloco" onclick="exportarBackupCompleto()">💾 Fazer Backup Completo (JSON)</button>
+    <div id="aba-gastos" style="display:none;">
     <div class="form-card">
         <p class="form-card-titulo">➕ Novo Gasto</p>
         <div class="linha-dupla">
@@ -961,39 +961,14 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <p id="gastoTotalPeriodo" style="font-family:'DM Sans',sans-serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
     </div>
     <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
-<!-- ── ABA INSUMOS ── -->
-<div id="aba-insumos" style="display:none;">
-    <div class="form-card" style="border:2px solid var(--amber);">
-        <p class="form-card-titulo">🛒 Registrar Compra</p>
-        <label for="compraInsumoSel">Insumo</label>
-        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
-            <option value="">Selecione o insumo</option>
-        </select>
-        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
-        <div class="linha-dupla">
-            <div>
-                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
-                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
-            </div>
-            <div>
-                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
-                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
-            </div>
-        </div>
-        <label for="compraCategoria">Categoria do gasto</label>
-        <select id="compraCategoria">
-            <option value="Ingredientes">🧴 Ingredientes</option>
-            <option value="Embalagens">📦 Embalagens</option>
-            <option value="Gás/Energia">🔥 Gás/Energia</option>
-            <option value="Entrega">🚗 Entrega</option>
-            <option value="Outros">📋 Outros</option>
-        </select>
-        <label for="compraData">Data da compra</label>
-        <input type="date" id="compraData">
-        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
-        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
     </div>
-    <div class="form-card">
+
+<!-- ── ABA INSUMOS ── -->
+<div id="aba-insumos" style="display:block;">
+    <p class="form-card-titulo" style="margin:4px 4px 14px;">📦 Estoque Atual</p>
+    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
+
+    <div class="form-card" style="margin-top:22px;">
         <p class="form-card-titulo">➕ Novo Insumo</p>
         <label for="insumoNome">Nome do Insumo</label>
         <input type="text" id="insumoNome" placeholder="Ex: Leite condensado">
@@ -1035,19 +1010,49 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         </div>
         <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
         <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
-        <button class="btn btn-marrom btn-bloco" onclick="abrirImportacaoPadrao()">📦 Importar Lista Padrão</button>
-        <button class="btn btn-azul btn-bloco" onclick="abrirPrevisaoCompra()">🛒 Previsão de Compras (15 dias)</button>
-        <div id="painel-previsao-compra" style="display:none;"></div>
-    <div id="painel-importacao" style="display:none;margin-top:16px;">
-        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.04em;">📦 Selecione e preencha os preços</p>
-        <div id="lista-importacao"></div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
-            <button class="btn btn-verde btn-bloco" onclick="salvarImportacao()">💾 Salvar Selecionados</button>
-            <button class="btn btn-cinza btn-bloco" onclick="fecharImportacao()">✕ Cancelar</button>
+    </div>
+
+    <div class="form-card" style="border:2px solid var(--amber);">
+        <p class="form-card-titulo">🛒 Registrar Compra</p>
+        <label for="compraInsumoSel">Insumo</label>
+        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
+            <option value="">Selecione o insumo</option>
+        </select>
+        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
+        <div class="linha-dupla">
+            <div>
+                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
+                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
+            </div>
+            <div>
+                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
+                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
+            </div>
         </div>
+        <label for="compraCategoria">Categoria do gasto</label>
+        <select id="compraCategoria">
+            <option value="Ingredientes">🧴 Ingredientes</option>
+            <option value="Embalagens">📦 Embalagens</option>
+            <option value="Gás/Energia">🔥 Gás/Energia</option>
+            <option value="Entrega">🚗 Entrega</option>
+            <option value="Outros">📋 Outros</option>
+        </select>
+        <label for="compraData">Data da compra</label>
+        <input type="date" id="compraData">
+        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
     </div>
+
+    <div class="form-card" style="border:2px solid var(--blue);">
+        <p class="form-card-titulo">🔮 Previsão de Compras</p>
+        <p style="font-size:0.8em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;">O que falta comprar com base nos pedidos já agendados.</p>
+        <div id="previsao-compra-filtros" style="display:flex;gap:6px;margin-bottom:14px;">
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(7,this)">7 dias</button>
+            <button class="chip-filtro active" id="chipPrevisao15" onclick="calcularPrevisaoCompra(15,this)">15 dias</button>
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(30,this)">30 dias</button>
+        </div>
+        <div id="painel-previsao-compra"></div>
     </div>
-    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
 </div>
 
 <!-- ── ABA RECEITAS ── -->
@@ -1900,6 +1905,7 @@ function _navegarPara(secao, btn) {
     if (secao === 'andamento')   carregarAndamento();
     if (secao === 'finalizados') carregarFinalizados();
     if (secao === 'eventos')     carregarEventos();
+    if (secao === 'gastos')      mostrarAbaGastos('insumos', document.getElementById('custosTabInsumos'));
     if (secao === 'dashboard') {
         const agora = new Date();
         document.getElementById('dashMes').value = agora.getMonth();
@@ -4503,35 +4509,26 @@ function mostrarAbaGastos(aba, btn) {
     document.querySelectorAll('.custos-tab').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
 
-    const secaoGastos = document.getElementById('secao-gastos');
-    const tituloGastos = secaoGastos.querySelector('.secao-titulo');
-
-    // Pega apenas os cards DIRETOS da seção de gastos (não os das sub-abas)
-    const cardsGastos = [...secaoGastos.querySelectorAll(':scope > .form-card, #gastoResumo, #lista-gastos')];
-
+    document.getElementById('aba-gastos').style.display   = 'none';
     document.getElementById('aba-insumos').style.display  = 'none';
     document.getElementById('aba-receitas').style.display = 'none';
 
     if (aba === 'gastos') {
-        if (tituloGastos) tituloGastos.style.display = '';
-        cardsGastos.forEach(el => el.style.display = '');
-    } else {
-        if (tituloGastos) tituloGastos.style.display = 'none';
-        cardsGastos.forEach(el => el.style.display = 'none');
-        if (aba === 'insumos') {
-            document.getElementById('aba-insumos').style.display = 'block';
-            carregarInsumos();
-            const campoData = document.getElementById('compraData');
-            if (campoData && !campoData.value) {
-                const hoje = new Date();
-                campoData.value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
-            }
-        } else if (aba === 'receitas') {
-            document.getElementById('aba-receitas').style.display = 'block';
-            carregarReceitasLista();
-            popularSelectReceitaSabor();
-            popularSelectInsumos();
+        document.getElementById('aba-gastos').style.display = 'block';
+    } else if (aba === 'insumos') {
+        document.getElementById('aba-insumos').style.display = 'block';
+        carregarInsumos();
+        calcularPrevisaoCompra(15, document.getElementById('chipPrevisao15'));
+        const campoData = document.getElementById('compraData');
+        if (campoData && !campoData.value) {
+            const hoje = new Date();
+            campoData.value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
         }
+    } else if (aba === 'receitas') {
+        document.getElementById('aba-receitas').style.display = 'block';
+        carregarReceitasLista();
+        popularSelectReceitaSabor();
+        popularSelectInsumos();
     }
 }
 
@@ -5122,15 +5119,15 @@ function popularSelectInsumos() {
     });
 }
 
-async function abrirPrevisaoCompra() {
+async function calcularPrevisaoCompra(dias, btn) {
+    document.querySelectorAll('#previsao-compra-filtros .chip-filtro').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
     const painel = document.getElementById('painel-previsao-compra');
-    const aberto = painel.style.display === 'block';
-    if (aberto) { painel.style.display = 'none'; return; }
-    painel.style.display = 'block';
-    painel.innerHTML = '<p style="color:var(--brown-warm);padding:14px;">Calculando...</p>';
+    painel.innerHTML = '<p style="color:var(--brown-warm);padding:14px 0;">Calculando...</p>';
 
     const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const limite = new Date(hoje); limite.setDate(limite.getDate() + 15);
+    const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
 
     const [snapPedidos, snapReceitas, snapInsumos] = await Promise.all([
         database.ref('pedidos').once('value'),
@@ -5188,12 +5185,12 @@ async function abrirPrevisaoCompra() {
     itensComprar.sort((a,b) => b.falta - a.falta);
 
     if (itensComprar.length === 0) {
-        painel.innerHTML = '<div class="form-card"><p style="color:var(--green);font-weight:700;text-align:center;padding:20px;">✅ Estoque suficiente para os próximos 15 dias!</p></div>';
+        painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente para os próximos ${dias} dias!</p>`;
         return;
     }
 
     const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
-    let html = '<div class="form-card"><p class="form-card-titulo">🛒 Lista de Compras Sugerida</p>';
+    let html = '';
     itensComprar.forEach(i => {
         const labelEmbalagem = i.nomeEmbalagem
             ? `${i.embalagensNecessarias} ${i.nomeEmbalagem}${i.embalagensNecessarias > 1 ? 's' : ''}`
@@ -5225,7 +5222,7 @@ async function abrirPrevisaoCompra() {
     });
     html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
         <span>Custo total estimado da compra</span><span style="color:var(--amber);">R$ ${custoTotalCompra.toFixed(2).replace('.',',')}</span>
-    </div></div>`;
+    </div>`;
     painel.innerHTML = html;
 }
 
