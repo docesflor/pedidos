@@ -13,28 +13,18 @@
 <meta property="og:locale" content="pt_BR">
 
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://docesflor.github.io/shared/theme.css">
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://docesflor.github.io/shared/firebase-config.js"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-    --brown-dark:  #2B1206;
-    --brown-mid:   #5C2A0E;
-    --brown-warm:  #8B4513;
-    --amber:       #E8943A;
-    --amber-light: #F5B563;
-    --cream:       #FDF8F0;
-    --cream-dark:  #F0E6D3;
-    --green:       #4A7C59;
-    --white:       #FFFFFF;
-    --red:         #DC2626;
-}
+/* ═══════════════════════════════════════════
+   AVALIAÇÃO — ESTILOS ESPECÍFICOS
+   Reset, :root (cores) e fontes-base já vêm de shared/theme.css
+   (carregado acima). Aqui só o que é próprio desta página.
+═══════════════════════════════════════════ */
 
 body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--brown-dark);
-    color: #3D2010;
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
@@ -42,7 +32,8 @@ body {
     justify-content: center;
     padding: 24px;
     position: relative;
-    overflow-x: hidden;
+    background: var(--brown-dark);
+    color: var(--text-body);
 }
 body::before {
     content: '';
@@ -66,6 +57,9 @@ body::before {
     text-align: center;
 }
 
+/* Versão estática do anel de logo (sem flutuar) — a página de avaliação
+   é rápida/objetiva, então mantive sem animação, diferente do
+   .logo-ring-anim usado em pedidos/cardápio. */
 .logo-ring {
     width: 100px; height: 100px;
     border-radius: 50%;
@@ -169,16 +163,7 @@ button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 </div>
 
 <script>
-const firebaseConfig = {
-    apiKey: "AIzaSyCYqic9IlxUXlS_yEuMLZvmg16wGh5_Ing",
-    authDomain: "doces-flor.firebaseapp.com",
-    databaseURL: "https://doces-flor-default-rtdb.firebaseio.com",
-    projectId: "doces-flor",
-    storageBucket: "doces-flor.firebasestorage.app",
-    messagingSenderId: "430929421910",
-    appId: "1:430929421910:web:2f1bea78c78602c3387df7"
-};
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(window.FIREBASE_CONFIG);
 const database = firebase.database();
 
 const params = new URLSearchParams(window.location.search);
