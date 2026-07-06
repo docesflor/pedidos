@@ -296,9 +296,8 @@ function imprimirComprovante(key) {
         container.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;background:white;';
         container.innerHTML = `
             <div id="comprovante-conteudo" style="width:480px;background:#ffffff;padding:20px 22px;font-family:'DM Sans',Arial,sans-serif;line-height:1.35;">
-                <div style="text-align:center;margin-bottom:12px;"><img src="icone.png" style="width:118px;height:118px;border-radius:50%;border:3px solid #E8943A;" alt="Doces Flor"></div>
+                <div style="text-align:center;margin-bottom:10px;"><img src="icone.png" style="width:220px;height:220px;border-radius:50%;border:3px solid #E8943A;" alt="Doces Flor"></div>
                 <div style="text-align:center;margin-bottom:16px;">
-                    <h1 style="font-size:24px;color:#2B1206;margin:0 0 4px 0;font-family:'Cormorant Garamond',serif;">Doces Flor</h1>
                     <p style="margin:0;font-size:13px;color:#5C2A0E;">"Feito com amor, entregue com carinho ♥"</p>
                 </div>
                 <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
