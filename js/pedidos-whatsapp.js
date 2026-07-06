@@ -251,8 +251,8 @@ function imprimirComprovante(key) {
         const dataBr = formatarDataComDia(p.dataEntrega || p.data || '');
         const horario = p.hora||'';
         const enderecoRetirada = `
-            <div style="margin:10px 0 8px 0;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;border:1px solid #E8943A;font-size:13px;color:#F5EBD8;">
-                <strong style="color:#F5B563;">🏠 Retirada em:</strong><br>
+            <div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;">
+                <strong>🏠 Retirada em:</strong><br>
                 Residencial Gran Valle<br>
                 Rua Martim Kochella, 350, AP D508 - Ilha da Figueira,<br>
                 Jaraguá do Sul - SC, 89258-680
@@ -260,7 +260,7 @@ function imprimirComprovante(key) {
         let enderecoHTML = '', tipoHTML = '';
         if(p.tipoEntrega === 'entrega' && p.endereco){
             tipoHTML = '';
-            enderecoHTML = `<div style="margin:10px 0 8px 0;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px;border:1px solid #E8943A;font-size:13px;color:#F5EBD8;"><strong style="color:#F5B563;">🚚 Entrega em:</strong><br>${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)}<br>${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
+            enderecoHTML = `<div style="margin:10px 0 8px 0;padding:12px;background:#FDF8F0;border-radius:8px;border:1px solid #E8943A;font-size:13px;"><strong>🚚 Entrega em:</strong><br>${escaparHTML(p.endereco.logradouro)}, ${escaparHTML(p.endereco.numero)}<br>${escaparHTML(p.endereco.bairro)}, ${escaparHTML(p.endereco.cidade)}</div>`;
         } else {
             tipoHTML = '';
             enderecoHTML = enderecoRetirada;
@@ -281,12 +281,12 @@ function imprimirComprovante(key) {
             gruposComp.forEach(grupo => {
                 const itensCat = p.itens.filter(i => (CATEGORIA_SABOR[i.sabor||i.nome]||'trad') === grupo.cat);
                 if (itensCat.length === 0) return;
-                itensHTML += `<tr><td colspan="4" style="padding:7px 6px;background:rgba(232,148,58,0.18);font-weight:700;color:#F5B563;font-size:12px;">${grupo.label}</td></tr>`;
+                itensHTML += `<tr><td colspan="4" style="padding:7px 6px;background:#FEF3C7;font-weight:700;color:#92400E;font-size:12px;">${grupo.label}</td></tr>`;
                 itensCat.forEach(item => {
                     const qtd = parseInt(item.quantidade)||0;
                     const preco = item.precoManual !== undefined ? item.precoManual : grupo.precoAuto;
                     const subtotal = (qtd * preco).toFixed(2).replace('.',',');
-                    itensHTML += `<tr><td style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.12);font-size:12.5px;color:#F5EBD8;">${escaparHTML(item.sabor||item.nome)}</td><td style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.12);text-align:center;font-size:12.5px;color:#F5EBD8;">${qtd}</td><td style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.12);text-align:center;font-size:11.5px;color:#D9B48F;">${item.formato||''}</td><td style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.12);text-align:right;font-size:12.5px;font-weight:600;color:#F5EBD8;">R$ ${subtotal}</td></tr>`;
+                    itensHTML += `<tr><td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;font-size:12.5px;">${escaparHTML(item.sabor||item.nome)}</td><td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:center;font-size:12.5px;">${qtd}</td><td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:center;font-size:11.5px;color:#5C2A0E;">${item.formato||''}</td><td style="padding:6px 4px;border-bottom:1px solid #F0E6D3;text-align:right;font-size:12.5px;font-weight:600;">R$ ${subtotal}</td></tr>`;
                 });
             });
         }
@@ -295,21 +295,21 @@ function imprimirComprovante(key) {
         const container = document.createElement('div');
         container.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;background:white;';
         container.innerHTML = `
-            <div id="comprovante-conteudo" style="width:480px;background:linear-gradient(160deg,#2B1206 0%,#3D1A08 55%,#2B1206 100%);padding:20px 22px;font-family:'DM Sans',Arial,sans-serif;line-height:1.35;color:#F5EBD8;">
+            <div id="comprovante-conteudo" style="width:480px;background:#ffffff;padding:20px 22px;font-family:'DM Sans',Arial,sans-serif;line-height:1.35;">
                 <div style="text-align:center;margin-bottom:10px;"><img src="icone.png" style="width:220px;height:220px;border-radius:50%;border:3px solid #E8943A;" alt="Doces Flor"></div>
                 <div style="text-align:center;margin-bottom:16px;">
-                    <p style="margin:0;font-size:13px;color:#F5B563;">"Feito com amor, entregue com carinho ♥"</p>
+                    <p style="margin:0;font-size:13px;color:#5C2A0E;">"Feito com amor, entregue com carinho ♥"</p>
                 </div>
-                <div style="background:rgba(255,255,255,0.06);border:1px solid #E8943A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#F5EBD8;">
-                    <div><strong style="color:#F5B563;">Cliente:</strong> ${escaparHTML(p.nome||'---')}</div>
-                    <div><strong style="color:#F5B563;">Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div>
-                    <div><strong style="color:#F5B563;">Data:</strong> ${escaparHTML(dataBr)}${horario && horario.trim() ? ' às ' + escaparHTML(horario.trim()) + 'h' : ''}</div>
+                <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+                    <div><strong>Cliente:</strong> ${escaparHTML(p.nome||'---')}</div>
+                    <div><strong>Telefone:</strong> ${escaparHTML(p.telefone||'---')}</div>
+                    <div><strong>Data:</strong> ${escaparHTML(dataBr)}${horario && horario.trim() ? ' às ' + escaparHTML(horario.trim()) + 'h' : ''}</div>
                     ${tipoHTML}
                 </div>
                 ${enderecoHTML}
                 <table style="width:100%;border-collapse:collapse;margin:16px 0 14px 0;">
                     <thead>
-                        <tr style="background:rgba(0,0,0,0.35);">
+                        <tr style="background:#2B1206;">
                             <th style="color:#F5B563;padding:8px 6px;font-size:11.5px;text-align:left;">Sabor</th>
                             <th style="color:#F5B563;padding:8px 6px;font-size:11.5px;text-align:center;">Qtd</th>
                             <th style="color:#F5B563;padding:8px 6px;font-size:11px;text-align:center;">Formato</th>
@@ -318,24 +318,24 @@ function imprimirComprovante(key) {
                     </thead>
                     <tbody>${itensHTML}</tbody>
                 </table>
-                <div style="background:rgba(255,255,255,0.06);border:1px solid #E8943A;border-radius:10px;padding:14px 16px;color:#F5EBD8;">
+                <div style="background:#FDF8F0;border:1px solid #E8943A;border-radius:10px;padding:14px 16px;">
                     <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;">
                         <span>Brigadeiros</span>
                         <span>${typeof p.valorBrigadeiros==='number'?'R$ '+p.valorBrigadeiros.toFixed(2).replace('.',','):'---'}</span>
                     </div>
                     ${(p.valorFrete||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;"><span>Frete</span><span>R$ ${p.valorFrete.toFixed(2).replace('.',',')}</span></div>`:''}
-                    ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;color:#F5B563;"><span>Desconto</span><span>- R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}
-                    <div style="border-top:2px solid #E8943A;margin:12px 0 4px 0;padding-top:10px;display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:#FDF8F0;">
+                    ${(p.desconto||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13.5px;color:#C9522A;"><span>Desconto</span><span>- R$ ${p.desconto.toFixed(2).replace('.',',')}</span></div>`:''}
+                    <div style="border-top:2px solid #E8943A;margin:12px 0 4px 0;padding-top:10px;display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:#2B1206;">
                         <span>TOTAL A PAGAR</span>
                         <span>${valorTotal}</span>
                     </div>
                 </div>
-                <div style="text-align:center;margin:16px 0 12px;padding:10px;background:rgba(255,255,255,0.08);border-radius:10px;font-size:14px;font-weight:600;color:#F5EBD8;">
+                <div style="text-align:center;margin:16px 0 12px;padding:10px;background:#F0E6D3;border-radius:10px;font-size:14px;font-weight:600;">
                     ${emojiStatus} ${escaparHTML(p.statusPagamento||'A pagar')}
                     ${p.statusPagamento==='Pago Parcialmente'?`: ${escaparHTML(p.valorPago||'R$ 0,00')}`:''}
                 </div>
-                ${p.observacoes?`<div style="font-size:12.5px;padding:10px 12px;background:rgba(255,255,255,0.06);border-left:4px solid #E8943A;border-radius:8px;color:#F5EBD8;"><strong style="color:#F5B563;">Obs:</strong> ${escaparHTML(p.observacoes)}</div>`:''}
-                <div style="text-align:center;margin-top:18px;font-size:11.5px;color:#C9522A;">
+                ${p.observacoes?`<div style="font-size:12.5px;padding:10px 12px;background:#FDF8F0;border-left:4px solid #E8943A;border-radius:8px;"><strong>Obs:</strong> ${escaparHTML(p.observacoes)}</div>`:''}
+                <div style="text-align:center;margin-top:18px;font-size:11.5px;color:#8B4513;">
                     Doces Flor • (47) 9 9274-5896<br>
                     Obrigado pela preferência! 💛
                 </div>
@@ -347,7 +347,7 @@ function imprimirComprovante(key) {
         setTimeout(() => {
             const el = document.getElementById('comprovante-conteudo');
             
-            html2canvas(el, { scale: 2.0, backgroundColor: '#2B1206' }).then(canvas => {
+            html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas => {
                 
                 // 1. Baixar a imagem
                 const link = document.createElement('a');
