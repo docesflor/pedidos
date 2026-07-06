@@ -1186,6 +1186,11 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         </div>
         <div class="form-card">
             <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <label style="margin:0;text-transform:none;font-weight:500;font-size:0.8em;letter-spacing:0;">Mostrar apenas margem abaixo de</label>
+                <input type="number" id="filtroMargemSabor" placeholder="Ex: 30" min="0" max="100" style="margin-bottom:0;width:80px;" oninput="reaplicarFiltroMargemSabor()">
+                <span style="font-size:0.85em;color:var(--brown-warm);">%</span>
+            </div>
             <div id="dashLucratividadeSabores"></div>
         </div>
         <div class="form-card">
@@ -1303,10 +1308,11 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 </div>
 
 <div id="modalHistoricoPreco" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width:380px;text-align:left;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
         <p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:4px;">📈 Histórico de Preço</p>
         <p id="historicoPrecoInsumoNome" style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;"></p>
-        <div id="historicoPrecoLista" style="max-height:320px;overflow-y:auto;"></div>
+        <canvas id="graficoHistoricoPreco" style="max-height:180px;margin-bottom:14px;"></canvas>
+        <div id="historicoPrecoLista" style="max-height:260px;overflow-y:auto;"></div>
         <div class="modal-botoes" style="margin-top:14px;">
             <button class="btn btn-cinza btn-bloco" onclick="document.getElementById('modalHistoricoPreco').style.display='none'">Fechar</button>
         </div>
@@ -1340,6 +1346,7 @@ const FILA_OFFLINE_KEY = 'docesflor_fila_pedidos_offline';
 
 let graficoFaturamento = null;
 let graficoGastosCategoria = null;
+let graficoHistoricoPreco = null;
 
 // ====================== FILA OFFLINE ======================
 function salvarNaFilaOffline(item) {
@@ -3182,9 +3189,13 @@ function verificarEstoqueBaixo() {
                 badgeTopo.style.display = 'flex';
             } else if (badgeTopo) { badgeTopo.style.display = 'none'; }
         }
-        // Aviso fixo no topo, igual ao de pedidos urgentes
-        if (qtdBaixo > 0) {
+        // Aviso fixo no topo — só dispara de novo se a lista de insumos baixos mudou
+        const assinaturaAtual = nomesBaixo.slice().sort().join('|');
+        if (qtdBaixo > 0 && assinaturaAtual !== _ultimoAvisoEstoqueBaixo) {
             toast('⚠️ ' + qtdBaixo + ' insumo(s) com estoque baixo: ' + nomesBaixo.slice(0,3).join(', ') + (nomesBaixo.length > 3 ? '...' : ''), 'aviso');
+            _ultimoAvisoEstoqueBaixo = assinaturaAtual;
+        } else if (qtdBaixo === 0) {
+            _ultimoAvisoEstoqueBaixo = '';
         }
     });
 }
@@ -3193,6 +3204,7 @@ setInterval(verificarEstoqueBaixo, 10 * 60 * 1000);
 let _notificacaoSomDisparada = false;
 let _audioContextDesbloqueado = false;
 let _audioCtx = null;
+let _ultimoAvisoEstoqueBaixo = '';
 
 function desbloquearAudio() {
     if (_audioContextDesbloqueado) return;
@@ -3727,6 +3739,8 @@ function calcularAvaliacoes(ano, mes) {
     });
 }
 
+let _dadosLucratividadeSabores = [];
+
 function calcularLucratividadeSabores(saboresQtd, receitasMap, faturamentoTotal, totalBrigTotal) {
     const div = document.getElementById('dashLucratividadeSabores');
     if (!div) return;
@@ -3744,14 +3758,32 @@ function calcularLucratividadeSabores(saboresQtd, receitasMap, faturamentoTotal,
         dados.push({ sabor, qtd, custoPorUn, precoVendaUn, lucroUn, lucroTotalSabor, margemPct });
     });
 
+    dados.sort((a,b) => b.lucroTotalSabor - a.lucroTotalSabor);
+    _dadosLucratividadeSabores = dados;
+    reaplicarFiltroMargemSabor();
+}
+
+function reaplicarFiltroMargemSabor() {
+    const div = document.getElementById('dashLucratividadeSabores');
+    if (!div) return;
+    const dados = _dadosLucratividadeSabores;
+
     if (dados.length === 0) {
         div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Cadastre receitas para ver a lucratividade por sabor.</p>';
         return;
     }
 
-    dados.sort((a,b) => b.lucroTotalSabor - a.lucroTotalSabor);
+    const campoFiltro = document.getElementById('filtroMargemSabor');
+    const limite = campoFiltro && campoFiltro.value !== '' ? parseFloat(campoFiltro.value) : null;
+    const dadosFiltrados = limite !== null ? dados.filter(d => d.margemPct < limite) : dados;
 
-    div.innerHTML = dados.map((d, idx) => {
+    if (dadosFiltrados.length === 0) {
+        div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum sabor com margem abaixo de ' + limite + '%.</p>';
+        return;
+    }
+
+    div.innerHTML = dadosFiltrados.map((d) => {
+        const idx = dados.indexOf(d);
         const corMargem = d.margemPct >= 50 ? '#065F46' : d.margemPct >= 30 ? '#92400E' : '#DC2626';
         const medalha = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;">
@@ -3979,29 +4011,6 @@ function excluirGasto(key) {
 }
 
 // ====================== EXPORTAR CSV ======================
-async function exportarBackupCompleto() {
-    toast('⏳ Gerando backup...', 'aviso');
-    try {
-        const nos = ['pedidos', 'gastos', 'insumos', 'receitas', 'eventos'];
-        const backup = {};
-        for (const no of nos) {
-            const snap = await database.ref(no).once('value');
-            backup[no] = snap.val() || {};
-        }
-        backup._geradoEm = new Date().toISOString();
-
-        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup-doces-flor-${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('✅ Backup gerado com sucesso!');
-    } catch (err) {
-        toast('❌ Erro ao gerar backup: ' + err.message, 'erro');
-    }
-}
 
 function exportarDashboardCSV() {
     const mesVal=document.getElementById('dashMes').value;
@@ -4854,6 +4863,29 @@ async function carregarAlertasInsumos() {
         div.innerHTML = `<p style="font-weight:700;color:#92400E;font-size:0.9em;margin-bottom:8px;">🕰️ ${parados.length} insumo${parados.length>1?'s':''} parado${parados.length>1?'s':''}</p>${itensHTML}`;
         container.appendChild(div);
     }
+
+    // ── Insumos usados em receitas mas sem estoque mínimo definido ──
+    const insumosUsadosEmReceitas = new Set();
+    snapReceitas.forEach(child => {
+        const r = child.val();
+        (r.ingredientes || []).forEach(ing => insumosUsadosEmReceitas.add(ing.insumoKey));
+    });
+    const semEstoqueMinimo = [];
+    snapInsumos.forEach(child => {
+        const i = child.val();
+        if (insumosUsadosEmReceitas.has(child.key) && !(i.estoqueMinimo > 0)) {
+            semEstoqueMinimo.push(i.nome);
+        }
+    });
+    if (semEstoqueMinimo.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'form-card';
+        div.style.cssText = 'border:1.5px solid #FCA5A5;background:#FEF2F2;margin-bottom:14px;';
+        div.innerHTML = `<p style="font-weight:700;color:#DC2626;font-size:0.9em;margin-bottom:8px;">⚠️ ${semEstoqueMinimo.length} insumo${semEstoqueMinimo.length>1?'s':''} usado${semEstoqueMinimo.length>1?'s':''} em receita sem estoque mínimo definido</p>
+            <p style="font-size:0.8em;color:var(--brown-warm);line-height:1.6;">${semEstoqueMinimo.map(n=>escaparHTML(n)).join(', ')}</p>
+            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:8px;">Sem estoque mínimo, você não recebe alerta de "acabando" para esses insumos. Edite-os na lista de insumos.</p>`;
+        container.appendChild(div);
+    }
 }
 
 function darEntradaEstoque(key) {
@@ -4961,7 +4993,10 @@ function excluirInsumo(key) {
 function verHistoricoPreco(key, nome) {
     document.getElementById('historicoPrecoInsumoNome').textContent = nome;
     const lista = document.getElementById('historicoPrecoLista');
+    const canvas = document.getElementById('graficoHistoricoPreco');
     lista.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
+    canvas.style.display = 'none';
+    if (graficoHistoricoPreco) { graficoHistoricoPreco.destroy(); graficoHistoricoPreco = null; }
     document.getElementById('modalHistoricoPreco').style.display = 'flex';
     database.ref('historicoPrecos/' + key).once('value').then(snapshot => {
         const registros = [];
@@ -4992,6 +5027,35 @@ function verHistoricoPreco(key, nome) {
             </div>`;
         });
         lista.innerHTML = html;
+
+        // Gráfico: precisa de ao menos 2 pontos, em ordem cronológica crescente
+        if (registros.length >= 2) {
+            const registrosCronologicos = registros.slice().sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+            const labels = registrosCronologicos.map(r => r.data ? r.data.split('-').reverse().join('/') : '');
+            const valores = registrosCronologicos.map(r => r.precoUnitario);
+            canvas.style.display = 'block';
+            const ctx = canvas.getContext('2d');
+            graficoHistoricoPreco = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Preço unitário',
+                        data: valores,
+                        borderColor: '#E8943A',
+                        backgroundColor: 'rgba(232,148,58,0.15)',
+                        tension: 0.25,
+                        fill: true,
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toFixed(4).replace('.',',') } } },
+                    scales: { y: { ticks: { callback: v => 'R$ ' + v.toFixed(3) } } }
+                }
+            });
+        }
     }).catch(err => {
         lista.innerHTML = '<p style="color:var(--red);font-size:0.85em;">Erro ao carregar histórico: ' + err.message + '</p>';
     });
