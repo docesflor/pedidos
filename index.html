@@ -968,6 +968,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 <div id="aba-insumos" style="display:block;">
     <div id="alertasInsumos"></div>
     <p class="form-card-titulo" style="margin:4px 4px 14px;">📦 Estoque Atual</p>
+    <input type="text" id="buscaInsumos" placeholder="🔍 Buscar insumo por nome..." style="margin-bottom:12px;" oninput="filtrarInsumosPorNome()">
     <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
 
     <div class="form-card" style="margin-top:22px;">
@@ -1088,6 +1089,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
         <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
         <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
+        <button class="btn btn-cinza btn-bloco" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
     </div>
     <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
 </div>
@@ -4776,6 +4778,18 @@ function carregarInsumos() {
                 </div>`;
             lista.appendChild(div);
         });
+        filtrarInsumosPorNome();
+    });
+}
+
+function filtrarInsumosPorNome() {
+    const campoBusca = document.getElementById('buscaInsumos');
+    if (!campoBusca) return;
+    const termo = campoBusca.value.toLowerCase().trim();
+    document.querySelectorAll('#lista-insumos .insumo-card').forEach(card => {
+        const nome = card.querySelector('.insumo-nome');
+        if (!nome) return;
+        card.style.display = (!termo || nome.textContent.toLowerCase().includes(termo)) ? '' : 'none';
     });
 }
 
@@ -4817,23 +4831,26 @@ async function carregarAlertasInsumos() {
             gastosPorDescricao[g.descricao] = g.data;
         }
     });
+    const DIAS_LIMITE_PARADO = 90; // ajuste aqui se quiser um período diferente
     const snapInsumos = await database.ref('insumos').once('value');
     const hoje = new Date();
     const parados = [];
     snapInsumos.forEach(child => {
         const i = child.val();
         const ultimaData = gastosPorDescricao[i.nome];
-        if (!ultimaData) { parados.push({ nome: i.nome, dias: null }); return; }
+        // Insumos nunca comprados (ex: forminha de cor rara) não entram no alerta —
+        // só avisamos quando existe um histórico de uso que parou.
+        if (!ultimaData) return;
         const dataCompra = new Date(ultimaData + 'T00:00:00');
         const dias = Math.round((hoje - dataCompra) / 86400000);
-        if (dias > 90) parados.push({ nome: i.nome, dias });
+        if (dias > DIAS_LIMITE_PARADO) parados.push({ nome: i.nome, dias });
     });
 
     if (parados.length > 0) {
         const div = document.createElement('div');
         div.className = 'form-card';
         div.style.cssText = 'border:1.5px solid #FDE68A;background:#FFFBEB;margin-bottom:14px;';
-        const itensHTML = parados.map(p => `<div style="font-size:0.82em;padding:4px 0;">${escaparHTML(p.nome)} ${p.dias===null ? '<span style="color:var(--brown-warm);">(nunca comprado)</span>' : `<span style="color:var(--brown-warm);">(${p.dias} dias sem compra)</span>`}</div>`).join('');
+        const itensHTML = parados.map(p => `<div style="font-size:0.82em;padding:4px 0;">${escaparHTML(p.nome)} <span style="color:var(--brown-warm);">(${p.dias} dias sem compra)</span></div>`).join('');
         div.innerHTML = `<p style="font-weight:700;color:#92400E;font-size:0.9em;margin-bottom:8px;">🕰️ ${parados.length} insumo${parados.length>1?'s':''} parado${parados.length>1?'s':''}</p>${itensHTML}`;
         container.appendChild(div);
     }
@@ -4946,7 +4963,7 @@ function verHistoricoPreco(key, nome) {
     const lista = document.getElementById('historicoPrecoLista');
     lista.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
     document.getElementById('modalHistoricoPreco').style.display = 'flex';
-    database.ref('historicoPrecos/' + key).once('value', snapshot => {
+    database.ref('historicoPrecos/' + key).once('value').then(snapshot => {
         const registros = [];
         snapshot.forEach(child => registros.push(child.val()));
         if (registros.length === 0) {
@@ -4954,9 +4971,14 @@ function verHistoricoPreco(key, nome) {
             return;
         }
         registros.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+        const totalRegistros = registros.length;
+        const registrosExibidos = registros.slice(0, 12);
         let html = '';
-        registros.forEach((r, idx) => {
-            const anterior = registros[idx+1];
+        if (totalRegistros > 12) {
+            html += `<p style="font-size:0.76em;color:var(--brown-warm);margin-bottom:8px;">Mostrando as 12 compras mais recentes de ${totalRegistros}.</p>`;
+        }
+        registrosExibidos.forEach((r, idx) => {
+            const anterior = registrosExibidos[idx+1];
             let seta = '';
             if (anterior) {
                 if (r.precoUnitario > anterior.precoUnitario) seta = '<span style="color:var(--red);font-weight:700;">↑</span>';
@@ -4970,6 +4992,8 @@ function verHistoricoPreco(key, nome) {
             </div>`;
         });
         lista.innerHTML = html;
+    }).catch(err => {
+        lista.innerHTML = '<p style="color:var(--red);font-size:0.85em;">Erro ao carregar histórico: ' + err.message + '</p>';
     });
 }
 
@@ -5118,6 +5142,15 @@ async function registrarCompraInsumo() {
             timestamp: Date.now()
         });
 
+        if (custoUnAntigo > 0) {
+            const variacaoPct = ((custoUnNovo - custoUnAntigo) / custoUnAntigo) * 100;
+            if (variacaoPct >= 10) {
+                toast(`⚠️ Preço ${variacaoPct.toFixed(0)}% mais caro que a média anterior de "${insumo.nome}"`, 'aviso');
+            } else if (variacaoPct <= -10) {
+                toast(`💚 Preço ${Math.abs(variacaoPct).toFixed(0)}% mais barato que a média anterior de "${insumo.nome}"`, 'sucesso');
+            }
+        }
+
         toast('✅ Compra registrada! Estoque e custo médio atualizados.');
         document.getElementById('compraInsumoSel').value = '';
         document.getElementById('compraQtd').value = '';
@@ -5263,6 +5296,7 @@ async function calcularPrevisaoCompra(dias, btn) {
 
 // ====================== RECEITAS ======================
 let ingredientesReceita = [];
+let _receitaEditandoKey = null;
 
 function popularSelectReceitaSabor() {
     const sel = document.getElementById('receitaSabor');
@@ -5395,11 +5429,18 @@ function salvarReceita() {
         timestamp: Date.now()
     };
 
-    database.ref('receitas').push(receita).then(() => {
-        toast('✅ Receita salva!');
+    const operacao = _receitaEditandoKey
+        ? database.ref('receitas/' + _receitaEditandoKey).update(receita)
+        : database.ref('receitas').push(receita);
+
+    operacao.then(() => {
+        toast(_receitaEditandoKey ? '✅ Receita atualizada!' : '✅ Receita salva!');
         document.getElementById('receitaSabor').value      = '';
         document.getElementById('receitaRendimento').value = '';
         ingredientesReceita = [];
+        _receitaEditandoKey = null;
+        const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
+        if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
         renderizarIngredientesReceita();
         carregarReceitasLista();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
@@ -5448,6 +5489,7 @@ function carregarReceitasLista() {
                     <p id="simResultado-${r.key}" style="font-size:0.82em;margin-top:6px;font-weight:600;"></p>
                 </div>
                 <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
+                    <button class="btn btn-amarelo" style="padding:6px 14px;font-size:0.8em;" onclick="editarReceita('${r.key}')">✏️ Editar</button>
                     <button class="btn btn-cinza" style="padding:6px 14px;font-size:0.8em;" onclick="duplicarReceita('${r.key}')">📄 Duplicar</button>
                     <button class="btn-remove" onclick="excluirReceita('${r.key}')">🗑️ Excluir receita</button>
                 </div>`;
@@ -5485,6 +5527,41 @@ function duplicarReceita(key) {
         document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
         document.getElementById('receitaSabor').focus();
     });
+}
+
+function editarReceita(key) {
+    database.ref('receitas/' + key).once('value', snap => {
+        const r = snap.val();
+        if (!r) { toast('❌ Receita não encontrada.', 'erro'); return; }
+        _receitaEditandoKey = key;
+        document.getElementById('receitaSabor').value = r.sabor || '';
+        document.getElementById('receitaRendimento').value = r.rendimento || '';
+        ingredientesReceita = (r.ingredientes || []).map(ing => ({
+            insumoKey:     ing.insumoKey,
+            nome:          ing.nome,
+            unidade:       ing.unidade,
+            preco:         ing.preco,
+            qtdEmbalagem:  ing.qtdEmbalagem,
+            nomeEmbalagem: ing.qtdEmbReceita !== undefined ? '' : '',
+            qtdEmbReceita: null,
+            qtdReceita:    ing.qtdReceita
+        }));
+        renderizarIngredientesReceita();
+        const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
+        if (btnSalvar) btnSalvar.textContent = '✏️ Atualizar Receita';
+        toast('✏️ Edite os campos e clique em "Atualizar Receita".', 'aviso');
+        document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
+    });
+}
+
+function cancelarEdicaoReceita() {
+    _receitaEditandoKey = null;
+    document.getElementById('receitaSabor').value = '';
+    document.getElementById('receitaRendimento').value = '';
+    ingredientesReceita = [];
+    renderizarIngredientesReceita();
+    const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
+    if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
 }
 
 function simularMargemReceita(key, custoPorUn) {
