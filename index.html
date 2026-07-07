@@ -1,1218 +1,820 @@
-/* ═══════════════════════════════════════════
-   PEDIDOS — GASTOS, INSUMOS, COMPRAS E RECEITAS
-   Depende de: shared/*, pedidos-auth.js, pedidos-precos.js, pedidos-crud.js
-═══════════════════════════════════════════ */
-
-let _insumoEditandoKey = null;
-let ingredientesReceita = [];
-let _receitaEditandoKey = null;
-
-function atualizarDescricaoGasto() {
-    const categoria = document.getElementById('gastoCategoria').value;
-    const select    = document.getElementById('gastoDescricao');
-    const opcoesDinamicas = DADOS_PEDIDOS && DADOS_PEDIDOS.gastos && DADOS_PEDIDOS.gastos[categoria];
-    const opcoesEstaticas = {
-        'Ingredientes': ['Leite condensado','Chocolate em pó','Manteiga','Creme de leite','Leite Ninho','Nutella','Pasta de amendoim','Coco ralado','Morango','Frutas variadas'],
-        'Embalagens':   ['Forminhas','Caixas 25 un','Caixas 50 un','Caixas 100 un','Fitas e laços','Papel celofane','Etiquetas'],
-        'Gás/Energia':  ['Gás de cozinha','Energia elétrica'],
-        'Entrega':      ['Combustível','Taxa de entrega app','Embalagem transporte'],
-        'Outros':       ['Luvas descartáveis','Papel toalha','Detergente / limpeza']
-    };
-    const opcoes = opcoesDinamicas || opcoesEstaticas[categoria] || [];
-    select.innerHTML = '<option value="">Selecione uma opção</option>';
-    [...opcoes].sort((a,b) => a.localeCompare(b,'pt-BR')).forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item; opt.textContent = item;
-        select.appendChild(opt);
-    });
-}
-
-
-function salvarGasto() {
-    const data=document.getElementById('gastoData').value;
-    const categoria=document.getElementById('gastoCategoria').value;
-    const descricao=document.getElementById('gastoDescricao').value.trim();
-    const quantidade=parseInt(document.getElementById('gastoQuantidade').value)||1;
-    const valorRaw=document.getElementById('gastoValor').value;
-    const valor=parseFloat(valorRaw.replace('R$','').replace(',','.').trim())||0;
-    if(!data){toast('Informe a data.','erro');return;}
-    if(!categoria){toast('Selecione uma categoria.','erro');return;}
-    if(!descricao){toast('Informe a descrição.','erro');return;}
-    if(valor<=0){toast('Informe um valor válido.','erro');return;}
-    const gasto={data,categoria,descricao,quantidade,valor,timestamp:Date.now()};
-    const btn=document.getElementById('btnSalvarGasto'); btn.textContent='Salvando...'; btn.disabled=true;
-    database.ref('gastos').push(gasto).then(()=>{
-        toast('✅ Gasto salvo!');
-        document.getElementById('gastoData').value='';
-        document.getElementById('gastoCategoria').value='';
-        document.getElementById('gastoDescricao').innerHTML='<option value="">Selecione uma opção</option>';
-        document.getElementById('gastoQuantidade').value='';
-        document.getElementById('gastoValor').value='';
-        btn.textContent='💾 Salvar Gasto'; btn.disabled=false; carregarGastos();
-    }).catch(err=>{toast('Erro: '+err.message,'erro');btn.textContent='💾 Salvar Gasto';btn.disabled=false;});
-}
-
-
-function carregarGastos() {
-    const lista=document.getElementById('lista-gastos');
-    const resumo=document.getElementById('gastoResumo');
-    const mesVal=document.getElementById('gastoFiltroMes').value;
-    const ano=parseInt(document.getElementById('gastoFiltroAno').value);
-    lista.innerHTML='<p style="color:var(--brown-warm);">Carregando...</p>';
-    database.ref('gastos').once('value',snapshot=>{
-        const gastos=[];
-        snapshot.forEach(child=>{
-            const g=child.val(); g.key=child.key;
-            if(mesVal!=='todos'){const mes=parseInt(mesVal);let dataG;if(/^\d{4}-\d{2}-\d{2}$/.test(g.data)){const pts=g.data.split('-');dataG=new Date(pts[0],pts[1]-1,pts[2]);}else return;if(dataG.getFullYear()!==ano||dataG.getMonth()!==mes)return;}
-            gastos.push(g);
-        });
-        gastos.sort((a,b)=>new Date(b.data)-new Date(a.data));
-        if(gastos.length===0){lista.innerHTML='<p style="color:var(--brown-warm);">Nenhum gasto para este período.</p>';resumo.style.display='none';return;}
-        let total=0; lista.innerHTML='';
-        gastos.forEach(g=>{total+=g.valor||0;lista.appendChild(criarCardGasto(g));});
-        document.getElementById('gastoTotalPeriodo').textContent='R$ '+total.toFixed(2).replace('.',',');
-        resumo.style.display='block';
-    });
-}
-
-
-function criarCardGasto(g) {
-    const div=document.createElement('div'); div.className='gasto-item';
-    const dataFormatada=g.data?g.data.split('-').reverse().join('/'):'N/A';
-    const valorFormatado='R$ '+(g.valor||0).toFixed(2).replace('.',',');
-    const info=document.createElement('div'); info.className='gasto-info';
-    const cat=document.createElement('span'); cat.className='gasto-categoria'; cat.textContent=g.categoria||'Outros';
-    const desc=document.createElement('p'); const descStrong=document.createElement('strong'); descStrong.textContent=g.descricao||'Sem descrição'; desc.appendChild(descStrong);
-    const det=document.createElement('p'); det.textContent=`📅 ${dataFormatada} | Qtd: ${g.quantidade||1} | ${valorFormatado}`;
-    info.appendChild(cat); info.appendChild(desc); info.appendChild(det);
-    const btnExcluir=document.createElement('button'); btnExcluir.className='btn-remove'; btnExcluir.textContent='Excluir'; btnExcluir.onclick=()=>excluirGasto(g.key);
-    div.appendChild(info); div.appendChild(btnExcluir); return div;
-}
-
-
-function excluirGasto(key) {
-    showConfirmModal('Excluir este gasto?',()=>database.ref('gastos/'+key).remove().then(()=>{toast('🗑️ Gasto excluído.');carregarGastos();}).catch(err=>toast('Erro: '+err.message,'erro')));
-}
-
-// ====================== EXPORTAR CSV ======================
-
-
-function mostrarAbaGastos(aba, btn) {
-    document.querySelectorAll('.custos-tab').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-
-    document.getElementById('aba-gastos').style.display   = 'none';
-    document.getElementById('aba-insumos').style.display  = 'none';
-    document.getElementById('aba-compras').style.display  = 'none';
-    document.getElementById('aba-receitas').style.display = 'none';
-
-    if (aba === 'gastos') {
-        document.getElementById('aba-gastos').style.display = 'block';
-    } else if (aba === 'insumos') {
-        document.getElementById('aba-insumos').style.display = 'block';
-        carregarInsumos();
-        carregarAlertasInsumos();
-    } else if (aba === 'compras') {
-        document.getElementById('aba-compras').style.display = 'block';
-        carregarInsumos(); // popula o dropdown de insumos da compra
-        calcularPrevisaoCompra(15, document.getElementById('chipPrevisao15'));
-        const campoData = document.getElementById('compraData');
-        if (campoData && !campoData.value) {
-            const hoje = new Date();
-            campoData.value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
-        }
-    } else if (aba === 'receitas') {
-        document.getElementById('aba-receitas').style.display = 'block';
-        carregarReceitasLista();
-        popularSelectReceitaSabor();
-        popularSelectInsumos();
-    }
-}
-
-// ====================== INSUMOS ======================
-
-function toggleNomeEmbalagem() {
-    const unidade = document.getElementById('insumoUnidade').value;
-    const wrapper = document.getElementById('wrapperNomeEmbalagem');
-    wrapper.style.display = unidade === 'un' ? 'none' : 'block';
-    if (unidade === 'un') document.getElementById('insumoNomeEmbalagem').value = '';
-    atualizarDicaEstoqueEmbalagem();
-}
-
-
-function atualizarDicaEstoqueEmbalagem() {
-    const nomeEmb = document.getElementById('insumoNomeEmbalagem').value.trim();
-    const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 0;
-    const labelAtual  = document.getElementById('labelEstoqueAtual');
-    const labelMinimo = document.getElementById('labelEstoqueMinimo');
-    const dica = document.getElementById('dicaEstoqueEmbalagem');
-    const campoAtual = document.getElementById('insumoEstoqueAtual');
-    const campoMinimo = document.getElementById('insumoEstoqueMinimo');
-    if (nomeEmb) {
-        labelAtual.textContent  = `Estoque Atual (em ${nomeEmb}s)`;
-        labelMinimo.textContent = `Estoque Mínimo (em ${nomeEmb}s)`;
-        campoAtual.placeholder  = 'Ex: 27';
-        campoMinimo.placeholder = 'Ex: 5';
-        if (qtd > 0) {
-            dica.style.display = 'block';
-            dica.textContent = `💡 Cada ${nomeEmb} tem ${qtd}${document.getElementById('insumoUnidade').value}. Informe aqui a quantidade de ${nomeEmb}s, não o peso.`;
-        } else { dica.style.display = 'none'; }
-    } else {
-        labelAtual.textContent  = 'Estoque Atual';
-        labelMinimo.textContent = 'Estoque Mínimo (alerta)';
-        campoAtual.placeholder  = 'Ex: 3950';
-        campoMinimo.placeholder = 'Ex: 800';
-        dica.style.display = 'none';
-    }
-}
-
-
-function salvarInsumo() {
-    const nome     = document.getElementById('insumoNome').value.trim();
-    const precoRaw = document.getElementById('insumoPreco').value;
-    const preco    = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
-    const unidade  = document.getElementById('insumoUnidade').value;
-    const qtd      = parseFloat(document.getElementById('insumoQtd').value) || 1;
-    const nomeEmbalagem = document.getElementById('insumoNomeEmbalagem').value.trim();
-    const estoqueAtualInput  = parseFloat(document.getElementById('insumoEstoqueAtual').value) || 0;
-    const estoqueMinimoInput = parseFloat(document.getElementById('insumoEstoqueMinimo').value) || 0;
-
-    if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
-    if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
-    if (qtd<=0)   { toast('❌ Informe a quantidade por embalagem.', 'erro'); return; }
-
-    // Se tem nome de embalagem, o que foi digitado é em "caixinhas" — converte para a unidade base (g/ml)
-    const estoqueAtual  = nomeEmbalagem ? estoqueAtualInput  * qtd : estoqueAtualInput;
-    const estoqueMinimo = nomeEmbalagem ? estoqueMinimoInput * qtd : estoqueMinimoInput;
-
-    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
-    database.ref('insumos').push(insumo).then(() => {
-        toast('✅ Insumo salvo!');
-        document.getElementById('insumoNome').value  = '';
-        document.getElementById('insumoPreco').value = '';
-        document.getElementById('insumoQtd').value   = '';
-        document.getElementById('insumoNomeEmbalagem').value = '';
-        document.getElementById('insumoEstoqueAtual').value = '';
-        document.getElementById('insumoEstoqueMinimo').value = '';
-        atualizarDicaEstoqueEmbalagem();
-        carregarInsumos();
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-}
-
-
-function carregarInsumos() {
-    const lista = document.getElementById('lista-insumos');
-    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
-    database.ref('insumos').once('value', snapshot => {
-        const insumos = [];
-        snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
-        insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-        popularSelectCompraInsumo(insumos);
-        if (insumos.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
-            return;
-        }
-        lista.innerHTML = '';
-        insumos.forEach(i => {
-            const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
-            const estoqueAtual  = i.estoqueAtual || 0;
-            const estoqueMinimo = i.estoqueMinimo || 0;
-            const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
-            const temEmbalagem = !!i.nomeEmbalagem;
-
-            // Exibição do estoque: em embalagens (caixinhas) quando o insumo tem nome de embalagem definido
-            let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
-            if (temEmbalagem) {
-                const embalagens = i.estoqueAtual / i.qtdEmbalagem;
-                const embalagensMin = i.estoqueMinimo ? (i.estoqueMinimo / i.qtdEmbalagem) : 0;
-                const embFormatado = Number.isInteger(embalagens) ? embalagens : embalagens.toFixed(1);
-                estoqueLinha = `${embFormatado} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
-                estoqueMinimoTexto = embalagensMin > 0 ? ` (mín: ${embalagensMin} ${i.nomeEmbalagem}s)` : '';
-                placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
-            } else {
-                estoqueLinha = `${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}`;
-                estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${estoqueMinimo}${i.unidade})` : '';
-                placeholderEntrada = 'Qtd a adicionar';
-            }
-
-            const div = document.createElement('div');
-            div.className = 'insumo-card';
-            div.style.flexDirection = 'column';
-            div.style.alignItems = 'stretch';
-            if (alerta) div.style.border = '2px solid #DC2626';
-            div.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
-                    <div class="insumo-info">
-                        <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
-                        <div class="insumo-detalhe">
-                            R$ ${i.preco.toFixed(2).replace('.',',')} 
-                            ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
-                            &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
-                        </div>
-                        <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
-                            📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
-                        </div>
-                    </div>
-                    <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:10px;">
-                    <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;font-size:0.85em;padding:8px 12px;">
-                    <button class="btn btn-verde" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
-                    <button class="btn btn-amarelo" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="abrirEdicaoInsumo('${i.key}')">✏️ Editar</button>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                    <button class="btn btn-cinza btn-bloco" style="padding:7px;font-size:0.78em;" onclick="verHistoricoPreco('${i.key}','${escaparHTML(i.nome).replace(/'/g,"\\'")}')">📈 Histórico de Preço</button>
-                </div>`;
-            lista.appendChild(div);
-        });
-        filtrarInsumosPorNome();
-    });
-}
-
-
-function filtrarInsumosPorNome() {
-    const campoBusca = document.getElementById('buscaInsumos');
-    if (!campoBusca) return;
-    const termo = campoBusca.value.toLowerCase().trim();
-    document.querySelectorAll('#lista-insumos .insumo-card').forEach(card => {
-        const nome = card.querySelector('.insumo-nome');
-        if (!nome) return;
-        card.style.display = (!termo || nome.textContent.toLowerCase().includes(termo)) ? '' : 'none';
-    });
-}
-
-
-async function carregarAlertasInsumos() {
-    const container = document.getElementById('alertasInsumos');
-    if (!container) return;
-    container.innerHTML = '';
-
-    // ── Sabores sem receita cadastrada ──
-    const [snapReceitas, snapGastos] = await Promise.all([
-        database.ref('receitas').once('value'),
-        database.ref('gastos').once('value')
-    ]);
-    const saboresComReceita = new Set();
-    snapReceitas.forEach(child => saboresComReceita.add(child.val().sabor));
-    const todosSabores = [
-        ...(DADOS_PEDIDOS?.sabores?.trads    || []),
-        ...(DADOS_PEDIDOS?.sabores?.gourmets || []),
-        ...(DADOS_PEDIDOS?.sabores?.frutas   || [])
-    ];
-    const semReceita = todosSabores.filter(s => !saboresComReceita.has(s));
-
-    if (semReceita.length > 0) {
-        const div = document.createElement('div');
-        div.className = 'form-card';
-        div.style.cssText = 'border:1.5px solid #FCA5A5;background:#FEF2F2;margin-bottom:14px;';
-        div.innerHTML = `<p style="font-weight:700;color:#DC2626;font-size:0.9em;margin-bottom:8px;">⚠️ ${semReceita.length} sabor${semReceita.length>1?'es':''} sem receita cadastrada</p>
-            <p style="font-size:0.8em;color:var(--brown-warm);line-height:1.6;">${semReceita.join(', ')}</p>
-            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:8px;">Sem receita, o custo de produção desses sabores não entra no dashboard.</p>`;
-        container.appendChild(div);
-    }
-
-    // ── Insumos parados (sem compra há mais de 90 dias, ou nunca comprados) ──
-    const gastosPorDescricao = {};
-    snapGastos.forEach(child => {
-        const g = child.val();
-        if (!g.descricao || !g.data) return;
-        if (!gastosPorDescricao[g.descricao] || g.data > gastosPorDescricao[g.descricao]) {
-            gastosPorDescricao[g.descricao] = g.data;
-        }
-    });
-    const DIAS_LIMITE_PARADO = 90; // ajuste aqui se quiser um período diferente
-    const snapInsumos = await database.ref('insumos').once('value');
-    const hoje = new Date();
-    const parados = [];
-    snapInsumos.forEach(child => {
-        const i = child.val();
-        const ultimaData = gastosPorDescricao[i.nome];
-        // Insumos nunca comprados (ex: forminha de cor rara) não entram no alerta —
-        // só avisamos quando existe um histórico de uso que parou.
-        if (!ultimaData) return;
-        const dataCompra = new Date(ultimaData + 'T00:00:00');
-        const dias = Math.round((hoje - dataCompra) / 86400000);
-        if (dias > DIAS_LIMITE_PARADO) parados.push({ nome: i.nome, dias });
-    });
-
-    if (parados.length > 0) {
-        const div = document.createElement('div');
-        div.className = 'form-card';
-        div.style.cssText = 'border:1.5px solid #FDE68A;background:#FFFBEB;margin-bottom:14px;';
-        const itensHTML = parados.map(p => `<div style="font-size:0.82em;padding:4px 0;">${escaparHTML(p.nome)} <span style="color:var(--brown-warm);">(${p.dias} dias sem compra)</span></div>`).join('');
-        div.innerHTML = `<p style="font-weight:700;color:#92400E;font-size:0.9em;margin-bottom:8px;">🕰️ ${parados.length} insumo${parados.length>1?'s':''} parado${parados.length>1?'s':''}</p>${itensHTML}`;
-        container.appendChild(div);
-    }
-
-    // ── Insumos usados em receitas mas sem estoque mínimo definido ──
-    const insumosUsadosEmReceitas = new Set();
-    snapReceitas.forEach(child => {
-        const r = child.val();
-        (r.ingredientes || []).forEach(ing => insumosUsadosEmReceitas.add(ing.insumoKey));
-    });
-    const semEstoqueMinimo = [];
-    snapInsumos.forEach(child => {
-        const i = child.val();
-        if (insumosUsadosEmReceitas.has(child.key) && !(i.estoqueMinimo > 0)) {
-            semEstoqueMinimo.push(i.nome);
-        }
-    });
-    if (semEstoqueMinimo.length > 0) {
-        const div = document.createElement('div');
-        div.className = 'form-card';
-        div.style.cssText = 'border:1.5px solid #FCA5A5;background:#FEF2F2;margin-bottom:14px;';
-        div.innerHTML = `<p style="font-weight:700;color:#DC2626;font-size:0.9em;margin-bottom:8px;">⚠️ ${semEstoqueMinimo.length} insumo${semEstoqueMinimo.length>1?'s':''} usado${semEstoqueMinimo.length>1?'s':''} em receita sem estoque mínimo definido</p>
-            <p style="font-size:0.8em;color:var(--brown-warm);line-height:1.6;">${semEstoqueMinimo.map(n=>escaparHTML(n)).join(', ')}</p>
-            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:8px;">Sem estoque mínimo, você não recebe alerta de "acabando" para esses insumos. Edite-os na lista de insumos.</p>`;
-        container.appendChild(div);
-    }
-}
-
-
-function darEntradaEstoque(key) {
-    const input = document.getElementById('entrada-' + key);
-    const qtdAdicionar = parseFloat(input.value) || 0;
-    if (qtdAdicionar <= 0) { toast('❌ Informe uma quantidade válida.', 'erro'); return; }
-    database.ref('insumos/' + key).once('value', snap => {
-        const i = snap.val();
-        // Se o insumo é controlado por embalagem, o número digitado é em "caixinhas" — converte pra unidade base
-        const qtdBase = i.nomeEmbalagem ? qtdAdicionar * i.qtdEmbalagem : qtdAdicionar;
-        const novoEstoque = (i.estoqueAtual || 0) + qtdBase;
-        database.ref('insumos/' + key).update({ estoqueAtual: novoEstoque }).then(() => {
-            toast('✅ Estoque atualizado: +' + qtdAdicionar + (i.nomeEmbalagem ? ' ' + i.nomeEmbalagem + '(s)' : ''));
-            carregarInsumos();
-        });
-    });
-}
-
-
-
-function abrirEdicaoInsumo(key) {
-    database.ref('insumos/' + key).once('value', snap => {
-        const i = snap.val();
-        if (!i) { toast('❌ Insumo não encontrado.', 'erro'); return; }
-        _insumoEditandoKey = key;
-        const nomeEmb = i.nomeEmbalagem || '';
-        const qtdEmb  = i.qtdEmbalagem || 1;
-        document.getElementById('editInsumoNome').value = i.nome || '';
-        document.getElementById('editInsumoPreco').value = 'R$ ' + (i.preco || 0).toFixed(2).replace('.', ',');
-        document.getElementById('editInsumoUnidade').value = i.unidade || 'un';
-        document.getElementById('editInsumoQtd').value = i.qtdEmbalagem || '';
-        document.getElementById('editInsumoNomeEmbalagem').value = nomeEmb;
-        document.getElementById('editInsumoEstoqueAtual').value  = nomeEmb ? (i.estoqueAtual  || 0) / qtdEmb : (i.estoqueAtual  || 0);
-        document.getElementById('editInsumoEstoqueMinimo').value = nomeEmb ? (i.estoqueMinimo || 0) / qtdEmb : (i.estoqueMinimo || 0);
-        toggleNomeEmbalagemEdicao();
-        document.getElementById('modalEditarInsumo').style.display = 'flex';
-    });
-}
-
-
-function toggleNomeEmbalagemEdicao() {
-    const unidade = document.getElementById('editInsumoUnidade').value;
-    document.getElementById('editWrapperNomeEmbalagem').style.display = unidade === 'un' ? 'none' : 'block';
-    if (unidade === 'un') document.getElementById('editInsumoNomeEmbalagem').value = '';
-}
-
-
-function fecharEdicaoInsumo() {
-    document.getElementById('modalEditarInsumo').style.display = 'none';
-    _insumoEditandoKey = null;
-}
-
-
-function salvarEdicaoInsumo() {
-    if (!_insumoEditandoKey) return;
-    const nome     = document.getElementById('editInsumoNome').value.trim();
-    const precoRaw = document.getElementById('editInsumoPreco').value;
-    const preco    = parseFloat(precoRaw.replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
-    const unidade  = document.getElementById('editInsumoUnidade').value;
-    const qtd      = parseFloat(document.getElementById('editInsumoQtd').value) || 1;
-    const nomeEmbalagem = document.getElementById('editInsumoNomeEmbalagem').value.trim();
-    const estoqueAtualInput  = parseFloat(document.getElementById('editInsumoEstoqueAtual').value) || 0;
-    const estoqueMinimoInput = parseFloat(document.getElementById('editInsumoEstoqueMinimo').value) || 0;
-
-    if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
-    if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
-    if (qtd<=0)   { toast('❌ Informe a quantidade por embalagem.', 'erro'); return; }
-
-    const estoqueAtual  = nomeEmbalagem ? estoqueAtualInput  * qtd : estoqueAtualInput;
-    const estoqueMinimo = nomeEmbalagem ? estoqueMinimoInput * qtd : estoqueMinimoInput;
-
-    database.ref('insumos/' + _insumoEditandoKey).update({
-        nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueMinimo
-    }).then(() => {
-        toast('✅ Insumo atualizado!');
-        fecharEdicaoInsumo();
-        carregarInsumos();
-        verificarEstoqueBaixo();
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-}
-
-
-function excluirInsumo(key) {
-    database.ref('receitas').once('value', snap => {
-        const receitasQueUsam = [];
-        snap.forEach(child => {
-            const r = child.val();
-            if (r.ingredientes && r.ingredientes.some(ing => ing.insumoKey === key)) {
-                receitasQueUsam.push(r.sabor);
-            }
-        });
-        if (receitasQueUsam.length > 0) {
-            const lista = receitasQueUsam.join(', ');
-            showConfirmModal(`⚠️ Este insumo é usado em ${receitasQueUsam.length} receita(s): ${lista}. Excluir mesmo assim? O custo dessas receitas ficará incorreto.`, () => {
-                database.ref('insumos/' + key).remove()
-                    .then(() => { toast('🗑️ Insumo excluído.'); carregarInsumos(); })
-                    .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-            });
-        } else {
-            showConfirmModal('Excluir este insumo?', () => {
-                database.ref('insumos/' + key).remove()
-                    .then(() => { toast('🗑️ Insumo excluído.'); carregarInsumos(); })
-                    .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-            });
-        }
-    });
-}
-
-
-function verHistoricoPreco(key, nome) {
-    document.getElementById('historicoPrecoInsumoNome').textContent = nome;
-    const lista = document.getElementById('historicoPrecoLista');
-    const canvas = document.getElementById('graficoHistoricoPreco');
-    lista.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
-    canvas.style.display = 'none';
-    if (graficoHistoricoPreco) { graficoHistoricoPreco.destroy(); graficoHistoricoPreco = null; }
-    document.getElementById('modalHistoricoPreco').style.display = 'flex';
-    database.ref('historicoPrecos/' + key).once('value').then(snapshot => {
-        const registros = [];
-        snapshot.forEach(child => registros.push(child.val()));
-        if (registros.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Nenhuma compra registrada ainda para este insumo.</p>';
-            return;
-        }
-        registros.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
-        const totalRegistros = registros.length;
-        const registrosExibidos = registros.slice(0, 12);
-        let html = '';
-        if (totalRegistros > 12) {
-            html += `<p style="font-size:0.76em;color:var(--brown-warm);margin-bottom:8px;">Mostrando as 12 compras mais recentes de ${totalRegistros}.</p>`;
-        }
-        registrosExibidos.forEach((r, idx) => {
-            const anterior = registrosExibidos[idx+1];
-            let seta = '';
-            if (anterior) {
-                if (r.precoUnitario > anterior.precoUnitario) seta = '<span style="color:var(--red);font-weight:700;">↑</span>';
-                else if (r.precoUnitario < anterior.precoUnitario) seta = '<span style="color:var(--green);font-weight:700;">↓</span>';
-                else seta = '<span style="color:var(--brown-warm);">→</span>';
-            }
-            const dataBR = r.data ? r.data.split('-').reverse().join('/') : 'N/A';
-            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.86em;">
-                <span>📅 ${dataBR}</span>
-                <span>${seta} R$ ${r.precoUnitario.toFixed(4).replace('.',',')}</span>
-            </div>`;
-        });
-        lista.innerHTML = html;
-
-        // Gráfico: precisa de ao menos 2 pontos, em ordem cronológica crescente
-        if (registros.length >= 2) {
-            const registrosCronologicos = registros.slice().sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
-            const labels = registrosCronologicos.map(r => r.data ? r.data.split('-').reverse().join('/') : '');
-            const valores = registrosCronologicos.map(r => r.precoUnitario);
-            canvas.style.display = 'block';
-            const ctx = canvas.getContext('2d');
-            graficoHistoricoPreco = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Preço unitário',
-                        data: valores,
-                        borderColor: '#E8943A',
-                        backgroundColor: 'rgba(232,148,58,0.15)',
-                        tension: 0.25,
-                        fill: true,
-                        pointRadius: 3
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: true,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toFixed(4).replace('.',',') } } },
-                    scales: { y: { ticks: { callback: v => 'R$ ' + v.toFixed(3) } } }
-                }
-            });
-        }
-    }).catch(err => {
-        lista.innerHTML = '<p style="color:var(--red);font-size:0.85em;">Erro ao carregar histórico: ' + err.message + '</p>';
-    });
-}
-
-
-function popularSelectCompraInsumo(insumosList) {
-    const sel = document.getElementById('compraInsumoSel');
-    if (!sel) return;
-    const valorAtual = sel.value;
-    sel.innerHTML = '<option value="">Selecione o insumo</option>';
-    insumosList.forEach(i => {
-        const opt = document.createElement('option');
-        opt.value = i.key;
-        opt.textContent = i.nome;
-        opt.dataset.unidade = i.unidade;
-        opt.dataset.estoque = i.estoqueAtual || 0;
-        opt.dataset.custoun = i.qtdEmbalagem > 0 ? (i.preco / i.qtdEmbalagem) : 0;
-        opt.dataset.qtdembalagem = i.qtdEmbalagem || 1;
-        opt.dataset.nomeembalagem = i.nomeEmbalagem || '';
-        sel.appendChild(opt);
-    });
-    if (valorAtual) sel.value = valorAtual;
-}
-
-
-function atualizarInfoCompraInsumo() {
-    const sel  = document.getElementById('compraInsumoSel');
-    const opt  = sel.options[sel.selectedIndex];
-    const info = document.getElementById('compraInsumoInfo');
-    const labelQtd   = document.getElementById('labelCompraQtd');
-    const labelValor = document.getElementById('labelCompraValor');
-    const campoQtd   = document.getElementById('compraQtd');
-
-    if (!opt || !opt.value) { info.textContent = ''; calcularPreviewCompra(); return; }
-
-    const unidade   = opt.dataset.unidade;
-    const nomeEmb   = opt.dataset.nomeembalagem;
-    const qtdEmb    = parseFloat(opt.dataset.qtdembalagem) || 1;
-    const estoqueG  = parseFloat(opt.dataset.estoque) || 0;
-    const custoUn   = parseFloat(opt.dataset.custoun) || 0;
-    const labelUn   = unidade === 'un' ? 'un' : unidade;
-
-    if (nomeEmb) {
-        const estoqueEmb = estoqueG / qtdEmb;
-        const estoqueEmbFmt = Number.isInteger(estoqueEmb) ? estoqueEmb : estoqueEmb.toFixed(1);
-        info.textContent = `📦 Estoque atual: ${estoqueEmbFmt} ${nomeEmb}(s) · Cada ${nomeEmb} tem ${qtdEmb}${labelUn}`;
-        labelQtd.textContent   = `Quantidade de ${nomeEmb}s compradas`;
-        labelValor.textContent = `Valor por ${nomeEmb} (R$)`;
-        campoQtd.placeholder = `Ex: 27 ${nomeEmb}s`;
-    } else {
-        info.textContent = `📦 Estoque atual: ${estoqueG}${labelUn} · Custo atual: R$ ${custoUn.toFixed(4).replace('.',',')}/${labelUn}`;
-        labelQtd.textContent   = 'Quantidade comprada';
-        labelValor.textContent = 'Valor pago (R$)';
-        campoQtd.placeholder = 'Ex: 1000';
-    }
-    calcularPreviewCompra();
-}
-
-// Converte os campos do formulário pra unidade base (g/ml), considerando se é por embalagem ou não
-
-function _lerCompraEmBase(opt) {
-    const nomeEmb   = opt.dataset.nomeembalagem;
-    const qtdEmb    = parseFloat(opt.dataset.qtdembalagem) || 1;
-    const qtdDigitada = parseFloat(document.getElementById('compraQtd').value) || 0;
-    const valorDigitado = parseFloat((document.getElementById('compraValor').value||'').replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
-
-    if (nomeEmb) {
-        // qtdDigitada = nº de embalagens · valorDigitado = preço por embalagem
-        return {
-            qtdComprada_base: qtdDigitada * qtdEmb,
-            valorPagoTotal: valorDigitado * qtdDigitada
-        };
-    }
-    // comportamento antigo: qtdDigitada já é em unidade base, valorDigitado é o total pago
-    return { qtdComprada_base: qtdDigitada, valorPagoTotal: valorDigitado };
-}
-
-
-function calcularPreviewCompra() {
-    const sel     = document.getElementById('compraInsumoSel');
-    const opt     = sel.options[sel.selectedIndex];
-    const preview = document.getElementById('compraPreview');
-    if (!opt || !opt.value) { preview.textContent = ''; return; }
-
-    const { qtdComprada_base, valorPagoTotal } = _lerCompraEmBase(opt);
-    if (qtdComprada_base <= 0 || valorPagoTotal <= 0) { preview.textContent = ''; return; }
-
-    const unidade       = opt.dataset.unidade;
-    const nomeEmb       = opt.dataset.nomeembalagem;
-    const qtdEmb        = parseFloat(opt.dataset.qtdembalagem) || 1;
-    const labelUn       = unidade === 'un' ? 'un' : unidade;
-    const estoqueAntigo = parseFloat(opt.dataset.estoque) || 0;
-    const custoUnAntigo = parseFloat(opt.dataset.custoun) || 0;
-    const custoUnNovo   = valorPagoTotal / qtdComprada_base;
-    const estoqueTotal  = estoqueAntigo + qtdComprada_base;
-    const custoUnMedio  = estoqueTotal > 0
-        ? ((custoUnAntigo * estoqueAntigo) + (custoUnNovo * qtdComprada_base)) / estoqueTotal
-        : custoUnNovo;
-
-    if (nomeEmb) {
-        const estoqueEmbTotal = estoqueTotal / qtdEmb;
-        const estoqueEmbFmt = Number.isInteger(estoqueEmbTotal) ? estoqueEmbTotal : estoqueEmbTotal.toFixed(1);
-        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueEmbFmt} ${nomeEmb}(s)</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong> · Total pago: <strong>R$ ${valorPagoTotal.toFixed(2).replace('.',',')}</strong>`;
-    } else {
-        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueTotal}${labelUn}</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong>`;
-    }
-}
-
-
-async function registrarCompraInsumo() {
-    const key       = document.getElementById('compraInsumoSel').value;
-    const sel       = document.getElementById('compraInsumoSel');
-    const opt       = sel.options[sel.selectedIndex];
-    const categoria = document.getElementById('compraCategoria').value;
-    const data      = document.getElementById('compraData').value || new Date().toISOString().split('T')[0];
-
-    if (!key) { toast('❌ Selecione um insumo.', 'erro'); return; }
-
-    const { qtdComprada_base, valorPagoTotal } = _lerCompraEmBase(opt);
-    if (qtdComprada_base <= 0) { toast('❌ Informe a quantidade comprada.', 'erro'); return; }
-    if (valorPagoTotal <= 0)   { toast('❌ Informe o valor pago.', 'erro'); return; }
-
-    const btn = document.getElementById('btnRegistrarCompra');
-    if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
-
-    try {
-        const snap   = await database.ref('insumos/' + key).once('value');
-        const insumo = snap.val();
-        if (!insumo) { toast('❌ Insumo não encontrado.', 'erro'); return; }
-
-        const estoqueAntigo = insumo.estoqueAtual || 0;
-        const custoUnAntigo = insumo.qtdEmbalagem > 0 ? (insumo.preco / insumo.qtdEmbalagem) : 0;
-        const custoUnNovo   = valorPagoTotal / qtdComprada_base;
-        const estoqueTotal  = estoqueAntigo + qtdComprada_base;
-        const custoUnMedio  = estoqueTotal > 0
-            ? ((custoUnAntigo * estoqueAntigo) + (custoUnNovo * qtdComprada_base)) / estoqueTotal
-            : custoUnNovo;
-        const novoPreco = custoUnMedio * insumo.qtdEmbalagem;
-
-        await database.ref('insumos/' + key).update({ estoqueAtual: estoqueTotal, preco: novoPreco });
-        await database.ref('gastos').push({
-            data, categoria,
-            descricao: insumo.nome,
-            quantidade: qtdComprada_base,
-            valor: valorPagoTotal,
-            timestamp: Date.now()
-        });
-        await database.ref('historicoPrecos/' + key).push({
-            data,
-            precoUnitario: custoUnNovo,
-            precoEmbalagem: novoPreco,
-            timestamp: Date.now()
-        });
-
-        if (custoUnAntigo > 0) {
-            const variacaoPct = ((custoUnNovo - custoUnAntigo) / custoUnAntigo) * 100;
-            if (variacaoPct >= 10) {
-                toast(`⚠️ Preço ${variacaoPct.toFixed(0)}% mais caro que a média anterior de "${insumo.nome}"`, 'aviso');
-            } else if (variacaoPct <= -10) {
-                toast(`💚 Preço ${Math.abs(variacaoPct).toFixed(0)}% mais barato que a média anterior de "${insumo.nome}"`, 'sucesso');
-            }
-        }
-
-        toast('✅ Compra registrada! Estoque e custo médio atualizados.');
-        document.getElementById('compraInsumoSel').value = '';
-        document.getElementById('compraQtd').value = '';
-        document.getElementById('compraValor').value = '';
-        document.getElementById('compraInsumoInfo').textContent = '';
-        document.getElementById('compraPreview').textContent = '';
-        carregarInsumos();
-        verificarEstoqueBaixo();
-    } catch (err) {
-        toast('❌ Erro: ' + err.message, 'erro');
-    } finally {
-        if (btn) { btn.textContent = '✅ Registrar Compra'; btn.disabled = false; }
-    }
-}
-
-
-function popularSelectInsumos() {
-    database.ref('insumos').once('value', snapshot => {
-        const sel = document.getElementById('receitaInsumoSel');
-        sel.innerHTML = '<option value="">Selecione</option>';
-        const insumos = [];
-        snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
-        insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-        insumos.forEach(i => {
-            const opt = document.createElement('option');
-            opt.value = i.key;
-            opt.textContent = i.nome + (i.nomeEmbalagem ? ` (${i.nomeEmbalagem} de ${i.qtdEmbalagem}${i.unidade})` : ' (' + (i.unidade === 'un' ? 'un' : i.qtdEmbalagem + i.unidade) + ')');
-            opt.dataset.unidade      = i.unidade;
-            opt.dataset.preco        = i.preco;
-            opt.dataset.qtdEmbalagem = i.qtdEmbalagem;
-            opt.dataset.nomeEmbalagem = i.nomeEmbalagem || '';
-            opt.dataset.nome         = i.nome;
-            sel.appendChild(opt);
-        });
-    });
-}
-
-
-async function calcularPrevisaoCompra(dias, btn) {
-    document.querySelectorAll('#previsao-compra-filtros .chip-filtro').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-
-    const painel = document.getElementById('painel-previsao-compra');
-    painel.innerHTML = '<p style="color:var(--brown-warm);padding:14px 0;">Calculando...</p>';
-
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
-
-    const [snapPedidos, snapReceitas, snapInsumos] = await Promise.all([
-        database.ref('pedidos').once('value'),
-        database.ref('receitas').once('value'),
-        database.ref('insumos').once('value')
-    ]);
-
-    const receitasMap = {};
-    snapReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
-    const insumosMap = {};
-    snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
-
-    const necessidadeTotal = {};
-
-    snapPedidos.forEach(child => {
-        const p = child.val();
-        if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
-        let dataP;
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
-        else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
-        else return;
-        if (dataP < hoje || dataP > limite) return;
-
-        (p.itens || []).forEach(item => {
-            const receita = receitasMap[item.sabor];
-            if (!receita || !receita.ingredientes) return;
-            const fator = item.quantidade / receita.rendimento;
-            receita.ingredientes.forEach(ing => {
-                necessidadeTotal[ing.insumoKey] = (necessidadeTotal[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
-            });
-        });
-    });
-
-    const itensComprar = [];
-    Object.entries(necessidadeTotal).forEach(([insumoKey, necessario]) => {
-        const insumo = insumosMap[insumoKey];
-        if (!insumo) return;
-        const estoqueAtual = insumo.estoqueAtual || 0;
-        const falta = necessario - estoqueAtual;
-        if (falta > 0) {
-            const qtdEmbalagem = insumo.qtdEmbalagem || 1;
-            const embalagensNecessarias = insumo.unidade === 'un' ? Math.ceil(falta) : Math.ceil(falta / qtdEmbalagem);
-            itensComprar.push({
-                nome: insumo.nome,
-                unidade: insumo.unidade,
-                nomeEmbalagem: insumo.nomeEmbalagem || '',
-                necessario, estoqueAtual, falta,
-                qtdEmbalagem,
-                embalagensNecessarias,
-                custoEstimado: (insumo.preco / qtdEmbalagem) * falta
-            });
-        }
-    });
-
-    itensComprar.sort((a,b) => b.falta - a.falta);
-
-    if (itensComprar.length === 0) {
-        painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente para os próximos ${dias} dias!</p>`;
-        return;
-    }
-
-    const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
-    let html = '';
-    itensComprar.forEach(i => {
-        const labelEmbalagem = i.nomeEmbalagem
-            ? `${i.embalagensNecessarias} ${i.nomeEmbalagem}${i.embalagensNecessarias > 1 ? 's' : ''}`
-            : i.unidade === 'un'
-                ? `${i.embalagensNecessarias} un.`
-                : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
-
-        const necessarioTexto = i.nomeEmbalagem
-            ? `${(i.necessario / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
-            : `${i.necessario.toFixed(1)}${i.unidade}`;
-        const estoqueTexto = i.nomeEmbalagem
-            ? `${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
-            : `${i.estoqueAtual}${i.unidade}`;
-        const faltaTexto = i.nomeEmbalagem
-            ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
-            : `${i.falta.toFixed(0)}${i.unidade}`;
-
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doces Flor – Sistema de Pedidos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://docesflor.github.io/shared/theme.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://docesflor.github.io/shared/firebase-config.js"></script>
+    <script src="https://docesflor.github.io/shared/sabores-precos.js"></script>
+    <script src="https://docesflor.github.io/shared/utils.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- ═══ TELA DE LOGIN ═══ -->
+<div id="tela-login">
+    <div class="login-box">
+        <div class="login-logo-ring">
+            <img src="https://docesflor.github.io/shared/icone.png" alt="Doces Flor">
+        </div>
+        <div class="login-title">Doces <span>Flor</span></div>
+        <div class="login-sub">Sistema de Pedidos</div>
+        <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email">
+        <input type="password" id="loginSenha" placeholder="Senha">
+        <p id="loginErro"></p>
+        <button id="btnLogin" class="btn-login" onclick="fazerLogin()">Entrar</button>
+        <p class="login-esqueci">Esqueceu a senha? <a href="#" onclick="recuperarSenha()">Redefinir</a></p>
+    </div>
+</div>
+
+<!-- ═══ MENU FIXO ═══ -->
+<nav id="menu-fixo">
+    <div id="menu-hero">
+        <div id="menu-acoes">
+            <button class="btn-sair-topo" onclick="fazerLogout()">🚪 Sair</button>
+            <button class="hamburger" id="btnHamburger" onclick="toggleGaveta()" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <img src="https://docesflor.github.io/shared/icone.png" id="logo-topo" alt="Doces Flor">
+        <div id="menu-brand">
+            <span id="menu-brand-nome">Doces <span>Flor</span></span>
+            <span id="menu-brand-sub">Sistema de Pedidos</span>
+        </div>
+    </div>
+    <div class="menu-botoes">
+        <div class="menu-tabs-inner">
+            <button class="menu-btn active" onclick="irPara('criar', this)">➕ Novo Pedido</button>
+            <div class="menu-btn-wrapper">
+                <button class="menu-btn" id="btnAndamento" onclick="irPara('andamento', this)">📦 Andamento</button>
+            </div>
+            <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
+            <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
+            <div class="menu-btn-wrapper">
+                <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
+            </div>
+            <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
+        </div>
+    </div>
+</nav>
+
+<!-- ═══ GAVETA ═══ -->
+<div class="gaveta-overlay" id="gavetaOverlay" onclick="fecharGaveta()"></div>
+<div class="gaveta" id="gaveta">
+    <div class="gaveta-header">
+        <img src="https://docesflor.github.io/shared/icone.png" alt="Doces Flor">
+        <span class="gaveta-header-titulo">Doces Flor</span>
+        <button class="gaveta-fechar" onclick="fecharGaveta()">✕</button>
+    </div>
+    <nav class="gaveta-nav">
+        <button class="gaveta-btn active" id="gbtnCriar" onclick="irParaGaveta('criar')">➕ Novo Pedido</button>
+        <button class="gaveta-btn" id="gbtnAndamento" onclick="irParaGaveta('andamento')">
+            📦 Andamento
+            <span class="gaveta-badge" id="gavetaBadge" style="display:none;"></span>
+        </button>
+        <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
+        <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
+        <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
+        <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
+        <hr class="gaveta-separador">
+        <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
+    </nav>
+</div>
+
+<!-- ═══ AVISO PRÓXIMOS ═══ -->
+<div id="avisoProximos"></div>
+
+<!-- ═══ SEÇÃO 1: CRIAR PEDIDO ═══ -->
+<section id="secao-criar" class="secao active">
+    <h2 class="secao-titulo">
+        🌸 Novo Pedido
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Feito com amor, entregue com carinho ♥</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">👤 Dados do Cliente</p>
+        <label for="nome">Nome</label>
+        <div class="autocomplete-wrapper">
+            <input type="text" id="nome" placeholder="Nome do cliente" autocomplete="off">
+            <div class="autocomplete-lista" id="autocompleteLista" style="display:none;"></div>
+        </div>
+        <label for="telefone">Telefone</label>
+        <input type="text" id="telefone" placeholder="(47) 99999-9999">
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">📅 Entrega / Retirada</p>
+        <div class="linha-dupla">
             <div>
-                <strong>${escaparHTML(i.nome)}</strong>
-                <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${necessarioTexto} | Em estoque: ${estoqueTexto}</div>
+                <label for="dataEntrega">Data</label>
+                <input type="date" id="dataEntrega">
             </div>
-            <div style="text-align:right;">
-                <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
-                <div style="font-size:0.72em;color:var(--brown-warm);">(${faltaTexto} faltando)</div>
-                <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
-            </div>
-        </div>`;
-    });
-    html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
-        <span>Custo total estimado da compra</span><span style="color:var(--amber);">R$ ${custoTotalCompra.toFixed(2).replace('.',',')}</span>
-    </div>`;
-    painel.innerHTML = html;
-}
-
-// ====================== RECEITAS ======================
-
-
-function popularSelectReceitaSabor() {
-    const sel = document.getElementById('receitaSabor');
-    sel.innerHTML = '<option value="">Selecione o sabor</option>';
-    const todos = [
-        ...(DADOS_PEDIDOS?.sabores?.trads    || []),
-        ...(DADOS_PEDIDOS?.sabores?.gourmets || []),
-        ...(DADOS_PEDIDOS?.sabores?.frutas   || [])
-    ].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-    todos.forEach(nome => {
-        const opt = document.createElement('option');
-        opt.value = nome; opt.textContent = nome;
-        sel.appendChild(opt);
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const selInsumo = document.getElementById('receitaInsumoSel');
-    if (selInsumo) {
-        selInsumo.addEventListener('change', function() {
-            const opt = this.options[this.selectedIndex];
-            const hint = document.getElementById('receitaInsumoHint');
-            const qtdInput = document.getElementById('receitaInsumoQtd');
-            if (!opt.value) { hint.textContent = ''; return; }
-            const unidade = opt.dataset.unidade;
-            const nomeEmb = opt.dataset.nomeEmbalagem;
-            if (nomeEmb) {
-                hint.textContent = `Informe a quantidade em ${unidade} usada na receita. Ex: 20${unidade} de uma ${nomeEmb} de ${opt.dataset.qtdEmbalagem}${unidade}.`;
-                qtdInput.placeholder = unidade === 'un' ? 'Ex: 2' : 'Ex: 20';
-            } else if (unidade === 'un') {
-                hint.textContent = 'Informe quantas unidades usar na receita base.';
-                qtdInput.placeholder = 'Ex: 2';
-            } else {
-                hint.textContent = 'Informe a quantidade em ' + unidade + ' usada na receita base.';
-                qtdInput.placeholder = 'Ex: 80';
-            }
-        });
-    }
-});
-
-
-function formatarQtdReceita(ing) {
-    const qtdBase = parseFloat(ing.qtdReceita) || 0;
-    const unidade = ing.unidade || '';
-    const qtdTexto = Number.isInteger(qtdBase)
-        ? String(qtdBase)
-        : qtdBase.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
-
-    if (!ing.nomeEmbalagem || !ing.qtdEmbalagem) return `${qtdTexto}${unidade}`;
-
-    const qtdEmb = ing.qtdEmbReceita !== undefined && ing.qtdEmbReceita !== null
-        ? parseFloat(ing.qtdEmbReceita)
-        : qtdBase / parseFloat(ing.qtdEmbalagem);
-    const qtdEmbTexto = Number.isInteger(qtdEmb)
-        ? String(qtdEmb)
-        : qtdEmb.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
-    const plural = qtdEmb === 1 ? '' : 's';
-    return `${qtdTexto}${unidade} (${qtdEmbTexto} ${ing.nomeEmbalagem}${plural})`;
-}
-
-
-function adicionarIngredienteReceita() {
-    const sel    = document.getElementById('receitaInsumoSel');
-    const qtdEl  = document.getElementById('receitaInsumoQtd');
-    const key    = sel.value;
-    const opt    = sel.options[sel.selectedIndex];
-    const qtdDigitada = parseFloat((qtdEl.value || '').replace(',', '.')) || 0;
-
-    if (!key)          { toast('❌ Selecione um insumo.', 'erro'); return; }
-    if (qtdDigitada<=0){ toast('❌ Informe a quantidade.', 'erro'); return; }
-
-    if (ingredientesReceita.find(i => i.insumoKey === key)) {
-        toast('⚠️ Insumo já adicionado. Remova e adicione novamente para alterar.', 'aviso');
-        return;
-    }
-
-    const nomeEmb = opt.dataset.nomeEmbalagem;
-    const qtdEmbalagem = parseFloat(opt.dataset.qtdEmbalagem);
-    const qtdReceitaBase = qtdDigitada;
-    const qtdEmbReceita = nomeEmb && qtdEmbalagem
-        ? qtdReceitaBase / qtdEmbalagem
-        : null;
-
-    ingredientesReceita.push({
-        insumoKey:      key,
-        nome:           opt.dataset.nome,
-        unidade:        opt.dataset.unidade,
-        preco:          parseFloat(opt.dataset.preco),
-        qtdEmbalagem:   qtdEmbalagem,
-        nomeEmbalagem:  nomeEmb,
-        qtdEmbReceita:  qtdEmbReceita,
-        qtdReceita:     qtdReceitaBase
-    });
-
-    sel.value   = '';
-    qtdEl.value = '';
-    document.getElementById('receitaInsumoHint').textContent = '';
-    renderizarIngredientesReceita();
-}
-
-
-function renderizarIngredientesReceita() {
-    const lista = document.getElementById('listaIngredientesReceita');
-    if (ingredientesReceita.length === 0) { lista.innerHTML = ''; return; }
-    lista.innerHTML = ingredientesReceita.map((ing, idx) => {
-        const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
-        const qtdExibida = formatarQtdReceita(ing);
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:0.84em;">
             <div>
-                <strong>${escaparHTML(ing.nome)}</strong>
-                <span style="color:var(--brown-warm);margin-left:6px;">${qtdExibida}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span style="color:var(--green);font-weight:700;">R$ ${custo.toFixed(2).replace('.',',')}</span>
-                <button class="btn-remove" style="padding:4px 10px;font-size:0.76em;" onclick="removerIngredienteReceita(${idx})">✕</button>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-
-function removerIngredienteReceita(idx) {
-    ingredientesReceita.splice(idx, 1);
-    renderizarIngredientesReceita();
-}
-
-
-function salvarReceita() {
-    const sabor      = document.getElementById('receitaSabor').value;
-    const rendimento = parseInt(document.getElementById('receitaRendimento').value) || 0;
-
-    if (!sabor)           { toast('❌ Selecione o sabor.', 'erro'); return; }
-    if (rendimento <= 0)  { toast('❌ Informe o rendimento.', 'erro'); return; }
-    if (ingredientesReceita.length === 0) { toast('❌ Adicione ao menos um ingrediente.', 'erro'); return; }
-
-    const custoTotal = ingredientesReceita.reduce((s, ing) => {
-        const c = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
-        return s + c;
-    }, 0);
-
-    const receita = {
-        sabor,
-        rendimento,
-        ingredientes: ingredientesReceita.map(ing => ({
-            insumoKey:    ing.insumoKey,
-            nome:         ing.nome,
-            unidade:      ing.unidade,
-            preco:        ing.preco,
-            qtdEmbalagem: ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
-            qtdReceita:   ing.qtdReceita
-        })),
-        custoTotal,
-        custoPorUnidade: custoTotal / rendimento,
-        timestamp: Date.now()
-    };
-
-    const operacao = _receitaEditandoKey
-        ? database.ref('receitas/' + _receitaEditandoKey).update(receita)
-        : database.ref('receitas').push(receita);
-
-    operacao.then(() => {
-        toast(_receitaEditandoKey ? '✅ Receita atualizada!' : '✅ Receita salva!');
-        document.getElementById('receitaSabor').value      = '';
-        document.getElementById('receitaRendimento').value = '';
-        ingredientesReceita = [];
-        _receitaEditandoKey = null;
-        const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
-        if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
-        renderizarIngredientesReceita();
-        carregarReceitasLista();
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-}
-
-
-function carregarReceitasLista() {
-    const lista = document.getElementById('lista-receitas');
-    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
-    database.ref('receitas').once('value', snapshot => {
-        const receitas = [];
-        snapshot.forEach(child => { const r = child.val(); r.key = child.key; receitas.push(r); });
-        receitas.sort((a,b) => a.sabor.localeCompare(b.sabor, 'pt-BR'));
-        if (receitas.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p>';
-            return;
-        }
-        lista.innerHTML = '';
-        receitas.forEach(r => {
-            const custoPorUn = r.custoPorUnidade || (r.custoTotal / r.rendimento);
-            const card = document.createElement('div');
-            card.className = 'receita-card';
-            const ingsHTML = (r.ingredientes || []).map(ing => {
-                const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
-                const qtdExibida = formatarQtdReceita(ing);
-                return `<div class="receita-ingrediente-linha">
-                    <span>${escaparHTML(ing.nome)} — ${qtdExibida}</span>
-                    <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
-                </div>`;
-            }).join('');
-            card.innerHTML = `
-                <div class="receita-header">
-                    <div class="receita-sabor">🍫 ${escaparHTML(r.sabor)}</div>
-                    <span class="receita-custo-badge">R$ ${custoPorUn.toFixed(3).replace('.',',')} /un</span>
+                <label for="horarioEntrega">Horário</label>
+                <input type="time" id="horarioEntrega">
+                <div id="aviso-data-bloqueada">
+                    🔒 <span id="aviso-data-bloqueada-texto"></span>
                 </div>
-                <div style="font-size:0.8em;color:var(--brown-warm);margin-bottom:10px;">Rendimento: ${r.rendimento} unidades · Custo receita base: R$ ${r.custoTotal.toFixed(2).replace('.',',')}</div>
-                ${ingsHTML}
-                <div style="margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:12px;">
-                    <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:6px;">💹 Simulador "e se eu vender a..."</p>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <span style="font-size:0.85em;">R$</span>
-                        <input type="text" id="simPreco-${r.key}" placeholder="0,00" style="margin-bottom:0;flex:1;font-size:0.85em;padding:7px 10px;" oninput="this.value=maskMoeda(this.value);simularMargemReceita('${r.key}',${custoPorUn})">
-                        <span style="font-size:0.8em;color:var(--brown-warm);">/un</span>
-                    </div>
-                    <p id="simResultado-${r.key}" style="font-size:0.82em;margin-top:6px;font-weight:600;"></p>
+            </div>
+        </div>
+        <label for="tipoEntrega">Tipo</label>
+        <select id="tipoEntrega">
+            <option value="retirada" selected>Retirada</option>
+            <option value="entrega">Entrega</option>
+        </select>
+        <div id="enderecoFields">
+            <hr class="divisor">
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" placeholder="00000-000">
+            <div class="linha-dupla">
+                <div><label for="endereco">Endereço</label><input type="text" id="endereco"></div>
+                <div class="estreito"><label for="numero">Nº</label><input type="text" id="numero"></div>
+            </div>
+            <label for="pontoReferencia">Complemento</label>
+            <input type="text" id="pontoReferencia">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro">
+            <label for="cidade">Cidade</label>
+            <input type="text" id="cidade">
+        </div>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">🍫 Adicionar Brigadeiros</p>
+        <div id="contadorCategorias" style="display:none;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">🍫</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Tradicional</div>
+                <div id="infoTrad" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
+            </div>
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">✨</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Gourmet</div>
+                <div id="infoGourmet" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
+            </div>
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">🍓</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Frutas</div>
+                <div id="infoFrutas" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
+            </div>
+        </div>
+        <label for="sabor">Sabor</label>
+        <select id="sabor">
+            <option value="">Selecione o sabor</option>
+            <optgroup label="Tradicionais">
+            <option value="Amendoim">Amendoim</option>
+            <option value="Beijinho">Beijinho</option>
+            <option value="Brigadeiro">Brigadeiro</option>
+            <option value="Café">Café</option>
+            <option value="Chocotone">Chocotone</option>
+            <option value="Dois Amores">Dois Amores</option>
+            <option value="Leite Ninho">Leite Ninho</option>
+            <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
+            <option value="Prestígio">Prestígio</option>
+            <option value="Quebra Queixo">Quebra Queixo</option>
+            <option value="Sensação">Sensação</option>
+            <option value="Tapioca">Tapioca</option>
+            </optgroup>
+            <optgroup label="Gourmet">
+            <option value="Banoffee">Banoffee</option>
+            <option value="Black Cacau">Black Cacau</option>
+            <option value="Canjica">Canjica</option>
+            <option value="Chocolate Gourmet">Chocolate Gourmet</option>
+            <option value="Churros">Churros</option>
+            <option value="Confete">Confete</option>
+            <option value="Doritos">Doritos</option>
+            <option value="Ferrero Rocher">Ferrero Rocher</option>
+            <option value="Floresta Negra">Floresta Negra</option>
+            <option value="Guacamole">Guacamole</option>
+            <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
+            <option value="Menta">Menta</option>
+            <option value="Negresco">Negresco</option>
+            <option value="Nutella">Nutella</option>
+            <option value="Ovomaltine">Ovomaltine</option>
+            </optgroup>
+            <optgroup label="Frutas">
+                <option value="Amora">Amora</option>
+                <option value="Banana">Banana</option>
+                <option value="Cereja">Cereja</option>
+                <option value="Frutas Vermelhas">Frutas Vermelhas</option>
+                <option value="Limão">Limão</option>
+                <option value="Maracujá">Maracujá</option>
+                <option value="Milho">Milho</option>
+                <option value="Uva">Uva</option>
+            </optgroup>
+        </select>
+        <div class="linha-dupla">
+            <div>
+                <label for="formato">Formato</label>
+                <select id="formato">
+                    <option value="">Selecione</option>
+                    <option value="Redondo">Redondo</option>
+                    <option value="Flor">Flor</option>
+                    <option value="Coração">Coração</option>
+                </select>
+            </div>
+            <div>
+                <label for="tipoForma">Forminha</label>
+                <select id="tipoForma">
+                    <option value="">Selecione</option>
+                    <option value="Redonda">Redonda</option>
+                    <option value="Quadrada">Quadrada</option>
+                </select>
+            </div>
+        </div>
+        <label for="cor">Cor da Forminha</label>
+        <select id="cor">
+            <option value="">Selecione a cor</option>
+            <option value="Branca">Branca</option>
+            <option value="Preta">Preta</option>
+            <option value="Vermelha">Vermelha</option>
+            <option value="Rosa">Rosa</option>
+            <option value="Azul">Azul</option>
+            <option value="Verde">Verde</option>
+            <option value="Amarela">Amarela</option>
+            <option value="Roxa">Roxa</option>
+            <option value="Laranja">Laranja</option>
+            <option value="Marrom">Marrom</option>
+            <option value="Cinza">Cinza</option>
+            <option value="Dourada">Dourada</option>
+            <option value="Prateada">Prateada</option>
+            <option value="Outra">Outra (especificar)</option>
+        </select>
+        <input type="text" id="corCustomizada" placeholder="Especifique a cor" style="display:none;">
+        <label for="quantidade">Quantidade</label>
+        <select id="quantidade" onchange="toggleQuantidadeCustomizada(this)">
+            <option value="">Selecione</option>
+            <option value="25">25 unidades</option>
+            <option value="33">33 unidades</option>
+            <option value="34">34 unidades</option>
+            <option value="50">50 unidades</option>
+            <option value="75">75 unidades</option>
+            <option value="100">100 unidades</option>
+            <option value="125">125 unidades</option>
+            <option value="150">150 unidades</option>
+            <option value="200">200 unidades</option>
+            <option value="outro">✏️ Especificar...</option>
+        </select>
+        <input type="number" id="quantidadeCustomizada" placeholder="Digite a quantidade" min="1" style="display:none;margin-top:-10px;margin-bottom:14px;">
+        <button class="btn btn-laranja btn-bloco" id="btnAdicionarItem" onclick="adicionarItem()">+ Adicionar Item</button>
+        <div id="itensList"></div>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">💰 Valores</p>
+        <label for="valor">Valor Brigadeiros</label>
+        <input type="text" id="valor" readonly>
+        <label for="valorFrete">Custo Frete</label>
+        <input type="text" id="valorFrete" placeholder="R$ 0,00">
+        <label for="valorDesconto">Desconto</label>
+        <input type="text" id="valorDesconto" placeholder="R$ 0,00">
+        <label for="valorTotal">Valor Total</label>
+        <input type="text" id="valorTotal" readonly>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">💳 Pagamento</p>
+        <label for="observacoes">Observações</label>
+        <textarea id="observacoes" placeholder="Alguma observação especial?"></textarea>
+        <label for="statusPagamento">Status do Pagamento</label>
+        <select id="statusPagamento">
+            <option value="A pagar">A pagar</option>
+            <option value="Pago Parcialmente">Pago Parcialmente</option>
+            <option value="Pago">Pago</option>
+        </select>
+        <div id="valorPagoContainer">
+            <label for="valorPago">Valor Pago</label>
+            <input type="text" id="valorPago" placeholder="R$ 0,00">
+        </div>
+    </div>
+    <div id="custo-pedido-estimado" style="display:none;">
+    <div class="custo-pedido-card">
+        <div class="custo-pedido-titulo">🧮 Custo Estimado de Produção</div>
+        <div id="custo-pedido-linhas"></div>
+        <div class="custo-pedido-total">
+            <span>Custo Total</span>
+            <span id="custo-pedido-total-valor">R$ 0,00</span>
+        </div>
+        <div class="custo-pedido-margem" id="custo-pedido-margem"></div>
+    </div>
+</div>
+    <button class="btn btn-verde btn-bloco" id="btnEnviar" onclick="salvarPedido()">💾 Salvar Pedido</button>
+</section>
+
+<!-- ═══ SEÇÃO 2: ANDAMENTO ═══ -->
+<section id="secao-andamento" class="secao">
+    <h2 class="secao-titulo">
+        📦 Pedidos em Andamento
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Acompanhe seus pedidos ativos</span>
+    </h2>
+    <div id="totalizador-andamento" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
+        <span style="font-size:1em;font-weight:700;color:var(--amber);">📦 Em andamento: <span id="totalAndamentoContagem">0</span> pedidos</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
+        <input type="text" id="buscaAndamentoData" placeholder="📅 dd/mm" style="margin-bottom:0;width:110px;min-width:100px;flex-shrink:0;" oninput="filtrarAndamentoPorData()" maxlength="5">
+    </div>
+    <div id="filtros-status" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="chip-filtro active" onclick="filtrarStatus('todos',this)">Todos</button>
+        <button class="chip-filtro" onclick="filtrarStatus('A pagar',this)">A pagar</button>
+        <button class="chip-filtro" onclick="filtrarStatus('Pago Parcialmente',this)">Parcial</button>
+        <button class="chip-filtro" onclick="filtrarStatus('Pago',this)">Pago</button>
+    </div>
+    <button class="btn btn-amarelo btn-bloco" onclick="toggleResumoProd()">🍫 Resumo de Produção da Semana</button>
+    <div id="resumoProducao" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
+        <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir na Semana</p>
+        <div id="resumoProducaoConteudo"></div>
+    </div>
+    <button class="btn btn-marrom btn-bloco" onclick="toggleCalendario()">📅 Ver Calendário</button>
+    <div id="calendario-wrapper"><div id="calendario-container"></div></div>
+    <div id="lista-andamento"><p style="color:var(--brown-warm);">Carregando...</p></div>
+</section>
+
+<!-- ═══ SEÇÃO 3: FINALIZADOS ═══ -->
+<section id="secao-finalizados" class="secao">
+    <h2 class="secao-titulo">
+        ✅ Pedidos Finalizados
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Histórico de entregas realizadas</span>
+    </h2>
+<div id="totalizador-finalizados" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
+    <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
+    <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
+</div>
+
+<input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
+
+<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:nowrap;">
+    <select id="filtroFinalizadosMes" style="margin-bottom:0;flex:1;min-width:0;">
+        <option value="">Todos os meses</option>
+        <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+        <option value="2">Março</option><option value="3">Abril</option>
+        <option value="4">Maio</option><option value="5">Junho</option>
+        <option value="6">Julho</option><option value="7">Agosto</option>
+        <option value="8">Setembro</option><option value="9">Outubro</option>
+        <option value="10">Novembro</option><option value="11">Dezembro</option>
+    </select>
+    <select id="filtroFinalizadosAno" style="margin-bottom:0;width:95px;min-width:88px;flex-shrink:0;">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+    </select>
+    <button class="btn btn-marrom" style="white-space:nowrap;flex-shrink:0;" onclick="filtrarFinalizadosPorPeriodo()">🔍 Filtrar</button>
+</div>
+
+<button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizados()">📅 Ver Calendário</button>
+<div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
+<div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
+</section>
+
+<!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
+<section id="secao-gastos" class="secao">
+    <div class="custos-tabs">
+        <button class="custos-tab active" id="custosTabInsumos" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
+        <button class="custos-tab" id="custosTabCompras" onclick="mostrarAbaGastos('compras', this)">🛒 Compras</button>
+        <button class="custos-tab" id="custosTabReceitas" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
+        <button class="custos-tab" id="custosTabGastos" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
+    </div>
+    <h2 class="secao-titulo">
+        🧮 Custos & Produção
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Insumos, receitas e gastos em um só lugar</span>
+    </h2>
+    <div id="aba-gastos" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Gasto</p>
+        <div class="linha-dupla">
+            <div><label for="gastoData">Data</label><input type="date" id="gastoData"></div>
+            <div>
+                <label for="gastoCategoria">Categoria</label>
+                <select id="gastoCategoria" onchange="atualizarDescricaoGasto()">
+                    <option value="">Selecione</option>
+                    <option value="Ingredientes">🧴 Ingredientes</option>
+                    <option value="Embalagens">📦 Embalagens</option>
+                    <option value="Gás/Energia">🔥 Gás/Energia</option>
+                    <option value="Entrega">🚗 Entrega</option>
+                    <option value="Outros">📋 Outros</option>
+                </select>
+            </div>
+        </div>
+        <label for="gastoDescricao">Descrição</label>
+        <select id="gastoDescricao"><option value="">Selecione uma opção</option></select>
+        <div class="linha-dupla">
+            <div><label for="gastoQuantidade">Quantidade</label><input type="number" id="gastoQuantidade" placeholder="Ex: 2" min="1" step="1"></div>
+            <div><label for="gastoValor">Valor Total (R$)</label><input type="text" id="gastoValor" placeholder="R$ 0,00"></div>
+        </div>
+        <button class="btn btn-laranja btn-bloco" id="btnSalvarGasto" onclick="salvarGasto()">💾 Salvar Gasto</button>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">🔍 Filtrar</p>
+        <div class="linha-dupla">
+            <div>
+                <label>Mês</label>
+                <select id="gastoFiltroMes">
+                    <option value="todos">Todos</option>
+                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+                    <option value="2">Março</option><option value="3">Abril</option>
+                    <option value="4">Maio</option><option value="5">Junho</option>
+                    <option value="6">Julho</option><option value="7">Agosto</option>
+                    <option value="8">Setembro</option><option value="9">Outubro</option>
+                    <option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+            </div>
+            <div><label>Ano</label><input type="number" id="gastoFiltroAno" value="2026" min="2024" max="2030"></div>
+        </div>
+        <button class="btn btn-marrom btn-bloco" onclick="carregarGastos()">🔍 Filtrar</button>
+    </div>
+    <div id="gastoResumo" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:16px;text-align:center;box-shadow:0 4px 18px var(--shadow);">
+        <p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total no Período</p>
+        <p id="gastoTotalPeriodo" style="font-family:'DM Sans',sans-serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
+    </div>
+    <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
+    </div>
+
+<!-- ── ABA INSUMOS ── -->
+<div id="aba-insumos" style="display:block;">
+    <div id="alertasInsumos"></div>
+    <p class="form-card-titulo" style="margin:4px 4px 14px;">📦 Estoque Atual</p>
+    <input type="text" id="buscaInsumos" placeholder="🔍 Buscar insumo por nome..." style="margin-bottom:12px;" oninput="filtrarInsumosPorNome()">
+    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
+
+    <div class="form-card" style="margin-top:22px;">
+        <p class="form-card-titulo">➕ Novo Insumo</p>
+        <label for="insumoNome">Nome do Insumo</label>
+        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado">
+        <div class="linha-dupla">
+            <div>
+                <label for="insumoPreco">Preço (R$)</label>
+                <input type="text" id="insumoPreco" placeholder="R$ 0,00">
+            </div>
+            <div>
+                <label for="insumoUnidade">Unidade</label>
+                <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
+                    <option value="un">Unidade (un)</option>
+                    <option value="g">Gramas (g)</option>
+                    <option value="ml">Mililitros (ml)</option>
+                    <option value="kg">Quilograma (kg)</option>
+                </select>
+            </div>
+        </div>
+        <div id="insumoQtdWrapper">
+            <label for="insumoQtd">Quantidade por embalagem</label>
+            <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
+        </div>
+        <div id="wrapperNomeEmbalagem">
+            <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
+            <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
+                💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
+            </p>
+        </div>
+        <div class="linha-dupla">
+            <div>
+                <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
+                <input type="number" id="insumoEstoqueAtual" placeholder="Ex: 3950" min="0">
+            </div>
+            <div>
+                <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
+                <input type="number" id="insumoEstoqueMinimo" placeholder="Ex: 800" min="0">
+            </div>
+        </div>
+        <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
+        <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
+    </div>
+</div>
+
+<!-- ── ABA COMPRAS ── -->
+<div id="aba-compras" style="display:none;">
+    <div class="form-card" style="border:2px solid var(--amber);">
+        <p class="form-card-titulo">🛒 Registrar Compra</p>
+        <label for="compraInsumoSel">Insumo</label>
+        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
+            <option value="">Selecione o insumo</option>
+        </select>
+        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
+        <div class="linha-dupla">
+            <div>
+                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
+                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
+            </div>
+            <div>
+                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
+                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
+            </div>
+        </div>
+        <label for="compraCategoria">Categoria do gasto</label>
+        <select id="compraCategoria">
+            <option value="Ingredientes">🧴 Ingredientes</option>
+            <option value="Embalagens">📦 Embalagens</option>
+            <option value="Gás/Energia">🔥 Gás/Energia</option>
+            <option value="Entrega">🚗 Entrega</option>
+            <option value="Outros">📋 Outros</option>
+        </select>
+        <label for="compraData">Data da compra</label>
+        <input type="date" id="compraData">
+        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
+    </div>
+
+    <div class="form-card" style="border:2px solid var(--blue);">
+        <p class="form-card-titulo">🔮 Previsão de Compras</p>
+        <p style="font-size:0.8em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;">O que falta comprar com base nos pedidos já agendados.</p>
+        <div id="previsao-compra-filtros" style="display:flex;gap:6px;margin-bottom:14px;">
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(7,this)">7 dias</button>
+            <button class="chip-filtro active" id="chipPrevisao15" onclick="calcularPrevisaoCompra(15,this)">15 dias</button>
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(30,this)">30 dias</button>
+        </div>
+        <div id="painel-previsao-compra"></div>
+    </div>
+</div>
+
+<!-- ── ABA RECEITAS ── -->
+<div id="aba-receitas" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Nova Receita</p>
+        <label for="receitaSabor">Sabor</label>
+        <select id="receitaSabor">
+            <option value="">Selecione o sabor</option>
+        </select>
+        <label for="receitaRendimento">Rendimento médio (unidades)</label>
+        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1">
+        <hr class="divisor">
+        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em;">🧴 Ingredientes da Receita</p>
+        <div class="linha-dupla">
+            <div>
+                <label for="receitaInsumoSel">Insumo</label>
+                <select id="receitaInsumoSel">
+                    <option value="">Selecione</option>
+                </select>
+            </div>
+            <div>
+                <label for="receitaInsumoQtd">Quantidade usada</label>
+                <input type="number" id="receitaInsumoQtd" placeholder="Ex: 80" min="0" step="0.01">
+            </div>
+        </div>
+        <p id="receitaInsumoHint" style="font-size:0.76em;color:var(--brown-warm);margin-top:-8px;margin-bottom:10px;padding-left:4px;"></p>
+        <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
+        <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
+        <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
+        <button class="btn btn-cinza btn-bloco" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
+    </div>
+    <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
+</div>
+</section>
+
+<!-- ═══ SEÇÃO 4: DASHBOARD ═══ -->
+<section id="secao-dashboard" class="secao">
+    <h2 class="secao-titulo">
+        📊 Dashboard
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Resumo financeiro e de produção</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">📅 Período</p>
+        <div class="linha-dupla">
+            <div>
+                <label>Mês</label>
+                <select id="dashMes">
+                    <option value="geral">Geral (ano todo)</option>
+                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+                    <option value="2">Março</option><option value="3">Abril</option>
+                    <option value="4">Maio</option><option value="5">Junho</option>
+                    <option value="6">Julho</option><option value="7">Agosto</option>
+                    <option value="8">Setembro</option><option value="9">Outubro</option>
+                    <option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+            </div>
+            <div><label>Ano</label><input type="number" id="dashAno" value="2026" min="2024" max="2030"></div>
+        </div>
+        <button class="btn btn-laranja btn-bloco" onclick="carregarDashboard()">Gerar Relatório</button>
+        <button class="btn btn-marrom btn-bloco" id="btnExportarCSV" onclick="exportarDashboardCSV()" style="display:none;">📥 Exportar CSV</button>
+        <button class="btn btn-vermelho btn-bloco" id="btnExportarPDF" onclick="exportarDashboardPDF()" style="display:none;">📄 Exportar PDF</button>
+    </div>
+    <div id="dashboard-resultado" style="display:none;">
+        <div class="form-card">
+            <p class="form-card-titulo">💰 Resumo Financeiro</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Faturamento</p>
+                    <p id="dashFaturamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
+                    <p id="dashFaturamentoComparativo" style="font-size:0.72em;margin-top:4px;font-weight:600;"></p>
                 </div>
-                <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
-                    <button class="btn btn-amarelo" style="padding:6px 14px;font-size:0.8em;" onclick="editarReceita('${r.key}')">✏️ Editar</button>
-                    <button class="btn btn-cinza" style="padding:6px 14px;font-size:0.8em;" onclick="duplicarReceita('${r.key}')">📄 Duplicar</button>
-                    <button class="btn-remove" onclick="excluirReceita('${r.key}')">🗑️ Excluir receita</button>
-                </div>`;
-            lista.appendChild(card);
-        });
-    });
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Ticket Médio</p>
+                    <p id="dashTicket" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
+                </div>
+                <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                    <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Gastos</p>
+                    <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
+                </div>
+                <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+                    <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Lucro Líquido</p>
+                    <p id="dashLucro" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-card" id="cardPendencias" style="display:none;">
+            <p class="form-card-titulo">💰 Valor a Receber</p>
+            <div style="background:#FEF3C7;border-radius:14px;padding:16px;text-align:center;">
+                <p id="dashPendenciasValor" style="font-family:'DM Sans',sans-serif;font-size:1.8em;font-weight:700;color:#92400E;">R$ 0,00</p>
+                <p id="dashPendenciasDetalhe" style="font-size:0.78em;color:var(--brown-warm);margin-top:4px;"></p>
+            </div>
+            <div id="dashPendenciasLista" style="margin-top:12px;"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">📦 Pedidos</p>
+            <div class="linha-dupla">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('finalizados')">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
+                    <p id="dashEntregues" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
+                </div>
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('andamento')">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
+                    <p id="dashAndamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">🍫 Produção</p>
+            <div style="display:flex;gap:12px;">
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Brigadeiros</p>
+                    <p id="dashTotalBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
+                </div>
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
+                    <p id="dashMediaBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
+            <div id="dashSabores"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <label style="margin:0;text-transform:none;font-weight:500;font-size:0.8em;letter-spacing:0;">Mostrar apenas margem abaixo de</label>
+                <input type="number" id="filtroMargemSabor" placeholder="Ex: 30" min="0" max="100" style="margin-bottom:0;width:80px;" oninput="reaplicarFiltroMargemSabor()">
+                <span style="font-size:0.85em;color:var(--brown-warm);">%</span>
+            </div>
+            <div id="dashLucratividadeSabores"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
+            <div id="dashAvaliacoes"></div>
+        </div>
+        <div class="form-card" id="cardEventosDash" style="display:none;">
+            <p class="form-card-titulo">🔒 Eventos do Período</p>
+            <div id="dashEventosLista"></div>
+            <div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">Total Eventos</span>
+                <strong id="dashEventosTotal" style="color:var(--green);font-size:1.1em;">R$ 0,00</strong>
+            </div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">📈 Faturamento por Período</p>
+            <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💸 Gastos por Categoria</p>
+            <div id="dashGastosCategorias"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">📉 Gastos por Categoria ao Longo do Ano</p>
+            <canvas id="graficoGastosCategoria" style="max-height:280px;"></canvas>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💳 Status de Pagamento</p>
+            <div id="dashPagamentos"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ SEÇÃO 5: EVENTOS ═══ -->
+<section id="secao-eventos" class="secao">
+    <h2 class="secao-titulo">
+        🔒 Eventos
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Gerencie seus eventos</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Evento / Bloqueio</p>
+        <label for="eventoNome">Nome do Evento</label>
+        <input type="text" id="eventoNome" placeholder="Ex: Casamento da Ana, Férias...">
+        <div class="linha-dupla">
+            <div><label for="eventoInicio">Data Início</label><input type="date" id="eventoInicio"></div>
+            <div><label for="eventoFim">Data Fim</label><input type="date" id="eventoFim"></div>
+        </div>
+        <label for="eventoObs">Observação (opcional)</label>
+        <input type="text" id="eventoObs" placeholder="Detalhes adicionais...">
+        <button class="btn btn-vermelho btn-bloco" onclick="salvarEvento()">🔒 Bloquear Período</button>
+    </div>
+    <div id="filtros-eventos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="chip-filtro active" onclick="filtrarEventos('todos', this)">Todos</button>
+        <button class="chip-filtro" onclick="filtrarEventos('aberto', this)">Em andamento</button>
+        <button class="chip-filtro" onclick="filtrarEventos('finalizado', this)">Finalizados</button>
+    </div>
+    <div id="lista-eventos"><p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p></div>
+</section>
+
+<!-- ═══ MODAL ═══ -->
+<div id="modalConfirmacao" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <p id="modalMensagem"></p>
+        <div class="modal-botoes">
+            <button class="btn btn-cinza" onclick="fecharModal(false)">Cancelar</button>
+            <button class="btn btn-vermelho" onclick="fecharModal(true)">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarInsumo" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;text-align:center;">✏️ Editar Insumo</p>
+        <label for="editInsumoNome">Nome do Insumo</label>
+        <input type="text" id="editInsumoNome">
+        <div class="linha-dupla">
+            <div>
+                <label for="editInsumoPreco">Preço (R$)</label>
+                <input type="text" id="editInsumoPreco" oninput="this.value=maskMoeda(this.value)">
+            </div>
+            <div>
+                <label for="editInsumoUnidade">Unidade</label>
+                <select id="editInsumoUnidade" onchange="toggleNomeEmbalagemEdicao()">
+                    <option value="un">Unidade (un)</option>
+                    <option value="g">Gramas (g)</option>
+                    <option value="ml">Mililitros (ml)</option>
+                    <option value="kg">Quilograma (kg)</option>
+                </select>
+            </div>
+        </div>
+        <div id="editInsumoQtdWrapper">
+            <label for="editInsumoQtd">Quantidade por embalagem</label>
+            <input type="number" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)">
+        </div>
+        <div id="editWrapperNomeEmbalagem">
+            <label for="editInsumoNomeEmbalagem">Como você chama a embalagem?</label>
+            <input type="text" id="editInsumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+        </div>
+        <div class="linha-dupla">
+            <div>
+                <label id="editLabelEstoqueAtual" for="editInsumoEstoqueAtual">Estoque Atual</label>
+                <input type="number" id="editInsumoEstoqueAtual" min="0">
+            </div>
+            <div>
+                <label id="editLabelEstoqueMinimo" for="editInsumoEstoqueMinimo">Estoque Mínimo</label>
+                <input type="number" id="editInsumoEstoqueMinimo" min="0">
+            </div>
+        </div>
+        <div class="modal-botoes" style="margin-top:6px;">
+            <button class="btn btn-cinza" onclick="fecharEdicaoInsumo()">Cancelar</button>
+            <button class="btn btn-verde" onclick="salvarEdicaoInsumo()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistoricoPreco" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:4px;">📈 Histórico de Preço</p>
+        <p id="historicoPrecoInsumoNome" style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;"></p>
+        <canvas id="graficoHistoricoPreco" style="max-height:180px;margin-bottom:14px;"></canvas>
+        <div id="historicoPrecoLista" style="max-height:260px;overflow-y:auto;"></div>
+        <div class="modal-botoes" style="margin-top:14px;">
+            <button class="btn btn-cinza btn-bloco" onclick="document.getElementById('modalHistoricoPreco').style.display='none'">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div id="avisoOffline">📵 Sem conexão</div>
+
+
+<!-- ═══════════════════════════════════════════
+     MÓDULOS DO PEDIDOS — ordem importa:
+     auth → precos → crud → dashboard → custos → eventos → whatsapp → ui (init)
+═══════════════════════════════════════════ -->
+<script>
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
 }
+window.scrollTo(0, 0);
+</script>
+<script src="js/pedidos-auth.js"></script>
+<script src="js/pedidos-precos.js"></script>
+<script src="js/pedidos-crud.js"></script>
+<script src="js/pedidos-dashboard.js"></script>
+<script src="js/pedidos-custos.js"></script>
+<script src="js/pedidos-eventos.js"></script>
+<script src="js/pedidos-whatsapp.js"></script>
+<script src="js/pedidos-ui.js"></script>
 
-
-function excluirReceita(key) {
-    showConfirmModal('Excluir esta receita?', () => {
-        database.ref('receitas/' + key).remove()
-            .then(() => { toast('🗑️ Receita excluída.'); carregarReceitasLista(); })
-            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-    });
-}
-
-
-function duplicarReceita(key) {
-    database.ref('receitas/' + key).once('value', snap => {
-        const r = snap.val();
-        if (!r) { toast('❌ Receita não encontrada.', 'erro'); return; }
-        document.getElementById('receitaSabor').value = '';
-        document.getElementById('receitaRendimento').value = r.rendimento || '';
-        ingredientesReceita = (r.ingredientes || []).map(ing => ({
-            insumoKey:     ing.insumoKey,
-            nome:          ing.nome,
-            unidade:       ing.unidade,
-            preco:         ing.preco,
-            qtdEmbalagem:  ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
-            qtdReceita:    ing.qtdReceita
-        }));
-        renderizarIngredientesReceita();
-        toast('📄 Ingredientes copiados! Escolha o novo sabor e salve.', 'aviso');
-        document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
-        document.getElementById('receitaSabor').focus();
-    });
-}
-
-
-function editarReceita(key) {
-    database.ref('receitas/' + key).once('value', snap => {
-        const r = snap.val();
-        if (!r) { toast('❌ Receita não encontrada.', 'erro'); return; }
-        _receitaEditandoKey = key;
-        document.getElementById('receitaSabor').value = r.sabor || '';
-        document.getElementById('receitaRendimento').value = r.rendimento || '';
-        ingredientesReceita = (r.ingredientes || []).map(ing => ({
-            insumoKey:     ing.insumoKey,
-            nome:          ing.nome,
-            unidade:       ing.unidade,
-            preco:         ing.preco,
-            qtdEmbalagem:  ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
-            qtdReceita:    ing.qtdReceita
-        }));
-        renderizarIngredientesReceita();
-        const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
-        if (btnSalvar) btnSalvar.textContent = '✏️ Atualizar Receita';
-        toast('✏️ Edite os campos e clique em "Atualizar Receita".', 'aviso');
-        document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
-    });
-}
-
-
-function cancelarEdicaoReceita() {
-    _receitaEditandoKey = null;
-    document.getElementById('receitaSabor').value = '';
-    document.getElementById('receitaRendimento').value = '';
-    ingredientesReceita = [];
-    renderizarIngredientesReceita();
-    const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
-    if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
-}
-
-
-function simularMargemReceita(key, custoPorUn) {
-    const input = document.getElementById('simPreco-' + key);
-    const resultado = document.getElementById('simResultado-' + key);
-    const preco = parseFloat((input.value||'').replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
-    if (preco <= 0) { resultado.textContent = ''; return; }
-    const lucro = preco - custoPorUn;
-    const margem = (lucro / preco * 100);
-    const cor = margem >= 50 ? 'var(--green)' : margem >= 30 ? '#92400E' : 'var(--red)';
-    resultado.innerHTML = `Lucro: <span style="color:${cor};">R$ ${lucro.toFixed(3).replace('.',',')}/un</span> · Margem: <span style="color:${cor};">${margem.toFixed(1)}%</span>`;
-}
-
-// ====================== CUSTO ESTIMADO DO PEDIDO ======================
-
-async function calcularCustoPedido() {
-    if (itens.length === 0) {
-        document.getElementById('custo-pedido-estimado').style.display = 'none';
-        return;
-    }
-
-    const snapshot = await database.ref('receitas').once('value');
-    const receitas = {};
-    snapshot.forEach(child => {
-        const r = child.val();
-        receitas[r.sabor] = r;
-    });
-
-    let linhasHTML   = '';
-    let custoTotal   = 0;
-    let algumCusto   = false;
-
-    itens.forEach(item => {
-        const receita = receitas[item.sabor];
-        if (!receita) return;
-        const custoPorUn   = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
-        const custoItem    = custoPorUn * item.quantidade;
-        custoTotal        += custoItem;
-        algumCusto         = true;
-        linhasHTML        += `<div class="custo-pedido-linha">
-            <span>${escaparHTML(item.sabor)} × ${item.quantidade} un</span>
-            <span>R$ ${custoItem.toFixed(2).replace('.',',')}</span>
-        </div>`;
-    });
-
-    if (!algumCusto) {
-        document.getElementById('custo-pedido-estimado').style.display = 'none';
-        return;
-    }
-
-    const valorTotalPedido = parseFloat(
-        (document.getElementById('valorTotal').value || 'R$ 0,00')
-            .replace('R$ ','').replace(/\./g,'').replace(',','.')
-    ) || 0;
-
-    const margem = valorTotalPedido > 0
-        ? ((valorTotalPedido - custoTotal) / valorTotalPedido * 100).toFixed(1)
-        : null;
-
-    document.getElementById('custo-pedido-linhas').innerHTML      = linhasHTML;
-    document.getElementById('custo-pedido-total-valor').textContent = 'R$ ' + custoTotal.toFixed(2).replace('.',',');
-    document.getElementById('custo-pedido-margem').textContent    = margem !== null
-        ? `💹 Margem bruta: ${margem}%  |  Lucro estimado: R$ ${(valorTotalPedido - custoTotal).toFixed(2).replace('.',',')}`
-        : '⚠️ Adicione o valor total para ver a margem';
-    document.getElementById('custo-pedido-estimado').style.display = 'block';
-}
-
-// ====================== INIT ======================
+</body>
+</html>
