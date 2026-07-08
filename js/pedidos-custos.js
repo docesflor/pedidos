@@ -824,13 +824,13 @@ async function calcularPrevisaoCompra(dias, btn) {
                 : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
 
         const necessarioTexto = i.nomeEmbalagem
-            ? `${(i.necessario / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+            ? `${i.necessario.toFixed(0)}${i.unidade} (${(i.necessario / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.necessario / i.qtdEmbalagem) === 1 ? '' : 's'})`
             : `${i.necessario.toFixed(1)}${i.unidade}`;
         const estoqueTexto = i.nomeEmbalagem
-            ? `${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+            ? `${i.estoqueAtual.toFixed(0)}${i.unidade} (${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.estoqueAtual / i.qtdEmbalagem) === 1 ? '' : 's'})`
             : `${i.estoqueAtual}${i.unidade}`;
-        const faltaTexto = i.nomeEmbalagem
-            ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}s`
+        const faltaEmbalagemTexto = i.nomeEmbalagem
+            ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.falta / i.qtdEmbalagem) === 1 ? '' : 's'}`
             : `${i.falta.toFixed(0)}${i.unidade}`;
 
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
@@ -840,7 +840,7 @@ async function calcularPrevisaoCompra(dias, btn) {
             </div>
             <div style="text-align:right;">
                 <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
-                <div style="font-size:0.72em;color:var(--brown-warm);">(${faltaTexto} faltando)</div>
+                <div style="font-size:0.72em;color:var(--brown-warm);">(${faltaEmbalagemTexto} faltando)</div>
                 <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
             </div>
         </div>`;
@@ -880,8 +880,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const unidade = opt.dataset.unidade;
             const nomeEmb = opt.dataset.nomeEmbalagem;
             if (nomeEmb) {
-                hint.textContent = `Informe a quantidade em ${unidade} usada na receita. Ex: 20${unidade} de uma ${nomeEmb} de ${opt.dataset.qtdEmbalagem}${unidade}.`;
-                qtdInput.placeholder = unidade === 'un' ? 'Ex: 2' : 'Ex: 20';
+                hint.textContent = `Quantas ${nomeEmb}s essa receita usa? (Ex: 1)`;
+                qtdInput.placeholder = 'Ex: 1';
             } else if (unidade === 'un') {
                 hint.textContent = 'Informe quantas unidades usar na receita base.';
                 qtdInput.placeholder = 'Ex: 2';
@@ -894,32 +894,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function formatarQtdReceita(ing) {
-    const qtdBase = parseFloat(ing.qtdReceita) || 0;
-    const unidade = ing.unidade || '';
-    const qtdTexto = Number.isInteger(qtdBase)
-        ? String(qtdBase)
-        : qtdBase.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
-
-    if (!ing.nomeEmbalagem || !ing.qtdEmbalagem) return `${qtdTexto}${unidade}`;
-
-    const qtdEmb = ing.qtdEmbReceita !== undefined && ing.qtdEmbReceita !== null
-        ? parseFloat(ing.qtdEmbReceita)
-        : qtdBase / parseFloat(ing.qtdEmbalagem);
-    const qtdEmbTexto = Number.isInteger(qtdEmb)
-        ? String(qtdEmb)
-        : qtdEmb.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
-    const plural = qtdEmb === 1 ? '' : 's';
-    return `${qtdTexto}${unidade} (${qtdEmbTexto} ${ing.nomeEmbalagem}${plural})`;
-}
-
-
 function adicionarIngredienteReceita() {
     const sel    = document.getElementById('receitaInsumoSel');
     const qtdEl  = document.getElementById('receitaInsumoQtd');
     const key    = sel.value;
     const opt    = sel.options[sel.selectedIndex];
-    const qtdDigitada = parseFloat((qtdEl.value || '').replace(',', '.')) || 0;
+    const qtdDigitada = parseFloat(qtdEl.value) || 0;
 
     if (!key)          { toast('❌ Selecione um insumo.', 'erro'); return; }
     if (qtdDigitada<=0){ toast('❌ Informe a quantidade.', 'erro'); return; }
@@ -931,10 +911,8 @@ function adicionarIngredienteReceita() {
 
     const nomeEmb = opt.dataset.nomeEmbalagem;
     const qtdEmbalagem = parseFloat(opt.dataset.qtdEmbalagem);
-    const qtdReceitaBase = qtdDigitada;
-    const qtdEmbReceita = nomeEmb && qtdEmbalagem
-        ? qtdReceitaBase / qtdEmbalagem
-        : null;
+    // Se o insumo é por embalagem, o valor digitado (ex: 1) é convertido pra unidade base (ex: 395g)
+    const qtdReceitaBase = nomeEmb ? qtdDigitada * qtdEmbalagem : qtdDigitada;
 
     ingredientesReceita.push({
         insumoKey:      key,
@@ -943,8 +921,8 @@ function adicionarIngredienteReceita() {
         preco:          parseFloat(opt.dataset.preco),
         qtdEmbalagem:   qtdEmbalagem,
         nomeEmbalagem:  nomeEmb,
-        qtdEmbReceita:  qtdEmbReceita,
-        qtdReceita:     qtdReceitaBase
+        qtdEmbReceita:  nomeEmb ? qtdDigitada : null,  // quantas caixinhas, pra exibição
+        qtdReceita:     qtdReceitaBase                 // sempre em unidade base, pra cálculo
     });
 
     sel.value   = '';
@@ -959,7 +937,9 @@ function renderizarIngredientesReceita() {
     if (ingredientesReceita.length === 0) { lista.innerHTML = ''; return; }
     lista.innerHTML = ingredientesReceita.map((ing, idx) => {
         const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
-        const qtdExibida = formatarQtdReceita(ing);
+        const qtdExibida = ing.nomeEmbalagem
+            ? `${ing.qtdEmbReceita} ${ing.nomeEmbalagem}${ing.qtdEmbReceita === 1 ? '' : 's'}`
+            : `${ing.qtdReceita}${ing.unidade}`;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--cream);border-radius:10px;margin-bottom:6px;font-size:0.84em;">
             <div>
                 <strong>${escaparHTML(ing.nome)}</strong>
@@ -1002,8 +982,6 @@ function salvarReceita() {
             unidade:      ing.unidade,
             preco:        ing.preco,
             qtdEmbalagem: ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
             qtdReceita:   ing.qtdReceita
         })),
         custoTotal,
@@ -1047,7 +1025,9 @@ function carregarReceitasLista() {
             card.className = 'receita-card';
             const ingsHTML = (r.ingredientes || []).map(ing => {
                 const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
-                const qtdExibida = formatarQtdReceita(ing);
+                const qtdExibida = ing.nomeEmbalagem
+                    ? `${ing.qtdEmbReceita} ${ing.nomeEmbalagem}${ing.qtdEmbReceita === 1 ? '' : 's'}`
+                    : `${ing.qtdReceita}${ing.unidade}`;
                 return `<div class="receita-ingrediente-linha">
                     <span>${escaparHTML(ing.nome)} — ${qtdExibida}</span>
                     <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
@@ -1101,8 +1081,8 @@ function duplicarReceita(key) {
             unidade:       ing.unidade,
             preco:         ing.preco,
             qtdEmbalagem:  ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
+            nomeEmbalagem: '',
+            qtdEmbReceita: null,
             qtdReceita:    ing.qtdReceita
         }));
         renderizarIngredientesReceita();
@@ -1126,8 +1106,8 @@ function editarReceita(key) {
             unidade:       ing.unidade,
             preco:         ing.preco,
             qtdEmbalagem:  ing.qtdEmbalagem,
-            nomeEmbalagem: ing.nomeEmbalagem || '',
-            qtdEmbReceita: ing.qtdEmbReceita !== undefined ? ing.qtdEmbReceita : null,
+            nomeEmbalagem: ing.qtdEmbReceita !== undefined ? '' : '',
+            qtdEmbReceita: null,
             qtdReceita:    ing.qtdReceita
         }));
         renderizarIngredientesReceita();
