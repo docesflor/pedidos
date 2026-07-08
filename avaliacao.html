@@ -144,6 +144,33 @@ button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
     opacity: 0.7;
     letter-spacing: 0.04em;
 }
+
+.btn-google {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 50px;
+    background: var(--white);
+    border: 2px solid var(--amber);
+    color: var(--brown-dark);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+.btn-google:hover { background: var(--cream-dark); transform: translateY(-1px); }
+
+.google-skip {
+    margin-top: 12px;
+    font-size: 0.78rem;
+    color: var(--brown-warm);
+    opacity: 0.6;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.google-skip:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -163,6 +190,8 @@ button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 </div>
 
 <script>
+const LINK_AVALIACAO_GOOGLE = 'https://g.page/r/CVJlWyAx7g0hEBI/review';
+
 firebase.initializeApp(window.FIREBASE_CONFIG);
 const database = firebase.database();
 
@@ -238,7 +267,26 @@ function mostrarTelaSucesso() {
     document.getElementById('caixaPrincipal').innerHTML = `
         <div class="sucesso-icon">💛</div>
         <div class="sucesso-titulo">Obrigada!</div>
-        <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>`;
+        <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>
+        <button class="btn-google" onclick="irParaGoogle()">⭐ Avaliar também no Google</button>
+        <p class="google-skip" id="googleSkip" onclick="fecharConvite()">Agora não, obrigado</p>`;
+}
+
+function irParaGoogle() {
+    if (pedidoKey) {
+        database.ref('pedidos/' + pedidoKey).update({
+            cliqueAvaliacaoGoogle: Date.now()
+        }).catch(err => console.error('Erro ao registrar clique:', err));
+    }
+    window.open(LINK_AVALIACAO_GOOGLE, '_blank', 'noopener');
+    fecharConvite();
+}
+
+function fecharConvite() {
+    const btn = document.querySelector('.btn-google');
+    const skip = document.getElementById('googleSkip');
+    if (btn) btn.style.display = 'none';
+    if (skip) skip.style.display = 'none';
 }
 </script>
 </body>
