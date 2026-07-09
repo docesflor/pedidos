@@ -53,17 +53,11 @@ async function carregarDadosPedidos() {
     DADOS_PEDIDOS = {
         "sabores": window.CATALOGO_DOCES_FLOR.sabores,
         "precos": window.CATALOGO_DOCES_FLOR.precos,
-        "gastos": {
-            "Ingredientes": ["Leite condensado","Chocolate em pó","Manteiga","Creme de leite","Leite Ninho","Nutella","Pasta de amendoim","Coco ralado","Morango","Frutas variadas"],
-            "Embalagens":   ["Forminhas","Caixas 25 un","Caixas 50 un","Caixas 100 un","Fitas e laços","Papel celofane","Etiquetas"],
-            "Gás/Energia":  ["Gás de cozinha","Energia elétrica"],
-            "Entrega":      ["Combustível","Taxa de entrega app","Embalagem transporte"],
-            "Outros":       ["Luvas descartáveis","Papel toalha","Detergente / limpeza"]
-        }
+        "gastos": window.CATALOGO_DOCES_FLOR.gastos
     };
     if (DADOS_PEDIDOS.gastos) {
         Object.keys(DADOS_PEDIDOS.gastos).forEach(cat => {
-            DADOS_PEDIDOS.gastos[cat] = DADOS_PEDIDOS.gastos[cat].sort((a,b) => a.localeCompare(b,'pt-BR'));
+            DADOS_PEDIDOS.gastos[cat] = [...DADOS_PEDIDOS.gastos[cat]].sort((a,b) => a.localeCompare(b,'pt-BR'));
         });
     }
 }
@@ -153,7 +147,7 @@ function recuperarSenha() {
 }
 
 function fazerLogout() {
-    if (confirm('Deseja sair?')) auth.signOut();
+    showConfirmModal('Deseja sair?', () => auth.signOut());
 }
 
 function aplicarPermissoesPapel() {
