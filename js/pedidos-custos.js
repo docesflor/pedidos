@@ -8,17 +8,11 @@ let ingredientesReceita = [];
 let _receitaEditandoKey = null;
 
 function atualizarDescricaoGasto() {
-    const categoria = document.getElementById('gastoCategoria').value;
-    const select    = document.getElementById('gastoDescricao');
-    const opcoesDinamicas = DADOS_PEDIDOS && DADOS_PEDIDOS.gastos && DADOS_PEDIDOS.gastos[categoria];
-    const opcoesEstaticas = {
-        'Ingredientes': ['Leite condensado','Chocolate em pó','Manteiga','Creme de leite','Leite Ninho','Nutella','Pasta de amendoim','Coco ralado','Morango','Frutas variadas'],
-        'Embalagens':   ['Forminhas','Caixas 25 un','Caixas 50 un','Caixas 100 un','Fitas e laços','Papel celofane','Etiquetas'],
-        'Gás/Energia':  ['Gás de cozinha','Energia elétrica'],
-        'Entrega':      ['Combustível','Taxa de entrega app','Embalagem transporte'],
-        'Outros':       ['Luvas descartáveis','Papel toalha','Detergente / limpeza']
-    };
-    const opcoes = opcoesDinamicas || opcoesEstaticas[categoria] || [];
+  const categoria = document.getElementById('gastoCategoria').value;
+  const select    = document.getElementById('gastoDescricao');
+  const opcoes = (DADOS_PEDIDOS && DADOS_PEDIDOS.gastos && DADOS_PEDIDOS.gastos[categoria])
+      || (window.CATALOGO_DOCES_FLOR && window.CATALOGO_DOCES_FLOR.gastos && window.CATALOGO_DOCES_FLOR.gastos[categoria])
+      || [];
     select.innerHTML = '<option value="">Selecione uma opção</option>';
     [...opcoes].sort((a,b) => a.localeCompare(b,'pt-BR')).forEach(item => {
         const opt = document.createElement('option');
@@ -766,6 +760,7 @@ async function calcularPrevisaoCompra(dias, btn) {
     snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
 
     const necessidadeTotal = {};
+    const primeiraDataAfetada = {}; // insumoKey -> Date mais próxima que consome esse insumo
 
     snapPedidos.forEach(child => {
         const p = child.val();
@@ -782,6 +777,9 @@ async function calcularPrevisaoCompra(dias, btn) {
             const fator = item.quantidade / receita.rendimento;
             receita.ingredientes.forEach(ing => {
                 necessidadeTotal[ing.insumoKey] = (necessidadeTotal[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
+                if (!primeiraDataAfetada[ing.insumoKey] || dataP < primeiraDataAfetada[ing.insumoKey]) {
+                    primeiraDataAfetada[ing.insumoKey] = dataP;
+                }
             });
         });
     });
@@ -802,7 +800,8 @@ async function calcularPrevisaoCompra(dias, btn) {
                 necessario, estoqueAtual, falta,
                 qtdEmbalagem,
                 embalagensNecessarias,
-                custoEstimado: (insumo.preco / qtdEmbalagem) * falta
+                custoEstimado: (insumo.preco / qtdEmbalagem) * falta,
+                dataRisco: primeiraDataAfetada[insumoKey] || null
             });
         }
     });
@@ -832,11 +831,15 @@ async function calcularPrevisaoCompra(dias, btn) {
         const faltaEmbalagemTexto = i.nomeEmbalagem
             ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.falta / i.qtdEmbalagem) === 1 ? '' : 's'}`
             : `${i.falta.toFixed(0)}${i.unidade}`;
+        const riscoTexto = i.dataRisco
+            ? `⚠️ risco a partir de ${String(i.dataRisco.getDate()).padStart(2,'0')}/${String(i.dataRisco.getMonth()+1).padStart(2,'0')}`
+            : '';
 
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
             <div>
                 <strong>${escaparHTML(i.nome)}</strong>
                 <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${necessarioTexto} | Em estoque: ${estoqueTexto}</div>
+                ${riscoTexto ? `<div style="font-size:0.75em;color:#DC2626;font-weight:700;margin-top:2px;">${riscoTexto}</div>` : ''}
             </div>
             <div style="text-align:right;">
                 <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
