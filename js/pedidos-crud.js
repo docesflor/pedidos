@@ -192,6 +192,7 @@ function carregarAndamento() {
             if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
             p.key = child.key; pedidos.push(p);
         });
+        window._hashAndamento = JSON.stringify(snapshot.val());
         if (pedidos.length === 0) { lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum pedido em andamento.</p>'; return; }
         pedidos.sort((a,b) => {
             const toDate = d => {
