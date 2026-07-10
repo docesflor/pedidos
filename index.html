@@ -66,6 +66,7 @@
             <div class="menu-btn-wrapper">
                 <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
             </div>
+            <button class="menu-btn" onclick="irPara('producao', this)">🍫 Produção</button>
             <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
         </div>
     </div>
@@ -88,6 +89,7 @@
         <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
         <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
         <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
+        <button class="gaveta-btn" id="gbtnProducao" onclick="irParaGaveta('producao')">🍫 Produção</button>
         <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
         <hr class="gaveta-separador">
         <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
@@ -700,6 +702,31 @@
             <div id="dashPagamentos"></div>
         </div>
     </div>
+</section>
+
+<!-- ═══ SEÇÃO 4.5: PRODUÇÃO ═══ -->
+<section id="secao-producao" class="secao">
+    <h2 class="secao-titulo">
+        🍫 Checklist de Produção
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">O que preciso fazer no período</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">📅 Período</p>
+        <div class="linha-dupla">
+            <div><label for="producaoDataIni">De</label><input type="date" id="producaoDataIni"></div>
+            <div><label for="producaoDataFim">Até</label><input type="date" id="producaoDataFim"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+            <button class="chip-filtro" onclick="definirPeriodoProducao(0,0)">Hoje</button>
+            <button class="chip-filtro" onclick="definirPeriodoProducao(0,1)">Hoje + Amanhã</button>
+            <button class="chip-filtro" onclick="definirPeriodoProducao(0,6)">Próximos 7 dias</button>
+            <button class="chip-filtro" onclick="definirPeriodoProducao(0,14)">Próximos 15 dias</button>
+        </div>
+        <button class="btn btn-laranja btn-bloco" onclick="gerarChecklistProducao()">🍫 Gerar Checklist</button>
+    </div>
+    <div id="checklistProducaoResumo" class="checklist-producao-resumo" style="display:none;"></div>
+    <div id="checklistProducaoLista"></div>
 </section>
 
 <!-- ═══ SEÇÃO 5: EVENTOS ═══ -->
