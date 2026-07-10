@@ -194,9 +194,57 @@ function salvarInsumo() {
 }
 
 
-function carregarInsumos() {
+async function calcularConsumoMedioSemanal(diasHistorico = 60) {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const inicio = new Date(hoje); inicio.setDate(inicio.getDate() - diasHistorico);
+
+    const [snapPedidos, snapReceitas] = await Promise.all([
+        database.ref('pedidos').once('value'),
+        database.ref('receitas').once('value')
+    ]);
+    const receitasMap = {};
+    snapReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
+
+    const consumoTotal = {};
+    snapPedidos.forEach(child => {
+        const p = child.val();
+        if (!p.dataEntrega) return;
+        let dataP;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+        else return;
+        if (dataP < inicio || dataP > hoje) return;
+        (p.itens || []).forEach(item => {
+            const receita = receitasMap[item.sabor || item.nome];
+            if (!receita || !receita.ingredientes) return;
+            const fator = (parseInt(item.quantidade) || 0) / receita.rendimento;
+            receita.ingredientes.forEach(ing => {
+                consumoTotal[ing.insumoKey] = (consumoTotal[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
+            });
+        });
+    });
+
+    const semanas = diasHistorico / 7;
+    const consumoSemanal = {};
+    Object.entries(consumoTotal).forEach(([key, total]) => { consumoSemanal[key] = total / semanas; });
+    return consumoSemanal;
+}
+
+function irComprarInsumoSugerido(key, qtdSugerida) {
+    mostrarAbaGastos('compras', document.getElementById('custosTabCompras'));
+    setTimeout(() => {
+        const sel = document.getElementById('compraInsumoSel');
+        if (sel) { sel.value = key; atualizarInfoCompraInsumo(); }
+        const campoQtd = document.getElementById('compraQtd');
+        if (campoQtd) campoQtd.value = qtdSugerida;
+        calcularPreviewCompra();
+    }, 150);
+}
+
+async function carregarInsumos() {
     const lista = document.getElementById('lista-insumos');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    const consumoSemanal = await calcularConsumoMedioSemanal();
     database.ref('insumos').once('value', snapshot => {
         const insumos = [];
         snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
@@ -214,7 +262,6 @@ function carregarInsumos() {
             const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
             const temEmbalagem = !!i.nomeEmbalagem;
 
-            // Exibição do estoque: em embalagens (caixinhas) quando o insumo tem nome de embalagem definido
             let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
             if (temEmbalagem) {
                 const embalagens = i.estoqueAtual / i.qtdEmbalagem;
@@ -227,6 +274,26 @@ function carregarInsumos() {
                 estoqueLinha = `${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}`;
                 estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${estoqueMinimo}${i.unidade})` : '';
                 placeholderEntrada = 'Qtd a adicionar';
+            }
+
+            let sugestaoHTML = '';
+            if (alerta) {
+                const consumoUn = consumoSemanal[i.key] || 0;
+                if (consumoUn > 0) {
+                    const semanasCobertura = 3;
+                    const qtdSugeridaBase = Math.max(0, (consumoUn * semanasCobertura) - estoqueAtual);
+                    if (qtdSugeridaBase > 0) {
+                        const qtdSugeridaEmb = temEmbalagem ? Math.ceil(qtdSugeridaBase / i.qtdEmbalagem) : Math.ceil(qtdSugeridaBase);
+                        const labelSugestao = temEmbalagem
+                            ? `${qtdSugeridaEmb} ${i.nomeEmbalagem}${qtdSugeridaEmb > 1 ? 's' : ''}`
+                            : `${qtdSugeridaEmb}${i.unidade !== 'un' ? i.unidade : ' un'}`;
+                        sugestaoHTML = `<div class="insumo-sugestao">
+                            💡 Sugestão: comprar <strong>${labelSugestao}</strong>
+                            <span style="opacity:0.75;">(consumo médio: ${consumoUn.toFixed(0)}${i.unidade !== 'un' ? i.unidade : ' un'}/semana)</span>
+                            <button class="btn-sugestao-comprar" onclick="irComprarInsumoSugerido('${i.key}', ${qtdSugeridaEmb})">🛒 Comprar</button>
+                        </div>`;
+                    }
+                }
             }
 
             const div = document.createElement('div');
@@ -246,6 +313,7 @@ function carregarInsumos() {
                         <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
                             📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
                         </div>
+                        ${sugestaoHTML}
                     </div>
                     <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>
                 </div>
