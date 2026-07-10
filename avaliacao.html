@@ -89,8 +89,23 @@ h2 {
 
 .carinhas { display: flex; justify-content: center; gap: 18px; font-size: 3em; margin: 12px 0 24px; cursor: pointer; user-select: none; }
 .carinha { opacity: 0.25; transition: opacity 0.2s, transform 0.15s; display: inline-block; }
-.carinha.ativa { opacity: 1; transform: scale(1.15); }
+.carinha.ativa { opacity: 1; animation: carinhaBounce 0.45s cubic-bezier(.34,1.56,.64,1); }
 .carinha:active { transform: scale(0.9); }
+@keyframes carinhaBounce {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35) rotate(-8deg); }
+    70%  { transform: scale(1.05) rotate(4deg); }
+    100% { transform: scale(1.15) rotate(0deg); }
+}
+#caixaPrincipal { animation: caixaEntrar 0.35s ease; }
+@keyframes caixaEntrar {
+    0%   { opacity: 0; transform: scale(0.94) translateY(12px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+#avaliacoesResumo {
+    font-size: 0.78rem; color: var(--brown-warm); opacity: 0.75;
+    margin-bottom: 14px; margin-top: -8px;
+}
 
 textarea {
     width: 100%;
@@ -179,6 +194,7 @@ button.enviar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   <div class="logo-ring"><img src="https://docesflor.github.io/shared/icone.png" alt="Doces Flor"></div>
     <h2>Como foi seu pedido? 🌸</h2>
     <p id="nomeCliente"></p>
+    <p id="avaliacoesResumo"></p>
     <div class="carinhas" id="carinhas">
         <span class="carinha" data-v="1">😞</span>
         <span class="carinha" data-v="2">😐</span>
@@ -199,6 +215,16 @@ const params = new URLSearchParams(window.location.search);
 const pedidoKey = params.get('pedido');
 let notaSelecionada = 0;
 let primeiroNomeCliente = 'Cliente';
+
+// Mostra quantas avaliações já foram feitas no total (não tem quebra por dia salva hoje)
+database.ref('estatisticas-avaliacoes').once('value').then(snap => {
+    const dados = snap.val() || {};
+    const total = (dados.nota1||0) + (dados.nota2||0) + (dados.nota3||0);
+    if (total > 0) {
+        document.getElementById('avaliacoesResumo').textContent =
+            `🌸 Já são ${total} avaliações de clientes como você!`;
+    }
+}).catch(() => {});
 
 if (pedidoKey) {
     database.ref('pedidos/' + pedidoKey + '/nome').once('value')
@@ -253,7 +279,7 @@ function enviarAvaliacao() {
     })
     .then(() => {
         // 4. Mostra a tela de sucesso
-        mostrarTelaSucesso();
+        mostrarTelaSucesso(comentario);
     })
     .catch(err => {
         console.error(err);
@@ -264,12 +290,28 @@ function enviarAvaliacao() {
 }
 
 function mostrarTelaSucesso() {
-    document.getElementById('caixaPrincipal').innerHTML = `
-        <div class="sucesso-icon">💛</div>
-        <div class="sucesso-titulo">Obrigada!</div>
-        <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>
-        <button class="btn-google" onclick="irParaGoogle()">⭐ Avaliar também no Google</button>
-        <p class="google-skip" id="googleSkip" onclick="fecharConvite()">Agora não, obrigado</p>`;
+    const caixa = document.getElementById('caixaPrincipal');
+    if (notaSelecionada === 1) {
+        // Nota baixa: prioriza resolver o problema em vez de pedir avaliação no Google
+        const numeroWhats = '5547992745896';
+        const msgWhats = encodeURIComponent(`Olá! Sou ${primeiroNomeCliente} e gostaria de falar sobre meu último pedido.`);
+        caixa.innerHTML = `
+            <div class="sucesso-icon">🙏</div>
+            <div class="sucesso-titulo">Sentimos muito!</div>
+            <p class="sucesso-texto">Sua opinião chegou até nós e queremos resolver isso.<br>Fale com a gente agora mesmo:</p>
+            <a class="btn-google" style="display:block;text-decoration:none;box-sizing:border-box;" href="https://wa.me/${numeroWhats}?text=${msgWhats}" target="_blank" rel="noopener">💬 Falar no WhatsApp</a>
+            <p class="google-skip" onclick="document.querySelector('.btn-google').parentElement.querySelectorAll('.btn-google,.google-skip').forEach(e=>e.style.display='none')">Agora não, obrigado</p>`;
+    } else {
+        caixa.innerHTML = `
+            <div class="sucesso-icon">💛</div>
+            <div class="sucesso-titulo">Obrigada!</div>
+            <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>
+            <button class="btn-google" onclick="irParaGoogle()">⭐ Avaliar também no Google</button>
+            <p class="google-skip" id="googleSkip" onclick="fecharConvite()">Agora não, obrigado</p>`;
+    }
+    caixa.style.animation = 'none';
+    void caixa.offsetWidth; // força reflow pra reiniciar a animação
+    caixa.style.animation = 'caixaEntrar 0.4s ease';
 }
 
 function irParaGoogle() {
