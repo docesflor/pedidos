@@ -428,6 +428,19 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 }
 
 /* ═══════════════════════════════════════════
+   CHECKLIST DE PRODUÇÃO
+═══════════════════════════════════════════ */
+.checklist-producao-resumo { display: flex; justify-content: space-between; align-items: center; background: var(--white); border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; border: 1px solid var(--cream-dark); font-size: 0.85em; color: var(--brown-warm); flex-wrap: wrap; gap: 8px; }
+.checklist-progresso { font-weight: 700; color: var(--amber); background: #FEF3C7; padding: 4px 12px; border-radius: 50px; font-size: 0.95em; }
+.checklist-item { background: var(--white); border: 1.5px solid var(--cream-dark); border-radius: 14px; padding: 4px; margin-bottom: 8px; transition: background 0.25s, border-color 0.25s; }
+.checklist-checkbox-wrapper { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; }
+.checklist-checkbox-wrapper input[type="checkbox"] { width: 22px !important; height: 22px !important; accent-color: var(--green); }
+.checklist-texto { font-size: 0.9em; color: var(--brown-dark); transition: color 0.25s; }
+.checklist-pedidos { color: var(--brown-warm); font-size: 0.85em; }
+.checklist-item-feito { background: #D1FAE5; border-color: #86EFAC; }
+.checklist-item-feito .checklist-texto { text-decoration: line-through; color: #065F46; opacity: 0.75; }
+
+/* ═══════════════════════════════════════════
    EVENTOS / BLOQUEIOS DE AGENDA
 ═══════════════════════════════════════════ */
 .dia.bloqueado { background: #FEE2E2; border-color: #EF4444; cursor: not-allowed; position: relative; }
