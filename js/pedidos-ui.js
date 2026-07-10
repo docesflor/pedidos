@@ -171,22 +171,49 @@ function verificarNotificacoes() {
 }
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
 
-// ====================== AUTO-REFRESH (atualização quase em tempo real) ======================
+// ====================== VERIFICAÇÃO DE ATUALIZAÇÕES (só avisa, não recarrega sozinho) ======================
+function mostrarBannerAtualizacao(tipo) {
+    if (document.getElementById('bannerAtualizacao')) return; // já tem aviso na tela
+    const banner = document.createElement('div');
+    banner.id = 'bannerAtualizacao';
+    banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--brown-dark,#5C2A0E);color:#fff;padding:12px 18px;border-radius:30px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:9999;display:flex;align-items:center;gap:12px;font-size:0.9em;';
+    banner.innerHTML = '<span>🔄 Há novidades nessa lista</span><button style="background:#fff;color:var(--brown-dark,#5C2A0E);border:none;border-radius:20px;padding:6px 14px;font-weight:700;cursor:pointer;">Atualizar</button>';
+    banner.querySelector('button').onclick = () => {
+        banner.remove();
+        if (tipo === 'andamento') carregarAndamento();
+        if (tipo === 'eventos') carregarEventos();
+    };
+    document.body.appendChild(banner);
+}
+
 setInterval(function() {
-    if (document.hidden) return;               // aba em segundo plano, não atualiza
-    if (window.pedidoEmEdicao) return;          // não atualiza durante edição de pedido
+    if (document.hidden) return;               // aba em segundo plano, não verifica
+    if (window.pedidoEmEdicao) return;          // não verifica durante edição de pedido
+    if (document.getElementById('bannerAtualizacao')) return; // já existe aviso pendente
+
     const secaoAndamentoAtiva = document.getElementById('secao-andamento')?.classList.contains('active');
     const secaoEventosAtiva   = document.getElementById('secao-eventos')?.classList.contains('active');
     const calendarioAberto    = document.getElementById('calendario-wrapper')?.style.display === 'block';
     const buscaVazia = !document.getElementById('buscaAndamento')?.value.trim()
                      && !document.getElementById('buscaAndamentoData')?.value.trim();
+
     if (secaoAndamentoAtiva && buscaVazia && !calendarioAberto) {
-        carregarAndamento();
+        database.ref('pedidos').once('value', snapshot => {
+            const hashAtual = JSON.stringify(snapshot.val());
+            if (window._hashAndamento && hashAtual !== window._hashAndamento) {
+                mostrarBannerAtualizacao('andamento');
+            }
+        });
     }
     if (secaoEventosAtiva) {
-        carregarEventos();
+        database.ref('eventos').once('value', snapshot => {
+            const hashAtual = JSON.stringify(snapshot.val());
+            if (window._hashEventos && hashAtual !== window._hashEventos) {
+                mostrarBannerAtualizacao('eventos');
+            }
+        });
     }
-}, 45 * 1000);
+}, 15 * 1000);
 
 function verificarEstoqueBaixo() {
     database.ref('insumos').once('value', snapshot => {
