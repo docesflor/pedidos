@@ -297,8 +297,37 @@ async function carregarDashboard() {
                 document.getElementById('btnExportarCSV').style.display='block';
                 document.getElementById('btnExportarPDF').style.display='block';
                 renderizarGraficoGastosCategoria(ano);
+                atualizarSaborMaisVendidoPublico();
             });
         });
+    });
+}
+
+
+function atualizarSaborMaisVendidoPublico() {
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtualDash = agora.getFullYear();
+    database.ref('pedidos').once('value', snapshot => {
+        const sabores = {};
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== anoAtualDash || dataP.getMonth() !== mesAtual) return;
+            (p.itens || []).forEach(item => {
+                const nome = item.sabor || item.nome;
+                if (!nome) return;
+                sabores[nome] = (sabores[nome] || 0) + (parseInt(item.quantidade) || 0);
+            });
+        });
+        const ordenado = Object.entries(sabores).sort((a,b) => b[1] - a[1]);
+        if (ordenado.length > 0) {
+            database.ref('estatisticas-publicas/saborMaisVendido').set(ordenado[0][0]);
+        }
     });
 }
 
