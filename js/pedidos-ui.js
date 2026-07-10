@@ -176,8 +176,8 @@ function mostrarBannerAtualizacao(tipo) {
     if (document.getElementById('bannerAtualizacao')) return; // já tem aviso na tela
     const banner = document.createElement('div');
     banner.id = 'bannerAtualizacao';
-    banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--brown-dark,#5C2A0E);color:#fff;padding:12px 18px;border-radius:30px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:9999;display:flex;align-items:center;gap:12px;font-size:0.9em;';
-    banner.innerHTML = '<span>🔄 Há novidades nessa lista</span><button style="background:#fff;color:var(--brown-dark,#5C2A0E);border:none;border-radius:20px;padding:6px 14px;font-weight:700;cursor:pointer;">Atualizar</button>';
+    banner.style.cssText = 'position:fixed;bottom:calc(16px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--brown-dark,#5C2A0E);color:#fff;padding:10px 10px 10px 16px;border-radius:30px;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:9999;display:flex;align-items:center;gap:10px;font-size:0.85em;white-space:nowrap;max-width:92vw;';
+    banner.innerHTML = '<span style="white-space:nowrap;">🔄 Novidades</span><button style="background:#fff;color:var(--brown-dark,#5C2A0E);border:none;border-radius:20px;padding:6px 14px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Atualizar</button>';
     banner.querySelector('button').onclick = () => {
         banner.remove();
         if (tipo === 'andamento') carregarAndamento();
