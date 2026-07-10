@@ -120,7 +120,9 @@ async function salvarEAjustarEstoque() {
         limparFormulario();
         return;
     }
-    toast(window.pedidoEmEdicao ? '✅ Pedido atualizado!' : '✅ Pedido salvo!');
+    toast(window.pedidoEmEdicao ? 'Pedido atualizado!' : 'Pedido salvo!');
+    dispararConfete(btnSalvar);
+    pulseBotaoSucesso(btnSalvar, '✓ Salvo!');
     if (ehNovoPedido) {
         await ajustarEstoquePorPedido(pedido.itens, 'abater');
     } else {
@@ -184,7 +186,7 @@ async function ajustarEstoquePorPedido(itensPedido, operacao) {
 // ====================== CARREGAR ANDAMENTO ======================
 function carregarAndamento() {
     const lista = document.getElementById('lista-andamento');
-    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    lista.innerHTML = gerarSkeleton(3);
     database.ref('pedidos').once('value', snapshot => {
         const pedidos = [];
         snapshot.forEach(child => {
@@ -218,7 +220,7 @@ function carregarAndamento() {
 // ====================== CARREGAR FINALIZADOS ======================
 function carregarFinalizados() {
     const lista = document.getElementById('lista-finalizados');
-    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    lista.innerHTML = gerarSkeleton(3);
     database.ref('pedidos').once('value', snapshot => {
         const pedidos = [];
         snapshot.forEach(child => {
@@ -496,7 +498,9 @@ function finalizarPedido(key) {
         const msg = statusAtual === 'Pago' ? 'Finalizar este pedido?' : `⚠️ Pagamento: "${statusAtual}". Finalizar mesmo assim?`;
         showConfirmModal(msg, function() {
             database.ref('pedidos/' + key).update({ statusPagamento: 'entregue' }).then(() => {
-                toast('✅ Pedido finalizado!'); carregarAndamento();
+                toast('Pedido finalizado!');
+                dispararConfete();
+                carregarAndamento();
                 if (mesAtual !== undefined) renderizarCalendario();
             }).catch(err => toast('Erro: ' + err.message, 'erro'));
         });
