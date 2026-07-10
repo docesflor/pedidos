@@ -142,6 +142,7 @@ function carregarEventos() {
             if (filtroEventosAtual === 'finalizado' && !eventoEstaFinalizado(e)) return;
             eventos.push(e);
         });
+        window._hashEventos = JSON.stringify(snapshot.val());
         if (eventos.length === 0) {
             const msgs = { todos:'Nenhum evento cadastrado.', aberto:'Nenhum evento em andamento.', finalizado:'Nenhum evento finalizado.' };
             lista.innerHTML = `<p style="color:var(--brown-warm);">${msgs[filtroEventosAtual]||msgs.todos}</p>`;
