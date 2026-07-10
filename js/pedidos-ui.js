@@ -214,6 +214,7 @@ function verificarNotificacoes() {
     const amanha = new Date(hoje); amanha.setDate(amanha.getDate()+1);
     database.ref('pedidos').once('value', snapshot => {
         let totalHoje = 0, totalAmanha = 0, totalAtrasados = 0;
+        const urgentes = [];
         snapshot.forEach(child => {
             const p = child.val(); if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
             let dataP;
@@ -221,10 +222,19 @@ function verificarNotificacoes() {
             else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
             else return;
             dataP.setHours(0,0,0,0);
-            if (dataP.getTime() === hoje.getTime()) totalHoje++;
-            else if (dataP.getTime() === amanha.getTime()) totalAmanha++;
-            else if (dataP < hoje) totalAtrasados++;
+            let categoria = null;
+            if (dataP.getTime() === hoje.getTime()) { totalHoje++; categoria = 'hoje'; }
+            else if (dataP.getTime() === amanha.getTime()) { totalAmanha++; categoria = 'amanha'; }
+            else if (dataP < hoje) { totalAtrasados++; categoria = 'atrasado'; }
+            if (categoria) {
+                urgentes.push({
+                    key: child.key, nome: p.nome || 'Cliente', telefone: p.telefone || '',
+                    hora: p.hora || '', dataEntrega: p.dataEntrega, tipoEntrega: p.tipoEntrega || 'retirada',
+                    categoria, ultimoLembrete: p.ultimoLembrete || null
+                });
+            }
         });
+        window._pedidosUrgentes = urgentes;
         const totalProximos = totalHoje + totalAmanha + totalAtrasados;
         const badge = document.getElementById('gavetaBadge');
         const aviso = document.getElementById('avisoProximos');
@@ -234,7 +244,8 @@ function verificarNotificacoes() {
         else if (totalHoje > 0 && totalAmanha > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE • ${totalAmanha} para AMANHÃ`;
         else if (totalHoje > 0) texto = `🚨 ${totalHoje} pedido${totalHoje>1?'s':''} para HOJE`;
         else if (totalAmanha > 0) texto = `⏰ ${totalAmanha} pedido${totalAmanha>1?'s':''} para AMANHÃ`;
-        aviso.textContent = texto; aviso.style.display = texto ? 'block' : 'none';
+        aviso.innerHTML = texto ? texto + ' <span style="text-decoration:underline;">— toque para ver</span>' : '';
+        aviso.style.display = texto ? 'block' : 'none';
         if (totalHoje > 0 && !_notificacaoSomDisparada) {
             _notificacaoSomDisparada = true;
             // Se o usuário já interagiu, toca agora; caso contrário, aguarda o primeiro toque
@@ -256,6 +267,80 @@ function verificarNotificacoes() {
     });
 }
 setInterval(verificarNotificacoes, 10 * 60 * 1000);
+
+// ====================== PAINEL DE PEDIDOS URGENTES ======================
+function abrirPainelUrgentes() {
+    const urgentes = window._pedidosUrgentes || [];
+    if (urgentes.length === 0) return;
+
+    const ordem = { atrasado: 0, hoje: 1, amanha: 2 };
+    const grupos = { atrasado: [], hoje: [], amanha: [] };
+    urgentes.forEach(u => grupos[u.categoria].push(u));
+
+    const labels = { atrasado: '⚠️ Atrasados', hoje: '🔴 Hoje', amanha: '⏰ Amanhã' };
+    const cores  = { atrasado: 'var(--red)', hoje: 'var(--red)', amanha: '#F59E0B' };
+
+    let html = '';
+    ['atrasado', 'hoje', 'amanha'].forEach(cat => {
+        if (grupos[cat].length === 0) return;
+        html += `<div class="modal-urgentes-grupo-titulo" style="color:${cores[cat]};">${labels[cat]}</div>`;
+        grupos[cat].forEach(u => {
+            const horaTexto = u.hora ? ` às ${u.hora}h` : '';
+            const jaLembrado = u.ultimoLembrete && (Date.now() - u.ultimoLembrete) < 24 * 60 * 60 * 1000;
+            html += `<div class="modal-urgentes-item">
+                <div class="modal-urgentes-info">
+                    <div class="modal-urgentes-nome">${escaparHTML(u.nome)}</div>
+                    <div class="modal-urgentes-detalhe">${u.tipoEntrega === 'entrega' ? '🚚' : '🏠'} ${formatarDataComDia(u.dataEntrega) || u.dataEntrega}${horaTexto}</div>
+                </div>
+                <button class="btn-lembrar ${jaLembrado ? 'enviado' : ''}" onclick="enviarLembreteWhatsApp('${u.key}', this)">
+                    ${jaLembrado ? '✓ Lembrado' : '🔔 Lembrar'}
+                </button>
+            </div>`;
+        });
+    });
+
+    let modal = document.getElementById('modalUrgentes');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalUrgentes';
+        modal.className = 'modal-templates';
+        modal.style.display = 'none';
+        modal.innerHTML = `<div class="modal-templates-box">
+            <div class="modal-templates-titulo">
+                🔔 Pedidos Urgentes
+                <button class="gaveta-fechar" onclick="fecharPainelUrgentes()">✕</button>
+            </div>
+            <div id="modalUrgentesConteudo"></div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    document.getElementById('modalUrgentesConteudo').innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function fecharPainelUrgentes() {
+    const modal = document.getElementById('modalUrgentes');
+    if (modal) modal.style.display = 'none';
+}
+
+function enviarLembreteWhatsApp(key, btn) {
+    const pedido = (window._pedidosUrgentes || []).find(u => u.key === key);
+    if (!pedido || !pedido.telefone) { toast('❌ Telefone não encontrado para este pedido.', 'erro'); return; }
+
+    const numero = pedido.telefone.replace(/\D/g, '');
+    const numeroCompleto = numero.length <= 11 ? '55' + numero : numero;
+    const primeiroNome = pedido.nome.trim().split(' ')[0];
+    const quando = pedido.categoria === 'hoje' ? 'hoje' : pedido.categoria === 'amanha' ? 'amanhã' : `no dia ${formatarDataComDia(pedido.dataEntrega) || pedido.dataEntrega}`;
+    const horaTexto = pedido.hora ? ` às ${pedido.hora}h` : '';
+    const msg = `Oi ${primeiroNome}! Passando pra lembrar que seu pedido está previsto pra ${quando}${horaTexto} 🌸 Qualquer coisa é só chamar!`;
+
+    window.open(`https://wa.me/${numeroCompleto}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    database.ref('pedidos/' + key).update({ ultimoLembrete: Date.now() }).then(() => {
+        pedido.ultimoLembrete = Date.now();
+        if (btn) { btn.classList.add('enviado'); btn.textContent = '✓ Lembrado'; }
+    });
+}
 
 // ====================== VERIFICAÇÃO DE ATUALIZAÇÕES (só avisa, não recarrega sozinho) ======================
 function mostrarBannerAtualizacao(tipo) {
