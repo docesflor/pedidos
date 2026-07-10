@@ -10,18 +10,104 @@ let _audioContextDesbloqueado = false;
 let _audioCtx = null;
 let _ultimoAvisoEstoqueBaixo = '';
 
+// ====================== ESTILOS DE EFEITOS (confete, pulse, skeleton) ======================
+(function injetarEstilosEfeitos() {
+    const css = `
+    @keyframes toastEntrar {
+        0%   { opacity:0; transform:translateX(-50%) translateY(30px) scale(0.9); }
+        60%  { opacity:1; transform:translateX(-50%) translateY(-6px) scale(1.03); }
+        100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+    }
+    @keyframes toastSai {
+        0%   { opacity:1; transform:translateX(-50%) translateY(0); }
+        100% { opacity:0; transform:translateX(-50%) translateY(20px); }
+    }
+    @keyframes confeteSobe {
+        0%   { transform: translate(0,0) rotate(0deg); opacity:0.95; }
+        100% { transform: translate(var(--deriva,0px), -160px) rotate(360deg); opacity:0; }
+    }
+    @keyframes pulseSucesso {
+        0%   { transform:scale(1); }
+        40%  { transform:scale(1.08); }
+        100% { transform:scale(1); }
+    }
+    .btn-pulse-sucesso { background:#25d366 !important; animation: pulseSucesso 0.5s ease; }
+    .skeleton-card { background:var(--white,#fff); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--cream-dark,#eee); }
+    .skeleton-linha { height:14px; border-radius:6px; margin-bottom:8px; background: linear-gradient(90deg, #eee 25%, #f5f5f5 37%, #eee 63%); background-size:400% 100%; animation: skeletonShimmer 1.4s ease infinite; }
+    @keyframes skeletonShimmer { 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+    `;
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+})();
+
+// ====================== CONFETE ======================
+function dispararConfete(origemEl) {
+    const cores = ['#E8943A','#4A7C59','#C0392B','#F5B563','#8B4513'];
+    const origem = origemEl ? origemEl.getBoundingClientRect() : null;
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99998;overflow:hidden;';
+    document.body.appendChild(container);
+    const qtd = 26;
+    for (let i = 0; i < qtd; i++) {
+        const p = document.createElement('div');
+        const cor = cores[Math.floor(Math.random() * cores.length)];
+        const tam = 6 + Math.random() * 6;
+        const esquerda = origem ? origem.left + Math.random() * origem.width : Math.random() * window.innerWidth;
+        const topo = origem ? origem.top : window.innerHeight * 0.65;
+        const atraso = Math.random() * 0.15;
+        const duracao = 0.9 + Math.random() * 0.6;
+        const deriva = (Math.random() - 0.5) * 140;
+        p.style.cssText = `position:absolute;left:${esquerda}px;top:${topo}px;width:${tam}px;height:${tam}px;background:${cor};border-radius:${Math.random() > 0.5 ? '50%' : '2px'};opacity:0.95;animation:confeteSobe ${duracao}s ease-out ${atraso}s forwards;`;
+        p.style.setProperty('--deriva', deriva + 'px');
+        container.appendChild(p);
+    }
+    setTimeout(() => container.remove(), 1800);
+}
+
+// ====================== PULSE NO BOTÃO ======================
+function pulseBotaoSucesso(btn, textoTemp) {
+    if (!btn) return;
+    const textoOriginal = btn.innerHTML;
+    btn.classList.add('btn-pulse-sucesso');
+    btn.innerHTML = textoTemp || '✓';
+    setTimeout(() => {
+        btn.classList.remove('btn-pulse-sucesso');
+        btn.innerHTML = textoOriginal;
+    }, 1100);
+}
+
+// ====================== SKELETON LOADING ======================
+function gerarSkeleton(qtd = 3) {
+    let html = '';
+    for (let i = 0; i < qtd; i++) {
+        html += `<div class="skeleton-card">
+            <div class="skeleton-linha" style="width:40%;"></div>
+            <div class="skeleton-linha" style="width:70%;"></div>
+            <div class="skeleton-linha" style="width:55%;height:20px;margin-top:12px;"></div>
+        </div>`;
+    }
+    return html;
+}
+
+// ====================== TOAST (com saída suave e emoji) ======================
 function toast(msg, tipo) {
     tipo = tipo || 'sucesso';
     const cores = { sucesso: '#25d366', erro: '#dc3545', aviso: '#FFA500' };
+    const emojis = { sucesso: '🎉', erro: '⚠️', aviso: '📢' };
+    const duracao = tipo === 'sucesso' ? 3600 : 3200;
     const t = document.createElement('div');
-    t.textContent = msg;
+    t.innerHTML = `<span style="font-size:1.25em;line-height:1;">${emojis[tipo]}</span><span>${msg}</span>`;
     t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'
-        + 'background:' + cores[tipo] + ';color:white;padding:12px 24px;'
+        + 'background:' + cores[tipo] + ';color:white;padding:12px 22px;display:flex;align-items:center;gap:10px;'
         + 'border-radius:24px;font-family:Lato,Arial,sans-serif;font-weight:700;'
         + 'font-size:0.88em;z-index:99999;pointer-events:none;white-space:nowrap;'
-        + 'animation:toastEntrar 0.3s ease;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+        + 'animation:toastEntrar 0.45s cubic-bezier(.34,1.56,.64,1);box-shadow:0 6px 20px rgba(0,0,0,0.22);';
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+    setTimeout(() => {
+        t.style.animation = 'toastSai 0.4s ease forwards';
+        setTimeout(() => t.remove(), 400);
+    }, duracao);
 }
 
 // ====================== AUTENTICAÇÃO ======================
