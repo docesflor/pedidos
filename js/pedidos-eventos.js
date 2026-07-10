@@ -131,7 +131,7 @@ function filtrarEventos(filtro, btn) {
 
 function carregarEventos() {
     const lista = document.getElementById('lista-eventos');
-    lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
+    lista.innerHTML = gerarSkeleton(2);
     database.ref('eventos').once('value', snapshot => {
         const eventos = [];
         snapshot.forEach(child => {
@@ -188,11 +188,11 @@ function renderizarEventoCard(e, lista, hoje) {
         <div style="margin-top:12px;">
             <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1,this)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2,this)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3,this)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5,this)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
+                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10,this)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
                 <button class="btn btn-cinza" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="toggleEspecificar('${e.key}')">✏️ Especificar<br><span style="font-size:0.85em;opacity:0.75;">outra qtd</span></button>
             </div>
             <div id="especificar-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;">
@@ -326,14 +326,16 @@ function lancarVenda(key) {
 }
 
 
-function lancarVendaRapida(key, caixas) {
+function lancarVendaRapida(key, caixas, btnClicado) {
     database.ref('eventos/'+key).once('value', snapshot => {
-        if (eventoEstaFinalizado(snapshot.val())) { toast('❌ Evento finalizado.','erro'); return; }
+        if (eventoEstaFinalizado(snapshot.val())) { toast('Evento finalizado.','erro'); return; }
         const valor = caixas*10;
         const agora = new Date();
         const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
         database.ref('eventos/'+key+'/vendas').push({ caixas, avulso:0, valor, hora, timestamp:Date.now() }).then(()=>{
-            toast(`✅ +${caixas} caixa${caixas>1?'s':''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+            toast(`+${caixas} caixa${caixas>1?'s':''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+            dispararConfete(btnClicado);
+            if (btnClicado) pulseBotaoSucesso(btnClicado, '✓');
             carregarEventos();
             setTimeout(()=>{ const p=document.getElementById('painel-'+key); if(p) p.style.display='block'; },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
