@@ -159,6 +159,7 @@ function _navegarPara(secao, btn) {
     if (secao === 'finalizados') carregarFinalizados();
     if (secao === 'eventos')     carregarEventos();
     if (secao === 'gastos')      mostrarAbaGastos('insumos', document.getElementById('custosTabInsumos'));
+    if (secao === 'producao')    definirPeriodoProducao(0, 0);
     if (secao === 'dashboard') {
         const agora = new Date();
         document.getElementById('dashMes').value = agora.getMonth();
@@ -169,7 +170,7 @@ function _navegarPara(secao, btn) {
 
 
 function _syncGavetaBtns(secao) {
-    ['criar','andamento','finalizados','dashboard','gastos','eventos'].forEach(s => {
+    ['criar','andamento','finalizados','dashboard','gastos','producao','eventos'].forEach(s => {
         const b = document.getElementById('gbtn' + s.charAt(0).toUpperCase() + s.slice(1));
         if (b) b.classList.toggle('active', s === secao);
     });
