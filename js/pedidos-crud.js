@@ -276,7 +276,8 @@ function criarCard(pedido, key, finalizado) {
         else if (/^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)) { const pts = pedido.dataEntrega.split('-'); dataP = new Date(pts[0], pts[1]-1, pts[2]); }
         if (dataP) {
             dataP.setHours(0,0,0,0);
-            if (dataP.getTime() === hoje.getTime())        wrapper.classList.add('urgente-hoje');
+            if (dataP < hoje)                              wrapper.classList.add('urgente-atrasado');
+            else if (dataP.getTime() === hoje.getTime())   wrapper.classList.add('urgente-hoje');
             else if (dataP.getTime() === amanha.getTime()) wrapper.classList.add('urgente-amanha');
         }
     }
