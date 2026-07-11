@@ -1068,11 +1068,12 @@ function salvarReceita() {
     operacao.then(() => {
         toast(_receitaEditandoKey ? '✅ Receita atualizada!' : '✅ Receita salva!');
         document.getElementById('receitaSabor').value      = '';
-        document.getElementById('receitaRendimento').value = '';
+        document.getElementById('receitaRendimento').value = '25';
         ingredientesReceita = [];
         _receitaEditandoKey = null;
         const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
         if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
+        document.getElementById('btnCancelarEdicaoReceita').style.display = 'none';
         renderizarIngredientesReceita();
         carregarReceitasLista();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
@@ -1188,6 +1189,7 @@ function editarReceita(key) {
         renderizarIngredientesReceita();
         const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
         if (btnSalvar) btnSalvar.textContent = '✏️ Atualizar Receita';
+        document.getElementById('btnCancelarEdicaoReceita').style.display = 'block';
         toast('✏️ Edite os campos e clique em "Atualizar Receita".', 'aviso');
         document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
     });
@@ -1197,11 +1199,12 @@ function editarReceita(key) {
 function cancelarEdicaoReceita() {
     _receitaEditandoKey = null;
     document.getElementById('receitaSabor').value = '';
-    document.getElementById('receitaRendimento').value = '';
+    document.getElementById('receitaRendimento').value = '25';
     ingredientesReceita = [];
     renderizarIngredientesReceita();
     const btnSalvar = document.querySelector('#aba-receitas .btn-verde.btn-bloco');
     if (btnSalvar) btnSalvar.textContent = '💾 Salvar Receita';
+    document.getElementById('btnCancelarEdicaoReceita').style.display = 'none';
 }
 
 
