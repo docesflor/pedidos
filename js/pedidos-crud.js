@@ -212,6 +212,7 @@ function carregarAndamento() {
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
+        aplicarVisualizacaoAndamento();
     });
 }
 
@@ -775,6 +776,7 @@ function filtrarAndamentoPorMes() {
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
+        aplicarVisualizacaoAndamento();
         filtroStatusAtual = 'todos';
         document.getElementById('filtroStatusLabel').textContent = 'Todos';
     });
@@ -844,6 +846,7 @@ function filtrarPorDia(dataISO) {
         }
         pedidosDia.sort((a,b) => (a.hora||'00:00').localeCompare(b.hora||'00:00'));
         pedidosDia.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
+        aplicarVisualizacaoAndamento();
     });
 }
 
