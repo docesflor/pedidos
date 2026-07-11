@@ -8,6 +8,22 @@ let graficoGastosCategoria = null;
 let graficoHistoricoPreco = null;
 let _dadosLucratividadeSabores = [];
 
+/* ── CONTADOR ANIMADO DO DASHBOARD ── */
+function animarNumeroDash(el, valorFinal, formatarFn) {
+    if (!el) return;
+    const valorInicial = parseFloat(el.dataset.valorAtual || '0') || 0;
+    el.dataset.valorAtual = valorFinal;
+    const duracao = 600;
+    const inicio = performance.now();
+    function passo(agora) {
+        const t = Math.min(1, (agora - inicio) / duracao);
+        const atual = valorInicial + (valorFinal - valorInicial) * (1 - Math.pow(1 - t, 3));
+        el.textContent = formatarFn(atual);
+        if (t < 1) requestAnimationFrame(passo);
+    }
+    requestAnimationFrame(passo);
+}
+
 async function carregarDashboard() {
     const mesVal = document.getElementById('dashMes').value;
     const mes    = mesVal === 'geral' ? null : parseInt(mesVal);
@@ -53,15 +69,15 @@ async function carregarDashboard() {
             (p.itens||[]).forEach(item=>{const nome=item.sabor||item.nome||'Desconhecido';sabores[nome]=(sabores[nome]||0)+(parseInt(item.quantidade)||0);totalBrigadeiros+=parseInt(item.quantidade)||0;});
         });
         const ticket = entregues>0?faturamento/entregues:0;
-        document.getElementById('dashFaturamento').textContent = 'R$ '+faturamento.toFixed(2).replace('.',',');
+        animarNumeroDash(document.getElementById('dashFaturamento'), faturamento, v => 'R$ '+v.toFixed(2).replace('.',','));
         const elComp = document.getElementById('dashFaturamentoComparativo');
         const mesesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         if(mes!==null&&faturamentoMesAnterior>0){const diff=((faturamento-faturamentoMesAnterior)/faturamentoMesAnterior)*100;const seta=diff>=0?'↑':'↓';elComp.style.color=diff>=0?'var(--green)':'var(--red)';elComp.textContent=`${seta} ${Math.abs(diff).toFixed(0)}% vs ${mesesNome[mesAnterior]}`;}
         else if(mes!==null){elComp.style.color='var(--brown-warm)';elComp.textContent='— sem dados anteriores';}
         else elComp.textContent='';
-        document.getElementById('dashTicket').textContent='R$ '+ticket.toFixed(2).replace('.',',');
-        document.getElementById('dashEntregues').textContent=entregues;
-        document.getElementById('dashAndamento').textContent=andamento;
+        animarNumeroDash(document.getElementById('dashTicket'), ticket, v => 'R$ '+v.toFixed(2).replace('.',','));
+        animarNumeroDash(document.getElementById('dashEntregues'), entregues, v => Math.round(v).toLocaleString('pt-BR'));
+        animarNumeroDash(document.getElementById('dashAndamento'), andamento, v => Math.round(v).toLocaleString('pt-BR'));
         const pendentesOrdenados=[];
         snapshot.forEach(child=>{
             const p=child.val(); if(!p.dataEntrega) return;
@@ -89,8 +105,8 @@ async function carregarDashboard() {
         if(qtdPendente>0){document.getElementById('cardPendencias').style.display='block';document.getElementById('dashPendenciasValor').textContent='R$ '+totalPendente.toFixed(2).replace('.',',');document.getElementById('dashPendenciasDetalhe').textContent=`${qtdPendente} pedido${qtdPendente>1?'s':''} com pagamento pendente`;document.getElementById('dashPendenciasLista').innerHTML=htmlPendentes;}
         else document.getElementById('cardPendencias').style.display='none';
         const mediaBrig=(entregues+andamento)>0?Math.round(totalBrigadeiros/(entregues+andamento)):0;
-        document.getElementById('dashTotalBrig').textContent=totalBrigadeiros.toLocaleString('pt-BR');
-        document.getElementById('dashMediaBrig').textContent=mediaBrig.toLocaleString('pt-BR');
+        animarNumeroDash(document.getElementById('dashTotalBrig'), totalBrigadeiros, v => Math.round(v).toLocaleString('pt-BR'));
+        animarNumeroDash(document.getElementById('dashMediaBrig'), mediaBrig, v => Math.round(v).toLocaleString('pt-BR'));
         // Custo médio por unidade
         database.ref('receitas').once('value', snapshotRec => {
         let custoTotalRec = 0, qtdComReceita = 0;
