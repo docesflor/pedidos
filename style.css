@@ -526,6 +526,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .botoes-principais {
     display: flex;
     gap: 8px;
+    width: 100%;
 }
 .botoes-principais .btn {
     flex: 1;
@@ -550,17 +551,14 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     background: var(--cream);
 }
 .menu-mais {
-    position: absolute;
-    right: 0;
-    bottom: 100%;
-    margin-bottom: 8px;
+    position: fixed;
     background: var(--white);
     border: 1px solid var(--cream-dark);
     border-radius: 14px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.18);
     padding: 6px;
     min-width: 190px;
-    z-index: 50;
+    z-index: 9999;
 }
 .menu-mais button {
     width: 100%;
