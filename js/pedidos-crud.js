@@ -195,6 +195,7 @@ function carregarAndamento() {
             p.key = child.key; pedidos.push(p);
         });
         window._hashAndamento = JSON.stringify(snapshot.val());
+        document.getElementById('tituloAndamentoContagem').textContent = `(${pedidos.length} pedido${pedidos.length !== 1 ? 's' : ''})`;
         if (pedidos.length === 0) { lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum pedido em andamento.</p>'; return; }
         pedidos.sort((a,b) => {
             const toDate = d => {
@@ -205,14 +206,11 @@ function carregarAndamento() {
             const da = toDate(a.dataEntrega), db = toDate(b.dataEntrega);
             if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
             if (da - db !== 0) return da - db;
-            // Mesmo dia: ordena pelo horário
             const ha = (a.hora && a.hora.trim()) ? a.hora.trim() : '99:99';
             const hb = (b.hora && b.hora.trim()) ? b.hora.trim() : '99:99';
             return ha.localeCompare(hb);
         });
         lista.innerHTML = '';
-        document.getElementById('totalizador-andamento').style.display = 'block';
-        document.getElementById('totalAndamentoContagem').textContent = pedidos.length;
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
     });
 }
@@ -238,9 +236,7 @@ function carregarFinalizados() {
             else return;
             if (dataP.getMonth() === agoraData.getMonth() && dataP.getFullYear() === agoraData.getFullYear()) totalMes++;
         });
-        document.getElementById('totalizador-finalizados').style.display = 'block';
-        document.getElementById('totalFinalizadosContagem').textContent = pedidos.length;
-        document.getElementById('totalFinalizadosMes').textContent = `• ${totalMes} em ${mesesNome[agoraData.getMonth()]}/${agoraData.getFullYear()}`;
+        document.getElementById('tituloFinalizadosContagem').textContent = `(${pedidos.length} pedido${pedidos.length !== 1 ? 's' : ''})`;
         if (pedidos.length === 0) { lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum pedido finalizado.</p>'; return; }
         pedidos.sort((a,b) => {
             const toDate = d => {
@@ -665,36 +661,28 @@ function destacarBusca(nomeEl, termo) {
     nomeEl.innerHTML = `${escaparHTML(antes)}<mark style="background:var(--amber-light);color:var(--brown-dark);border-radius:3px;padding:0 1px;">${escaparHTML(meio)}</mark>${escaparHTML(depois)} ${icone}`;
 }
 
+let filtroStatusAtual = 'todos';
+
 function filtrarAndamentoPorNome() {
     const lista = document.getElementById('lista-andamento');
     if (lista.innerHTML.includes('Carregando')) return;
     const termo = document.getElementById('buscaAndamento').value.toLowerCase().trim();
-    const chipAtivo = document.querySelector('#filtros-status .chip-filtro.active');
-    const status = chipAtivo ? chipAtivo.textContent.trim() : 'Todos';
     document.querySelectorAll('#lista-andamento .pedido-card').forEach(card => {
         const nomeEl = card.querySelector('.pedido-nome');
         const statusEl = card.querySelector('.pedido-status');
         if (!nomeEl) return;
         destacarBusca(nomeEl, termo);
         const nomeOk = !termo || nomeEl.dataset.nomeBase.toLowerCase().includes(termo);
-        const statusOk = status === 'Todos' || !statusEl || statusEl.textContent.trim() === status;
+        const statusOk = filtroStatusAtual === 'todos' || !statusEl || statusEl.textContent.trim() === filtroStatusAtual;
         card.parentElement.style.display = (nomeOk && statusOk) ? '' : 'none';
     });
 }
 
-function filtrarStatus(status, btn) {
-    document.querySelectorAll('#filtros-status .chip-filtro').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const termo = document.getElementById('buscaAndamento').value.toLowerCase().trim();
-    document.querySelectorAll('#lista-andamento .pedido-card').forEach(card => {
-        const nomeEl = card.querySelector('.pedido-nome');
-        const statusEl = card.querySelector('.pedido-status');
-        if (!nomeEl || !statusEl) return;
-        destacarBusca(nomeEl, termo);
-        const nomeOk = !termo || nomeEl.dataset.nomeBase.toLowerCase().includes(termo);
-        const statusOk = status === 'todos' || statusEl.textContent.trim() === status;
-        card.parentElement.style.display = (nomeOk && statusOk) ? '' : 'none';
-    });
+function filtrarStatusMenu(status, label) {
+    filtroStatusAtual = status;
+    document.getElementById('filtroStatusLabel').textContent = label;
+    fecharMenuMais('menuFiltroStatus');
+    filtrarAndamentoPorNome();
 }
 
 function filtrarFinalizadosPorNome() {
@@ -748,17 +736,6 @@ function filtrarFinalizadosPorPeriodo() {
     });
 }
 
-function filtrarAndamentoPorData() {
-    const termo = document.getElementById('buscaAndamentoData').value.trim();
-    document.querySelectorAll('#lista-andamento .swipe-wrapper').forEach(wrapper => {
-        if (!termo || termo.length < 3) { wrapper.style.display = ''; return; }
-        const card = wrapper.querySelector('.pedido-card');
-        if (!card) return;
-        const infoData = card.querySelector('.pedido-info:nth-child(2)');
-        wrapper.style.display = (infoData && infoData.textContent.includes(termo)) ? '' : 'none';
-    });
-}
-
 // ====================== CALENDÁRIO ANDAMENTO ======================
 let mesAtual = new Date().getMonth();
 let anoAtual = new Date().getFullYear();
@@ -769,7 +746,7 @@ function toggleCalendario() {
     if (w.style.display === 'none' || w.style.display === '') {
         w.style.display = 'block'; btn.textContent = '📅 Fechar Calendário';
         renderizarCalendario(); filtrarAndamentoPorMes();
-    } else { w.style.display = 'none'; btn.textContent = '📅 Ver Calendário'; carregarAndamento(); }
+    } else { w.style.display = 'none'; btn.textContent = '📅 Calendário'; carregarAndamento(); }
 }
 
 function filtrarAndamentoPorMes() {
@@ -798,8 +775,8 @@ function filtrarAndamentoPorMes() {
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, false)));
-        document.querySelectorAll('#filtros-status .chip-filtro').forEach(b => b.classList.remove('active'));
-        const chipTodos = document.querySelector('#filtros-status .chip-filtro'); if (chipTodos) chipTodos.classList.add('active');
+        filtroStatusAtual = 'todos';
+        document.getElementById('filtroStatusLabel').textContent = 'Todos';
     });
 }
 
@@ -880,7 +857,7 @@ function toggleCalendarioFinalizados() {
     if (w.style.display === 'none' || w.style.display === '') {
         w.style.display = 'block'; btn.textContent = '📅 Fechar Calendário';
         renderizarCalendarioFinalizados(); filtrarFinalizadosPorMes();
-    } else { w.style.display = 'none'; btn.textContent = '📅 Ver Calendário'; carregarFinalizados(); }
+    } else { w.style.display = 'none'; btn.textContent = '📅 Calendário'; carregarFinalizados(); }
 }
 
 function renderizarCalendarioFinalizados() {
