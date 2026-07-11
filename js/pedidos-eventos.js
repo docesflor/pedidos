@@ -182,10 +182,10 @@ function renderizarEventoCard(e, lista, hoje) {
     const caixasProduzidas = Math.floor(produzido/4);
     const sobrandoCaixas   = Math.max(0, caixasProduzidas-totalCaixas);
     const sobrandoUnidades = Math.max(0, produzido-totalUnidades);
-    const btnFinalizar = (!finalizado && passado)
-        ? `<button class="btn-evento-acao btn-evento-finalizar" onclick="finalizarEvento('${e.key}')">✓ Finalizar</button>` : '';
+    const btnFinalizarMenu = (!finalizado && passado)
+        ? `<button onclick="finalizarEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">✓ Finalizar evento</button>` : '';
     const vendasRapidasHTML = finalizado ? '' : `
-        <div style="margin-top:12px;">
+        <div style="margin-top:2px;">
             <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
                 <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1,this)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
@@ -204,45 +204,56 @@ function renderizarEventoCard(e, lista, hoje) {
                 <div style="font-size:0.8em;color:var(--green);margin-top:6px;font-weight:600;">💰 Total: <span id="preview-venda-${e.key}">R$ 0,00</span></div>
             </div>
         </div>`;
-    const producaoHTML = finalizado
-        ? `<p style="font-size:0.82em;color:var(--brown-warm);margin-bottom:8px;">🍫 Total produzido: <strong>${produzido} un</strong> (${caixasProduzidas} caixinhas)</p>`
-        : `<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--cream-dark);">
-                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">🍫 Total Produzido</p>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="number" id="produzido-${e.key}" value="${produzido}" placeholder="Ex: 200" min="0" style="margin-bottom:0;flex:1;">
-                    <button class="btn btn-marrom" style="padding:10px 16px;white-space:nowrap;" onclick="salvarProduzido('${e.key}')">💾 Salvar</button>
-                </div>
-                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">= ${caixasProduzidas} caixinhas de 4 un <span id="info-caixas-${e.key}"></span></p>
-           </div>`;
+    const editarProduzidoHTML = finalizado ? '' : `
+        <div id="editar-produzido-${e.key}" class="evento-editar-produzido" style="display:none;">
+            <label style="font-size:0.76em;">Total produzido (unidades)</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" id="produzido-${e.key}" value="${produzido}" placeholder="Ex: 200" min="0" style="margin-bottom:0;flex:1;">
+                <button class="btn btn-marrom" style="padding:10px 16px;white-space:nowrap;" onclick="salvarProduzido('${e.key}')">💾 Salvar</button>
+            </div>
+            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">= ${caixasProduzidas} caixinhas de 4 un <span id="info-caixas-${e.key}"></span></p>
+        </div>`;
     card.innerHTML = `
         <div class="evento-card-header">
             <div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-                    <div class="evento-card-nome">${iconeNome} ${escaparHTML(e.nome)}</div>
+                <div class="evento-header-linha1">
+                    <span class="evento-card-nome">${iconeNome} ${escaparHTML(e.nome)}</span>
                     <span class="evento-badge ${statusClass}">${statusLabel}</span>
                 </div>
                 <div class="evento-card-datas">📅 ${mesmoDia?inicioBR:inicioBR+' até '+fimBR}${e.obs?' — '+escaparHTML(e.obs):''}</div>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-                <button class="btn-evento-acao btn-evento-vendas" onclick="togglePainelVendas('${e.key}')">💰 Vendas</button>
-                ${btnFinalizar}
-                <button class="btn-evento-acao btn-evento-excluir" onclick="excluirEvento('${e.key}')">🗑️ Excluir</button>
+            <div style="position:relative;flex-shrink:0;">
+                <button class="btn-mais" onclick="toggleMenuMais('menuEvento-${e.key}', event)" aria-label="Mais opções">⋯</button>
+                <div class="menu-mais" id="menuEvento-${e.key}" style="display:none;">
+                    ${btnFinalizarMenu}
+                    <button class="menu-mais-excluir" onclick="excluirEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">🗑️ Excluir evento</button>
+                </div>
             </div>
         </div>
-        <div class="evento-resumo-grid">
-            <div class="evento-resumo-item"><div class="evento-resumo-label">🍫 Produzido</div><div class="evento-resumo-valor">${caixasProduzidas} cxs</div><div style="font-size:0.7em;color:var(--brown-warm);">${produzido} un</div></div>
-            <div class="evento-resumo-item"><div class="evento-resumo-label">📦 Vendido</div><div class="evento-resumo-valor amber">${totalCaixas} cxs</div><div style="font-size:0.7em;color:var(--brown-warm);">${totalUnidades} un${totalAvulso>0?' + '+totalAvulso+' avulso':''}</div></div>
-            <div class="evento-resumo-item"><div class="evento-resumo-label">📬 Sobrou</div><div class="evento-resumo-valor vermelho">${sobrandoCaixas} cxs</div><div style="font-size:0.7em;color:var(--brown-warm);">${sobrandoUnidades} un</div></div>
-            <div class="evento-resumo-item"><div class="evento-resumo-label">💰 Arrecadado</div><div class="evento-resumo-valor verde">R$ ${totalArrecadado.toFixed(2).replace('.',',')}</div></div>
+        <div class="evento-arrecadado-destaque">
+            <div class="evento-arrecadado-label">💰 Arrecadado</div>
+            <div class="evento-arrecadado-valor">R$ ${totalArrecadado.toFixed(2).replace('.',',')}</div>
         </div>
+        <div class="evento-resumo-3grid">
+            <div class="evento-resumo-mini${finalizado?'':' editable'}" ${finalizado?'':`onclick="toggleEditarProduzido('${e.key}')"`}>
+                <div class="evento-resumo-mini-label">🍫 Produzido${finalizado?'':' ✏️'}</div>
+                <div class="evento-resumo-mini-valor">${caixasProduzidas} cxs</div>
+            </div>
+            <div class="evento-resumo-mini">
+                <div class="evento-resumo-mini-label">📦 Vendido</div>
+                <div class="evento-resumo-mini-valor">${totalCaixas} cxs</div>
+            </div>
+            <div class="evento-resumo-mini">
+                <div class="evento-resumo-mini-label">📬 Sobrou</div>
+                <div class="evento-resumo-mini-valor">${sobrandoCaixas} cxs</div>
+            </div>
+        </div>
+        ${editarProduzidoHTML}
         ${vendasRapidasHTML}
-        <div class="painel-vendas" id="painel-${e.key}">
-            ${producaoHTML}
-            <div>
-                <p style="font-size:0.82em;font-weight:700;color:var(--brown-dark);margin-bottom:8px;">📋 Histórico de Vendas</p>
-                <div id="historico-${e.key}" style="background:var(--white);border-radius:10px;border:1px solid var(--cream-dark);overflow:hidden;">
-                    ${vendas.length===0?'<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>':renderizarHistoricoVendas(e)}
-                </div>
+        <button class="btn-toggle-historico" onclick="toggleHistorico('${e.key}')">📋 Histórico de vendas <span id="seta-historico-${e.key}">▾</span></button>
+        <div id="historico-wrapper-${e.key}" style="display:none;">
+            <div id="historico-${e.key}" style="background:var(--white);border-radius:10px;border:1px solid var(--cream-dark);overflow:hidden;margin-top:8px;">
+                ${vendas.length===0?'<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>':renderizarHistoricoVendas(e)}
             </div>
         </div>`;
     lista.appendChild(card);
@@ -257,7 +268,6 @@ function renderizarEventoCard(e, lista, hoje) {
         }
     }
 }
-
 
 function renderizarHistoricoVendas(e) {
     const vendas = e.vendas ? Object.entries(e.vendas) : [];
@@ -278,10 +288,21 @@ function renderizarHistoricoVendas(e) {
 }
 
 
-function togglePainelVendas(key) {
-    const painel = document.getElementById('painel-'+key);
-    if (!painel) return;
-    painel.style.display = painel.style.display==='block' ? 'none' : 'block';
+function toggleEditarProduzido(key) {
+    const div = document.getElementById('editar-produzido-'+key);
+    if (!div) return;
+    const aberto = div.style.display === 'block';
+    div.style.display = aberto ? 'none' : 'block';
+    if (!aberto) { const inp = document.getElementById('produzido-'+key); if (inp) inp.focus(); }
+}
+
+function toggleHistorico(key, forcarAberto) {
+    const div = document.getElementById('historico-wrapper-'+key);
+    const seta = document.getElementById('seta-historico-'+key);
+    if (!div) return;
+    const abrir = forcarAberto === true || div.style.display !== 'block';
+    div.style.display = abrir ? 'block' : 'none';
+    if (seta) seta.textContent = abrir ? '▴' : '▾';
 }
 
 
@@ -320,7 +341,7 @@ function lancarVenda(key) {
             const preview = document.getElementById('preview-venda-'+key);
             if (preview) preview.textContent = 'R$ 0,00';
             carregarEventos();
-            setTimeout(()=>{ const p=document.getElementById('painel-'+key); if(p) p.style.display='block'; },400);
+            setTimeout(()=>{ toggleHistorico(key, true); },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
 }
@@ -337,7 +358,7 @@ function lancarVendaRapida(key, caixas, btnClicado) {
             dispararConfete(btnClicado);
             if (btnClicado) pulseBotaoSucesso(btnClicado, '✓');
             carregarEventos();
-            setTimeout(()=>{ const p=document.getElementById('painel-'+key); if(p) p.style.display='block'; },400);
+            setTimeout(()=>{ toggleHistorico(key, true); },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
 }
@@ -357,7 +378,7 @@ function lancarVendaEspecifica(key) {
             document.getElementById('preview-venda-'+key).textContent='R$ 0,00';
             document.getElementById('especificar-'+key).style.display='none';
             carregarEventos();
-            setTimeout(()=>{ const p=document.getElementById('painel-'+key); if(p) p.style.display='block'; },400);
+            setTimeout(()=>{ toggleHistorico(key, true); },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
 }
@@ -376,7 +397,7 @@ function excluirVenda(eventoKey, vendaKey) {
     showConfirmModal('Excluir esta venda?', function() {
         database.ref('eventos/'+eventoKey+'/vendas/'+vendaKey).remove().then(()=>{
             toast('🗑️ Venda excluída.'); carregarEventos();
-            setTimeout(()=>{ const p=document.getElementById('painel-'+eventoKey); if(p) p.style.display='block'; },400);
+            setTimeout(()=>{ toggleHistorico(key, true); },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
 }
