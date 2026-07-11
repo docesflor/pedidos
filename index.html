@@ -351,7 +351,13 @@
         <span class="secao-sub">Histórico de entregas realizadas</span>
     </h2>
 
-<input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
+<div style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;">
+    <div class="toggle-visualizacao" id="toggleVisFinalizados">
+        <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoFinalizados('lista')" aria-label="Visualização em lista">☰</button>
+        <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoFinalizados('grade')" aria-label="Visualização em grade">▦</button>
+    </div>
+</div>
 
 <div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch;">
     <div style="display:flex;gap:8px;flex:1;min-width:0;">
