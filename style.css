@@ -654,9 +654,10 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     border-radius: 14px;
 }
 #lista-andamento.grid-view .pedido-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     margin-bottom: 6px;
 }
 #lista-andamento.grid-view .pedido-nome {
@@ -664,11 +665,14 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    min-width: 0;
+    flex: 1;
 }
 #lista-andamento.grid-view .pedido-status {
     font-size: 0.68em;
     padding: 2px 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 #lista-andamento.grid-view .pedido-resumo {
     font-size: 0.8em;
@@ -737,9 +741,10 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     border-radius: 14px;
 }
 #lista-finalizados.grid-view .pedido-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     margin-bottom: 6px;
 }
 #lista-finalizados.grid-view .pedido-nome {
@@ -747,11 +752,14 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    min-width: 0;
+    flex: 1;
 }
 #lista-finalizados.grid-view .pedido-status {
     font-size: 0.68em;
     padding: 2px 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 #lista-finalizados.grid-view .pedido-resumo {
     font-size: 0.8em;
