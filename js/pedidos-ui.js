@@ -476,6 +476,23 @@ function dispararNotificacaoSensorial() {
     } catch(e) {}
 }
 
+// ====================== VISUALIZAÇÃO ANDAMENTO (lista/grade) ======================
+function mudarVisualizacaoAndamento(modo) {
+    localStorage.setItem('visualizacaoAndamento', modo);
+    aplicarVisualizacaoAndamento();
+}
+
+function aplicarVisualizacaoAndamento() {
+    const modo = localStorage.getItem('visualizacaoAndamento') || 'lista';
+    const lista = document.getElementById('lista-andamento');
+    const wrapper = document.getElementById('toggleVisAndamento');
+    if (!lista || !wrapper) return;
+    lista.classList.toggle('grid-view', modo === 'grade');
+    wrapper.querySelectorAll('.toggle-vis-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.modo === modo);
+    });
+}
+
 // ====================== RESUMO PRODUÇÃO ======================
 
 function toggleResumoProd() {
@@ -738,3 +755,20 @@ document.addEventListener('click', function(e) {
         if (overlay) overlay.remove();
     }
 });
+
+// ====================== VISUALIZAÇÃO ANDAMENTO (lista/grade) ======================
+function mudarVisualizacaoAndamento(modo) {
+    localStorage.setItem('visualizacaoAndamento', modo);
+    aplicarVisualizacaoAndamento();
+}
+
+function aplicarVisualizacaoAndamento() {
+    const modo = localStorage.getItem('visualizacaoAndamento') || 'lista';
+    const lista = document.getElementById('lista-andamento');
+    const wrapper = document.getElementById('toggleVisAndamento');
+    if (!lista || !wrapper) return;
+    lista.classList.toggle('grid-view', modo === 'grade');
+    wrapper.querySelectorAll('.toggle-vis-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.modo === modo);
+    });
+}
