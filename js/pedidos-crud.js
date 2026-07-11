@@ -264,15 +264,6 @@ function carregarFinalizados() {
 function criarCard(pedido, key, finalizado) {
     const wrapper = document.createElement('div');
     wrapper.className = 'swipe-wrapper';
-    if (!finalizado) {
-        const swipeAcoes = document.createElement('div');
-        swipeAcoes.className = 'swipe-acoes';
-        swipeAcoes.id = 'swipe-' + key;
-        swipeAcoes.innerHTML = `
-            <button class="btn-swipe finalizar" onclick="finalizarPedido('${key}');fecharSwipe('${key}')"><span>✓</span>Finalizar</button>
-            <button class="btn-swipe excluir"   onclick="excluirPedido('${key}')"><span>🗑️</span>Excluir</button>`;
-        wrapper.appendChild(swipeAcoes);
-    }
     const card = document.createElement('div');
     card.className = 'pedido-card';
     card.dataset.key = key;
@@ -327,15 +318,15 @@ function criarCard(pedido, key, finalizado) {
          : `<div class="botoes-principais">
                 <button class="btn btn-finalizar-card" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
                 <button class="btn btn-cinza" onclick="imprimirComprovante('${key}')">🧾 Comprovante</button>
-                <button class="btn-mais" onclick="toggleMenuMais('${key}', event)" aria-label="Mais opções">⋯</button>
+                <button class="btn-mais" onclick="toggleMenuMais('menuMais-${key}', event)" aria-label="Mais opções">⋯</button>
             </div>
             <div class="menu-mais" id="menuMais-${key}" style="display:none;">
-                <button onclick="editarPedido('${key}');fecharMenuMais('${key}')">✏️ Editar</button>
-                <button onclick="reenviarWhatsApp('${key}');fecharMenuMais('${key}')">📲 WhatsApp (texto)</button>
-                <button onclick="gerarCobrancaPix('${key}');fecharMenuMais('${key}')">💸 Pix</button>
-                <button onclick="abrirTemplates('${key}');fecharMenuMais('${key}')">📋 Templates</button>
+                <button onclick="editarPedido('${key}');fecharMenuMais('menuMais-${key}')">✏️ Editar</button>
+                <button onclick="reenviarWhatsApp('${key}');fecharMenuMais('menuMais-${key}')">📲 WhatsApp (texto)</button>
+                <button onclick="gerarCobrancaPix('${key}');fecharMenuMais('menuMais-${key}')">💸 Pix</button>
+                <button onclick="abrirTemplates('${key}');fecharMenuMais('menuMais-${key}')">📋 Templates</button>
                 <hr>
-                <button class="menu-mais-excluir" onclick="excluirPedido('${key}');fecharMenuMais('${key}')">🗑️ Excluir</button>
+                <button class="menu-mais-excluir" onclick="excluirPedido('${key}');fecharMenuMais('menuMais-${key}')">🗑️ Excluir</button>
             </div>`;
     const header = document.createElement('div');
     header.className = 'pedido-header';
@@ -465,22 +456,6 @@ function criarCard(pedido, key, finalizado) {
         detalhes.style.display = aberto ? 'none' : 'block';
         nomeEl.textContent = (pedido.nome || 'N/A') + (aberto ? ' 🔽' : ' 🔼');
     });
-    let touchStartX = 0, touchStartY = 0;
-    card.addEventListener('touchstart', e => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-    card.addEventListener('touchmove', e => {
-        const dx = touchStartX - e.touches[0].clientX;
-        const dy = Math.abs(e.touches[0].clientY - touchStartY);
-        if (dy > 20 || finalizado) return;
-        if (dx > 30) {
-            document.querySelectorAll('.pedido-card.swipe-aberto').forEach(el => { if (el !== card) el.classList.remove('swipe-aberto'); });
-            card.classList.add('swipe-aberto');
-        } else if (dx < -10) {
-            card.classList.remove('swipe-aberto');
-        }
-    }, { passive: true });
     const botoesDiv = document.createElement('div');
     botoesDiv.className = 'pedido-botoes';
     botoesDiv.style.position = 'relative';
@@ -491,11 +466,6 @@ function criarCard(pedido, key, finalizado) {
     card.appendChild(botoesDiv);
     wrapper.appendChild(card);
     return wrapper;
-}
-
-function fecharSwipe(key) {
-    const c = document.querySelector(`[data-key="${key}"]`);
-    if (c) c.classList.remove('swipe-aberto');
 }
 
 function finalizarPedido(key) {
