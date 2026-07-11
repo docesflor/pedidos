@@ -119,7 +119,7 @@ function abrirTemplates(key) {
                 emoji: '🍫',
                 label: 'Pedido pronto',
                 preview: `Avisa que os brigadeiros estão prontos`,
-                msg: `Olá, ${primeiroNome}! 🌸\n\nSeus brigadeiros estão prontos e ${tipoLocal}! 🎉\n\n${p.tipoEntrega !== 'entrega' ? `📍 *Endereço para retirada:*\n${enderecoRetirada}\n\n` : ''}🍫 *Itens:* ${itensResumo}\n\nNos vemos em breve! — *Doces Flor* 🌸`
+                msg: `Olá, ${primeiroNome}! 🌸\n\nSeus brigadeiros estão prontos e ${p.tipoEntrega === 'entrega' ? 'saíram para a entrega no endereço combinado' : 'disponíveis para retirada'}! 🎉\n\n${p.tipoEntrega !== 'entrega' ? `📍 *Endereço para retirada:*\n${enderecoRetirada}\n\n` : ''}🍫 *Itens:* ${itensResumo}\n\nNos vemos em breve! — *Doces Flor* 🌸`
             }
         ];
 
