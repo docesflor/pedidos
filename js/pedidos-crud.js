@@ -324,13 +324,19 @@ function criarCard(pedido, key, finalizado) {
     ? `${avaliacaoBtnHTML}
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
-         : `<button class="btn btn-amarelo"  onclick="editarPedido('${key}')">✏️ Editar</button>
-            <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-            <button class="btn btn-verde"    onclick="reenviarWhatsApp('${key}')">📲 WhatsApp</button>
-            <button class="btn btn-azul"     onclick="gerarCobrancaPix('${key}')">💸 Pix</button>
-            <button class="btn btn-marrom"   onclick="abrirTemplates('${key}')">📋 Templates</button>
-            <button class="btn btn-laranja btn-swipe-ocultar-mobile" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
-            <button class="btn btn-vermelho btn-swipe-ocultar-mobile" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`;
+         : `<div class="botoes-principais">
+                <button class="btn btn-laranja" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
+                <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprovante</button>
+                <button class="btn-mais" onclick="toggleMenuMais('${key}', event)" aria-label="Mais opções">⋯</button>
+            </div>
+            <div class="menu-mais" id="menuMais-${key}" style="display:none;">
+                <button onclick="editarPedido('${key}');fecharMenuMais('${key}')">✏️ Editar</button>
+                <button onclick="reenviarWhatsApp('${key}');fecharMenuMais('${key}')">📲 WhatsApp (texto)</button>
+                <button onclick="gerarCobrancaPix('${key}');fecharMenuMais('${key}')">💸 Pix</button>
+                <button onclick="abrirTemplates('${key}');fecharMenuMais('${key}')">📋 Templates</button>
+                <hr>
+                <button class="menu-mais-excluir" onclick="excluirPedido('${key}');fecharMenuMais('${key}')">🗑️ Excluir</button>
+            </div>`;
     const header = document.createElement('div');
     header.className = 'pedido-header';
     header.style.cursor = 'pointer';
@@ -477,6 +483,7 @@ function criarCard(pedido, key, finalizado) {
     }, { passive: true });
     const botoesDiv = document.createElement('div');
     botoesDiv.className = 'pedido-botoes';
+    botoesDiv.style.position = 'relative';
     botoesDiv.innerHTML = botoesHTML;
     card.appendChild(header);
     card.appendChild(resumo);
