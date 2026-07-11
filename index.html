@@ -349,23 +349,25 @@
 
 <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
 
-<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:nowrap;">
-    <select id="filtroFinalizadosMes" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
-        <option value="">Todos os meses</option>
-        <option value="0">Janeiro</option><option value="1">Fevereiro</option>
-        <option value="2">Março</option><option value="3">Abril</option>
-        <option value="4">Maio</option><option value="5">Junho</option>
-        <option value="6">Julho</option><option value="7">Agosto</option>
-        <option value="8">Setembro</option><option value="9">Outubro</option>
-        <option value="10">Novembro</option><option value="11">Dezembro</option>
-    </select>
-    <select id="filtroFinalizadosAno" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;width:95px;min-width:88px;flex-shrink:0;">
-        <option value="2024">2024</option>
-        <option value="2025">2025</option>
-        <option value="2026" selected>2026</option>
-        <option value="2027">2027</option>
-    </select>
-    <button class="btn btn-marrom" style="white-space:nowrap;flex-shrink:0;" onclick="toggleCalendarioFinalizados()">📅 Calendário</button>
+<div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch;">
+    <div style="display:flex;gap:8px;flex:1;min-width:0;">
+        <select id="filtroFinalizadosMes" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
+            <option value="">Todos os meses</option>
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+            <option value="2">Março</option><option value="3">Abril</option>
+            <option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option>
+            <option value="8">Setembro</option><option value="9">Outubro</option>
+            <option value="10">Novembro</option><option value="11">Dezembro</option>
+        </select>
+        <select id="filtroFinalizadosAno" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+        </select>
+    </div>
+    <button class="btn btn-marrom" style="flex:1;min-width:0;white-space:nowrap;" onclick="toggleCalendarioFinalizados()">📅 Calendário</button>
 </div>
 
 <div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
