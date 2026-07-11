@@ -355,7 +355,10 @@ function imprimirComprovante(key) {
         boxPreview.innerHTML = `<p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:10px;text-align:center;">🧾 Confira antes de enviar</p>`;
         const conteudoPreview = document.getElementById('comprovante-conteudo');
         conteudoPreview.style.cssText += 'margin:0 auto;';
-        boxPreview.appendChild(conteudoPreview);
+        const wrapperPreview = document.createElement('div');
+        wrapperPreview.style.cssText = 'width:100%;overflow:hidden;display:flex;justify-content:center;';
+        wrapperPreview.appendChild(conteudoPreview);
+        boxPreview.appendChild(wrapperPreview);
         const botoesPreview = document.createElement('div');
         botoesPreview.className = 'modal-botoes';
         botoesPreview.style.marginTop = '14px';
@@ -366,9 +369,22 @@ function imprimirComprovante(key) {
         overlayPreview.appendChild(boxPreview);
         document.body.appendChild(overlayPreview);
 
+        // Encolhe o comprovante (480px fixos) pra caber na largura do celular
+        requestAnimationFrame(() => {
+            const larguraDisponivel = wrapperPreview.clientWidth;
+            const larguraReal = 480;
+            if (larguraDisponivel > 0 && larguraDisponivel < larguraReal) {
+                const escala = larguraDisponivel / larguraReal;
+                conteudoPreview.style.transform = `scale(${escala})`;
+                conteudoPreview.style.transformOrigin = 'top center';
+                wrapperPreview.style.height = (conteudoPreview.offsetHeight * escala) + 'px';
+            }
+        });
+
         document.getElementById('btnConfirmarComprovante').addEventListener('click', function() {
             this.disabled = true;
             this.textContent = '⏳ Gerando...';
+            conteudoPreview.style.transform = ''; // remove o scale do preview antes de gerar a imagem real
             container.appendChild(conteudoPreview); // devolve o comprovante pro container antes de remover o modal
             overlayPreview.remove();
             container.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;background:white;'; // restaura posição off-screen (o html2canvas precisa disso)
