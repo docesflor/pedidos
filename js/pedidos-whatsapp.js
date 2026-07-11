@@ -348,10 +348,10 @@ function imprimirComprovante(key) {
         const overlayPreview = document.createElement('div');
         overlayPreview.className = 'modal-overlay';
         overlayPreview.id = 'modalPreviewComprovante';
-        overlayPreview.style.cssText = 'align-items:flex-start;overflow-y:auto;padding:24px 12px;';
+        overlayPreview.style.cssText = 'align-items:flex-start;overflow-x:hidden;overflow-y:auto;padding:24px 12px;';
         const boxPreview = document.createElement('div');
         boxPreview.className = 'modal-box';
-        boxPreview.style.cssText = 'max-width:520px;padding:16px;';
+        boxPreview.style.cssText = 'max-width:520px;width:94vw;padding:16px;box-sizing:border-box;';
         boxPreview.innerHTML = `<p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:10px;text-align:center;">🧾 Confira antes de enviar</p>`;
         const conteudoPreview = document.getElementById('comprovante-conteudo');
         conteudoPreview.style.cssText += 'margin:0 auto;';
