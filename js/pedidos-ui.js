@@ -700,8 +700,9 @@ function toggleMenuMais(key, evento) {
     const alturaMenu = menu.offsetHeight;
     const larguraMenu = menu.offsetWidth;
 
-    let top = rectBtn.top - alturaMenu - 8;
-    if (top < 8) top = rectBtn.bottom + 8; // não coube em cima -> abre embaixo
+    let top = rectBtn.top - alturaMenu - 12;
+    if (top < 8) top = rectBtn.bottom + 12; // não coube em cima -> abre embaixo
+    if (top + alturaMenu > window.innerHeight - 8) top = window.innerHeight - alturaMenu - 8; // não deixa vazar embaixo da tela
 
     let left = rectBtn.right - larguraMenu;
     if (left < 8) left = 8;
