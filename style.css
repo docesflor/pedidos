@@ -259,6 +259,7 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .pedido-itens-tabela td { padding: 7px 8px; border-bottom: 1px solid var(--cream-dark); color: var(--brown-dark); font-family: 'DM Sans', sans-serif; }
 .pedido-itens-tabela tr:last-child td { border-bottom: none; }
 .pedido-botoes { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+.pedido-botoes .botoes-principais { flex: 1 1 100%; }
 .pedido-botoes .btn { flex: 1; min-width: 100px; font-size: 0.78em; padding: 8px 10px; text-align: center; }
 
 /* ═══════════════════════════════════════════
@@ -387,6 +388,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     .pedido-header { flex-direction: column; align-items: flex-start; gap: 6px; }
     .pedido-nome { font-size: 1.15em; }
     .pedido-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+.pedido-botoes .botoes-principais { grid-column: 1 / -1; }
     .pedido-botoes .btn { min-width: unset; width: 100%; font-size: 0.70em; padding: 7px 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .btn-bloco { font-size: 0.88em; padding: 12px; }
     .calendario-header h3 { font-size: 0.95em; }
