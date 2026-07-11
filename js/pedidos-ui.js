@@ -679,3 +679,24 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 window.addEventListener('online',  () => { document.getElementById('avisoOffline').style.display='none'; });
 window.addEventListener('offline', () => { document.getElementById('avisoOffline').style.display='block'; });
+
+// ====================== MENU "MAIS OPÇÕES" DOS PEDIDOS ======================
+function toggleMenuMais(key, evento) {
+    if (evento) evento.stopPropagation();
+    const menu = document.getElementById('menuMais-' + key);
+    if (!menu) return;
+    const jaAberto = menu.style.display === 'block';
+    document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
+    menu.style.display = jaAberto ? 'none' : 'block';
+}
+
+function fecharMenuMais(key) {
+    const menu = document.getElementById('menuMais-' + key);
+    if (menu) menu.style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.menu-mais') && !e.target.closest('.btn-mais')) {
+        document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
+    }
+});
