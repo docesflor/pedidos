@@ -1105,6 +1105,7 @@ function carregarReceitasLista() {
                     <span style="font-weight:600;">R$ ${custo.toFixed(2).replace('.',',')}</span>
                 </div>`;
             }).join('');
+            card.style.position = 'relative';
             card.innerHTML = `
                 <div class="receita-header">
                     <div class="receita-sabor">🍫 ${escaparHTML(r.sabor)}</div>
@@ -1116,15 +1117,17 @@ function carregarReceitasLista() {
                     <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:6px;">💹 Simulador "e se eu vender a..."</p>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <span style="font-size:0.85em;">R$</span>
-                        <input type="text" id="simPreco-${r.key}" placeholder="0,00" style="margin-bottom:0;flex:1;font-size:0.85em;padding:7px 10px;" oninput="this.value=maskMoeda(this.value);simularMargemReceita('${r.key}',${custoPorUn})">
+                        <input type="text" id="simPreco-${r.key}" placeholder="0,00" style="margin-bottom:0;flex:1;min-width:0;font-size:0.85em;padding:7px 10px;" oninput="this.value=maskMoeda(this.value);simularMargemReceita('${r.key}',${custoPorUn})">
                         <span style="font-size:0.8em;color:var(--brown-warm);">/un</span>
+                        <button class="btn-mais" style="flex-shrink:0;" onclick="toggleMenuMais('menuMaisReceita-${r.key}', event)" aria-label="Mais opções">⋯</button>
                     </div>
                     <p id="simResultado-${r.key}" style="font-size:0.82em;margin-top:6px;font-weight:600;"></p>
                 </div>
-                <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:8px;">
-                    <button class="btn btn-amarelo" style="padding:6px 14px;font-size:0.8em;" onclick="editarReceita('${r.key}')">✏️ Editar</button>
-                    <button class="btn btn-cinza" style="padding:6px 14px;font-size:0.8em;" onclick="duplicarReceita('${r.key}')">📄 Duplicar</button>
-                    <button class="btn-remove" onclick="excluirReceita('${r.key}')">🗑️ Excluir receita</button>
+                <div class="menu-mais" id="menuMaisReceita-${r.key}" style="display:none;">
+                    <button onclick="editarReceita('${r.key}');fecharMenuMais('menuMaisReceita-${r.key}')">✏️ Editar</button>
+                    <button onclick="duplicarReceita('${r.key}');fecharMenuMais('menuMaisReceita-${r.key}')">📄 Duplicar</button>
+                    <hr>
+                    <button class="menu-mais-excluir" onclick="excluirReceita('${r.key}');fecharMenuMais('menuMaisReceita-${r.key}')">🗑️ Excluir receita</button>
                 </div>`;
             lista.appendChild(card);
         });
