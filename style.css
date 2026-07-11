@@ -597,3 +597,21 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
     border-bottom: 1px solid var(--cream-dark);
     transform: rotate(45deg);
 }
+
+.btn-filtro-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 50px;
+    padding: 0 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--brown-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.btn-filtro-status:hover { background: var(--cream); }
