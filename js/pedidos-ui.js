@@ -684,10 +684,32 @@ window.addEventListener('offline', () => { document.getElementById('avisoOffline
 function toggleMenuMais(key, evento) {
     if (evento) evento.stopPropagation();
     const menu = document.getElementById('menuMais-' + key);
-    if (!menu) return;
+    const btn  = evento ? evento.currentTarget : null;
+    if (!menu || !btn) return;
+
     const jaAberto = menu.style.display === 'block';
     document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
-    menu.style.display = jaAberto ? 'none' : 'block';
+    if (jaAberto) return; // estava aberto -> só fecha, não reabre
+
+    // Move o menu pro <body> pra escapar do overflow:hidden do card
+    document.body.appendChild(menu);
+    menu.style.display  = 'block';
+    menu.style.position = 'fixed';
+
+    const rectBtn = btn.getBoundingClientRect();
+    const alturaMenu = menu.offsetHeight;
+    const larguraMenu = menu.offsetWidth;
+
+    let top = rectBtn.top - alturaMenu - 8;
+    if (top < 8) top = rectBtn.bottom + 8; // não coube em cima -> abre embaixo
+
+    let left = rectBtn.right - larguraMenu;
+    if (left < 8) left = 8;
+
+    menu.style.top    = top + 'px';
+    menu.style.left   = left + 'px';
+    menu.style.right  = 'auto';
+    menu.style.bottom = 'auto';
 }
 
 function fecharMenuMais(key) {
