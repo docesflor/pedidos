@@ -194,19 +194,18 @@ function reenviarWhatsApp(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
         const p = snapshot.val(); if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
         function abreviar(s) { return (s||'').replace('Chocolate Gourmet', 'Choc. Gourmet'); }
-        let msg = `Pedidos - Doces Flor\n\nNome: ${p.nome||''}\nTelefone: ${p.telefone||''}\nData: ${formatarDataComDia(p.dataEntrega||'')}${p.hora && p.hora.trim() ? ' às ' + p.hora.trim() + 'h' : ''}\n`;
+        let msg = `Pedidos - Doces Flor\n\n${p.nome||''}\n${formatarDataComDia(p.dataEntrega||'')}${p.hora && p.hora.trim() ? ' às ' + p.hora.trim() + 'h' : ''}\n`;
         if (p.tipoEntrega === 'entrega' && p.endereco) {
             const e = p.endereco;
-            msg += `🚚 Entrega em: ${e.logradouro}, ${e.numero}, ${e.bairro}, ${e.cidade}\n`;
-            if (e.complemento) msg += `Complemento: ${e.complemento}\n`;
+            msg += `${e.logradouro}, ${e.numero}, ${e.bairro}\n`;
         } else {
-            msg += `🏠 Retirada no local\n`;
+            msg += `Retirada no local\n`;
         }
-        msg += `──────────\nItens:\n`;
+        msg += `──────────\n`;
         const itensP = p.itens || [];
         const primeiro = itensP[0] || {};
         const todosIguais = itensP.length > 1 && itensP.every(i => i.formato===primeiro.formato && i.tipoForma===primeiro.tipoForma && i.cor===primeiro.cor);
-        if (itensP.length === 1) { msg += `${abreviar(primeiro.sabor)} - Qtd:${primeiro.quantidade}\nB: ${primeiro.formato} | F: ${primeiro.tipoForma}/${primeiro.cor}\n`; }
+        if (itensP.length === 1) { msg += `${abreviar(primeiro.sabor)} - Qtd:${primeiro.quantidade}\n\nB: ${primeiro.formato} | F: ${primeiro.tipoForma}/${primeiro.cor}\n`; }
         else if (todosIguais) { itensP.forEach(i => msg += `${abreviar(i.sabor)} - Qtd:${i.quantidade}\n`); msg += `\nBrigadeiro: ${primeiro.formato}\nForma: ${primeiro.tipoForma}/${primeiro.cor}\n`; }
         else { itensP.forEach((i,idx) => { msg += `${abreviar(i.sabor)} - Qtd:${i.quantidade}\nB: ${i.formato} | F: ${i.tipoForma}/${i.cor}\n`; if (idx<itensP.length-1) msg+=`\n`; }); }
         msg += `──────────\n`;
