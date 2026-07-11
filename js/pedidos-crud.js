@@ -458,6 +458,7 @@ function criarCard(pedido, key, finalizado) {
         const aberto = detalhes.style.display !== 'none';
         detalhes.style.display = aberto ? 'none' : 'block';
         nomeEl.textContent = (pedido.nome || 'N/A') + (aberto ? ' 🔽' : ' 🔼');
+        wrapper.classList.toggle('card-expandido', !aberto);
     });
     const botoesDiv = document.createElement('div');
     botoesDiv.className = 'pedido-botoes';
