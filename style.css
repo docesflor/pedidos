@@ -416,7 +416,7 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .swipe-wrapper.urgente-hoje { border-left: 4px solid var(--red); border-radius: 20px; box-shadow: -2px 0 0 var(--red), 0 4px 18px var(--shadow); }
 .swipe-wrapper.urgente-amanha { border-left: 4px solid #F59E0B; border-radius: 20px; box-shadow: -2px 0 0 #F59E0B, 0 4px 18px var(--shadow); }
 .swipe-wrapper.urgente-atrasado { border-left: 4px solid var(--red); border-radius: 20px; box-shadow: -2px 0 0 var(--red), 0 4px 18px var(--shadow); }
-.swipe-wrapper.urgente-atrasado .pedido-card { background: #FEF2F2; }
+.swipe-wrapper.urgente-atrasado .pedido-card { background: #FECACA; border-color: #F87171; }
 
 /* ── Wrapper do card (usado pra bordas de urgência) ── */
 .swipe-wrapper { position: relative; border-radius: 20px; margin-bottom: 14px; }
