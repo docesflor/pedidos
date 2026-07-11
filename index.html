@@ -313,29 +313,28 @@
 <!-- ═══ SEÇÃO 2: ANDAMENTO ═══ -->
 <section id="secao-andamento" class="secao">
     <h2 class="secao-titulo">
-        📦 Pedidos em Andamento
+        📦 Pedidos em Andamento <span id="tituloAndamentoContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span>
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Acompanhe seus pedidos ativos</span>
     </h2>
-    <div id="totalizador-andamento" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
-        <span style="font-size:1em;font-weight:700;color:var(--amber);">📦 Em andamento: <span id="totalAndamentoContagem">0</span> pedidos</span>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
         <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
-        <input type="text" id="buscaAndamentoData" placeholder="📅 dd/mm" style="margin-bottom:0;width:110px;min-width:100px;flex-shrink:0;" oninput="filtrarAndamentoPorData()" maxlength="5">
+        <button class="btn-filtro-status" onclick="toggleMenuMais('menuFiltroStatus', event)" aria-label="Filtrar por status">🔽 <span id="filtroStatusLabel">Todos</span></button>
     </div>
-    <div id="filtros-status" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="chip-filtro active" onclick="filtrarStatus('todos',this)">Todos</button>
-        <button class="chip-filtro" onclick="filtrarStatus('A pagar',this)">A pagar</button>
-        <button class="chip-filtro" onclick="filtrarStatus('Pago Parcialmente',this)">Parcial</button>
-        <button class="chip-filtro" onclick="filtrarStatus('Pago',this)">Pago</button>
+    <div class="menu-mais" id="menuFiltroStatus" style="display:none;">
+        <button onclick="filtrarStatusMenu('todos','Todos')">Todos</button>
+        <button onclick="filtrarStatusMenu('A pagar','A pagar')">A pagar</button>
+        <button onclick="filtrarStatusMenu('Pago Parcialmente','Parcial')">Parcial</button>
+        <button onclick="filtrarStatusMenu('Pago','Pago')">Pago</button>
     </div>
-    <button class="btn btn-amarelo btn-bloco" onclick="toggleResumoProd()">🍫 Resumo de Produção da Semana</button>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-amarelo" style="flex:1;" onclick="toggleResumoProd()">🍫 Produção Semanal</button>
+        <button class="btn btn-marrom" style="flex:1;" onclick="toggleCalendario()">📅 Calendário</button>
+    </div>
     <div id="resumoProducao" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
         <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir na Semana</p>
         <div id="resumoProducaoConteudo"></div>
     </div>
-    <button class="btn btn-marrom btn-bloco" onclick="toggleCalendario()">📅 Ver Calendário</button>
     <div id="calendario-wrapper"><div id="calendario-container"></div></div>
     <div id="lista-andamento"><p style="color:var(--brown-warm);">Carregando...</p></div>
 </section>
@@ -343,19 +342,15 @@
 <!-- ═══ SEÇÃO 3: FINALIZADOS ═══ -->
 <section id="secao-finalizados" class="secao">
     <h2 class="secao-titulo">
-        ✅ Pedidos Finalizados
+        ✅ Pedidos Finalizados <span id="tituloFinalizadosContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span>
         <div class="ornament-line"><span class="ornament-icon">✦</span></div>
         <span class="secao-sub">Histórico de entregas realizadas</span>
     </h2>
-<div id="totalizador-finalizados" style="display:none;background:var(--white);border-radius:16px;padding:14px 18px;margin-bottom:16px;text-align:center;border:1px solid var(--cream-dark);box-shadow:0 4px 14px var(--shadow);">
-    <span style="font-size:1em;font-weight:700;color:var(--green);">✅ Total: <span id="totalFinalizadosContagem">0</span> pedidos</span>
-    <span id="totalFinalizadosMes" style="font-size:0.85em;color:var(--brown-warm);margin-left:10px;"></span>
-</div>
 
 <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:12px;">
 
-<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:nowrap;">
-    <select id="filtroFinalizadosMes" style="margin-bottom:0;flex:1;min-width:0;">
+<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:nowrap;">
+    <select id="filtroFinalizadosMes" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
         <option value="">Todos os meses</option>
         <option value="0">Janeiro</option><option value="1">Fevereiro</option>
         <option value="2">Março</option><option value="3">Abril</option>
@@ -364,16 +359,15 @@
         <option value="8">Setembro</option><option value="9">Outubro</option>
         <option value="10">Novembro</option><option value="11">Dezembro</option>
     </select>
-    <select id="filtroFinalizadosAno" style="margin-bottom:0;width:95px;min-width:88px;flex-shrink:0;">
+    <select id="filtroFinalizadosAno" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;width:95px;min-width:88px;flex-shrink:0;">
         <option value="2024">2024</option>
         <option value="2025">2025</option>
         <option value="2026" selected>2026</option>
         <option value="2027">2027</option>
     </select>
-    <button class="btn btn-marrom" style="white-space:nowrap;flex-shrink:0;" onclick="filtrarFinalizadosPorPeriodo()">🔍 Filtrar</button>
+    <button class="btn btn-marrom" style="white-space:nowrap;flex-shrink:0;" onclick="toggleCalendarioFinalizados()">📅 Calendário</button>
 </div>
 
-<button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizados()">📅 Ver Calendário</button>
 <div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
 <div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
 </section>
