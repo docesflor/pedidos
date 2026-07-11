@@ -320,6 +320,10 @@
     <div style="display:flex;gap:8px;margin-bottom:14px;">
         <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
         <button class="btn-filtro-status" onclick="toggleMenuMais('menuFiltroStatus', event)" aria-label="Filtrar por status">🔽 <span id="filtroStatusLabel">Todos</span></button>
+        <div class="toggle-visualizacao" id="toggleVisAndamento">
+            <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoAndamento('lista')" aria-label="Visualização em lista">☰</button>
+            <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoAndamento('grade')" aria-label="Visualização em grade">▦</button>
+        </div>
     </div>
     <div class="menu-mais" id="menuFiltroStatus" style="display:none;">
         <button onclick="filtrarStatusMenu('todos','Todos')">Todos</button>
