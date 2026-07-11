@@ -548,7 +548,7 @@
             <option value="">Selecione o sabor</option>
         </select>
         <label for="receitaRendimento">Rendimento médio (unidades)</label>
-        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1">
+        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1" value="25">
         <hr class="divisor">
         <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em;">🧴 Ingredientes da Receita</p>
         <div class="linha-dupla">
@@ -567,7 +567,7 @@
         <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
         <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
         <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
-        <button class="btn btn-cinza btn-bloco" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
+        <button class="btn btn-cinza btn-bloco" id="btnCancelarEdicaoReceita" style="display:none;" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
     </div>
     <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
 </div>
