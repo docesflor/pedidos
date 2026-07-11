@@ -859,3 +859,14 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
         width: auto;
     }
 }
+
+/* ── CARD DE RECEITA VAZIO (sabor sem receita cadastrada) ── */
+.receita-card-vazio {
+    text-align: center;
+    padding: 24px 16px;
+    border: 1.5px dashed var(--cream-dark);
+    background: var(--white);
+}
+.receita-card-vazio .receita-sabor {
+    justify-content: center;
+}
