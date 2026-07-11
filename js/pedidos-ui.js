@@ -696,6 +696,18 @@ function toggleMenuMais(key, evento) {
     menu.style.display  = 'block';
     menu.style.position = 'fixed';
 
+    let overlay = document.getElementById('overlayMenuMais');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'overlayMenuMais';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.15);z-index:9998;';
+        overlay.addEventListener('click', () => {
+            document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
+            overlay.remove();
+        });
+        document.body.appendChild(overlay);
+    }
+
     const rectBtn = btn.getBoundingClientRect();
     const alturaMenu = menu.offsetHeight;
     const larguraMenu = menu.offsetWidth;
@@ -721,5 +733,7 @@ function fecharMenuMais(key) {
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.menu-mais') && !e.target.closest('.btn-mais')) {
         document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
+        const overlay = document.getElementById('overlayMenuMais');
+        if (overlay) overlay.remove();
     }
 });
