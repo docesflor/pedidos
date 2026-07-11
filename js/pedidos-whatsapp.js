@@ -342,39 +342,74 @@ function imprimirComprovante(key) {
             </div>`;
 
         document.body.appendChild(container);
-        toast('⏳ Gerando comprovante...', 'aviso');
 
-        setTimeout(() => {
-            const el = document.getElementById('comprovante-conteudo');
-            
-            html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas => {
-                
-                // 1. Baixar a imagem
-                const link = document.createElement('a');
-                link.download = 'comprovante-' + key.substr(-6) + '.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+        // Modal de PREVIEW — mostra o comprovante na tela antes de gerar/enviar
+        container.style.cssText = 'display:none;';
+        const overlayPreview = document.createElement('div');
+        overlayPreview.className = 'modal-overlay';
+        overlayPreview.id = 'modalPreviewComprovante';
+        overlayPreview.style.cssText = 'align-items:flex-start;overflow-y:auto;padding:24px 12px;';
+        const boxPreview = document.createElement('div');
+        boxPreview.className = 'modal-box';
+        boxPreview.style.cssText = 'max-width:520px;padding:16px;';
+        boxPreview.innerHTML = `<p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:10px;text-align:center;">🧾 Confira antes de enviar</p>`;
+        const conteudoPreview = document.getElementById('comprovante-conteudo');
+        conteudoPreview.style.cssText += 'margin:0 auto;';
+        boxPreview.appendChild(conteudoPreview);
+        const botoesPreview = document.createElement('div');
+        botoesPreview.className = 'modal-botoes';
+        botoesPreview.style.marginTop = '14px';
+        botoesPreview.innerHTML = `
+            <button class="btn btn-cinza" onclick="document.getElementById('modalPreviewComprovante').remove()">✏️ Fechar</button>
+            <button class="btn btn-verde" id="btnConfirmarComprovante">🖨️ Confirmar e Enviar</button>`;
+        boxPreview.appendChild(botoesPreview);
+        overlayPreview.appendChild(boxPreview);
+        document.body.appendChild(overlayPreview);
 
-                // 2. Tentar copiar imagem para clipboard (opcional)
-                canvas.toBlob(async (blob) => {
-                    try {
-                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                    } catch (e) {}
-                }, 'image/png');
+        document.getElementById('btnConfirmarComprovante').addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = '⏳ Gerando...';
+            overlayPreview.remove();
+            document.body.appendChild(container); // volta pro fluxo original (fora da tela, pro html2canvas capturar)
+            gerarEEnviarComprovante(p, key, dataBr, horario, container);
+        });
+    });
+}
 
-                const telefone = (p.telefone || '').replace(/\D/g, '');
-                const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
+// ====================== GERAR + ENVIAR COMPROVANTE (após confirmação no preview) ======================
+function gerarEEnviarComprovante(p, key, dataBr, horario, container) {
+    const el = document.getElementById('comprovante-conteudo');
+    toast('⏳ Gerando comprovante...', 'aviso');
 
-                // Mensagem para WhatsApp
-const vTotalWpp = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
-const vPagoWpp  = parseFloat((p.valorPago || '').replace('R$','').replace(',','.').trim()) || 0;
-const vFaltaWpp = Math.max(0, vTotalWpp - vPagoWpp);
+    setTimeout(() => {
+        html2canvas(el, { scale: 2.0, backgroundColor: '#ffffff' }).then(canvas => {
 
-const blocoPagemento = p.statusPagamento === 'Pago Parcialmente'
-    ? `⚠️ *Pago Parcialmente*\n💚 Pago: R$ ${vPagoWpp.toFixed(2).replace('.', ',')}\n🔴 Falta: R$ ${vFaltaWpp.toFixed(2).replace('.', ',')}`
-    : `💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}`;
+            // 1. Baixar a imagem
+            const link = document.createElement('a');
+            link.download = 'comprovante-' + key.substr(-6) + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
 
-let mensagem = 
+            // 2. Tentar copiar imagem para clipboard (opcional)
+            canvas.toBlob(async (blob) => {
+                try {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                } catch (e) {}
+            }, 'image/png');
+
+            const telefone = (p.telefone || '').replace(/\D/g, '');
+            const foneFormatado = telefone.startsWith('55') ? telefone : '55' + telefone;
+
+            // Mensagem para WhatsApp
+            const vTotalWpp = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
+            const vPagoWpp  = parseFloat((p.valorPago || '').replace('R$','').replace(',','.').trim()) || 0;
+            const vFaltaWpp = Math.max(0, vTotalWpp - vPagoWpp);
+
+            const blocoPagemento = p.statusPagamento === 'Pago Parcialmente'
+                ? `⚠️ *Pago Parcialmente*\n💚 Pago: R$ ${vPagoWpp.toFixed(2).replace('.', ',')}\n🔴 Falta: R$ ${vFaltaWpp.toFixed(2).replace('.', ',')}`
+                : `💳 *Pagamento:* ${p.statusPagamento || 'A pagar'}`;
+
+            let mensagem =
 `🌸 *Doces Flor — Comprovante*
 
 👤 *Cliente:* ${p.nome || '---'}
@@ -383,38 +418,30 @@ let mensagem =
 💰 *Total:* R$ ${vTotalWpp.toFixed(2).replace('.', ',')}
 ${blocoPagemento}`;
 
-if (p.observacoes && p.observacoes.trim()) {
-    mensagem += `\n\n📝 *Obs:* ${p.observacoes.trim()}`;
-}
+            if (p.observacoes && p.observacoes.trim()) {
+                mensagem += `\n\n📝 *Obs:* ${p.observacoes.trim()}`;
+            }
 
-                const urlWpp = `https://wa.me/${foneFormatado}?text=${encodeURIComponent(mensagem)}`;
+            const urlWpp = `https://wa.me/${foneFormatado}?text=${encodeURIComponent(mensagem)}`;
 
-                container.remove();
+            container.remove();
 
-                toast('✅ Comprovante baixado! Abrindo WhatsApp...', 'sucesso');
+            toast('✅ Comprovante baixado! Abrindo WhatsApp...', 'sucesso');
 
-                // FORÇA ABERTURA DIRETA NO APP (melhor comportamento mobile)
+            setTimeout(() => {
+                window.location.href = urlWpp;
                 setTimeout(() => {
-                    // Tenta scheme nativo primeiro (melhor em Android)
-                    const intentUrl = `intent://send?phone=${foneFormatado}&text=${encodeURIComponent(mensagem)}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
-                    
-                    // Redireciona diretamente
-                    window.location.href = urlWpp;
-                    
-                    // Fallback caso precise
-                    setTimeout(() => {
-                        if (document.visibilityState === 'visible') {
-                            window.open(urlWpp, '_self');
-                        }
-                    }, 600);
-                }, 700);
+                    if (document.visibilityState === 'visible') {
+                        window.open(urlWpp, '_self');
+                    }
+                }, 600);
+            }, 700);
 
-            }).catch(() => {
-                container.remove();
-                toast('Erro ao gerar imagem.', 'erro');
-            });
-        }, 600);
-    });
+        }).catch(() => {
+            container.remove();
+            toast('Erro ao gerar imagem.', 'erro');
+        });
+    }, 600);
 }
 
 // ====================== EVENTOS / BLOQUEIOS ======================
