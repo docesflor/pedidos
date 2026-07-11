@@ -369,6 +369,7 @@ function imprimirComprovante(key) {
         document.getElementById('btnConfirmarComprovante').addEventListener('click', function() {
             this.disabled = true;
             this.textContent = '⏳ Gerando...';
+            container.appendChild(conteudoPreview); // devolve o comprovante pro container antes de remover o modal
             overlayPreview.remove();
             document.body.appendChild(container); // volta pro fluxo original (fora da tela, pro html2canvas capturar)
             gerarEEnviarComprovante(p, key, dataBr, horario, container);
