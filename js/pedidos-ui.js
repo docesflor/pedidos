@@ -365,8 +365,7 @@ setInterval(function() {
     const secaoAndamentoAtiva = document.getElementById('secao-andamento')?.classList.contains('active');
     const secaoEventosAtiva   = document.getElementById('secao-eventos')?.classList.contains('active');
     const calendarioAberto    = document.getElementById('calendario-wrapper')?.style.display === 'block';
-    const buscaVazia = !document.getElementById('buscaAndamento')?.value.trim()
-                     && !document.getElementById('buscaAndamentoData')?.value.trim();
+    const buscaVazia = !document.getElementById('buscaAndamento')?.value.trim();
 
     if (secaoAndamentoAtiva && buscaVazia && !calendarioAberto) {
         database.ref('pedidos').once('value', snapshot => {
@@ -483,7 +482,7 @@ function toggleResumoProd() {
     const div = document.getElementById('resumoProducao');
     const btn = event.target;
     if (div.style.display === 'none' || div.style.display === '') { div.style.display = 'block'; btn.textContent = '🍫 Fechar Resumo'; carregarResumoProd(); }
-    else { div.style.display = 'none'; btn.textContent = '🍫 Resumo de Produção da Semana'; }
+    else { div.style.display = 'none'; btn.textContent = '🍫 Produção Semanal'; }
 }
 
 
