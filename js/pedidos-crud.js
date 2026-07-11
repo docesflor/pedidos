@@ -500,6 +500,7 @@ function finalizarPedido(key) {
             database.ref('pedidos/' + key).update({ statusPagamento: 'entregue' }).then(() => {
                 toast('Pedido finalizado!');
                 dispararConfete();
+                mostrarCheckAnimado();
                 carregarAndamento();
                 if (mesAtual !== undefined) renderizarCalendario();
             }).catch(err => toast('Erro: ' + err.message, 'erro'));
@@ -507,19 +508,121 @@ function finalizarPedido(key) {
     });
 }
 
+/* ── CHECK ANIMADO ── */
+function mostrarCheckAnimado() {
+    if (!document.getElementById('estiloCheckAnimado')) {
+        const style = document.createElement('style');
+        style.id = 'estiloCheckAnimado';
+        style.textContent = `
+            @keyframes checkCirculo { to { stroke-dashoffset: 0; } }
+            @keyframes checkTraco   { to { stroke-dashoffset: 0; } }
+        `;
+        document.head.appendChild(style);
+    }
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none;';
+    overlay.innerHTML = `
+        <svg width="110" height="110" viewBox="0 0 110 110" style="filter:drop-shadow(0 6px 16px rgba(0,0,0,0.35));">
+            <circle cx="55" cy="55" r="50" fill="var(--green)" opacity="0.15"/>
+            <circle cx="55" cy="55" r="46" fill="none" stroke="var(--green)" stroke-width="5"
+                stroke-dasharray="289" stroke-dashoffset="289" stroke-linecap="round"
+                style="animation:checkCirculo 0.5s ease forwards;"/>
+            <path d="M32 56 L48 72 L80 38" fill="none" stroke="var(--green)" stroke-width="6"
+                stroke-linecap="round" stroke-linejoin="round"
+                stroke-dasharray="70" stroke-dashoffset="70"
+                style="animation:checkTraco 0.4s ease 0.4s forwards;"/>
+        </svg>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => {
+        overlay.style.transition = 'opacity 0.35s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 400);
+    }, 950);
+}
+
 function excluirPedido(key) {
-    showConfirmModal('⚠️ Excluir este pedido? Ação irreversível.', async function() {
-        try {
-            const snap = await database.ref('pedidos/' + key).once('value');
-            const pedido = snap.val();
-            await database.ref('pedidos/' + key).remove();
-            if (pedido && pedido.itens) await ajustarEstoquePorPedido(pedido.itens, 'devolver');
-            toast('🗑️ Pedido excluído. Estoque restituído.');
-            carregarAndamento(); carregarFinalizados();
-            if (mesAtual !== undefined) renderizarCalendario();
-        } catch (err) {
-            toast('Erro: ' + err.message, 'erro');
+    showConfirmModal('⚠️ Excluir este pedido? Ação irreversível.', function() {
+        const card = document.querySelector(`[data-key="${key}"]`);
+        const wrapper = card ? card.closest('.swipe-wrapper') : null;
+        let cancelado = false;
+
+        if (wrapper) {
+            wrapper.style.transition = 'opacity 0.3s ease, max-height 0.3s ease';
+            wrapper.style.maxHeight = wrapper.offsetHeight + 'px';
+            wrapper.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                wrapper.style.opacity = '0';
+                wrapper.style.maxHeight = '0';
+            });
         }
+
+        mostrarToastDesfazer('🗑️ Pedido excluído',
+            function desfazer() {
+                cancelado = true;
+                if (wrapper) {
+                    wrapper.style.opacity = '1';
+                    wrapper.style.maxHeight = '';
+                    wrapper.style.overflow = '';
+                }
+            },
+            async function confirmarExclusao() {
+                if (cancelado) return;
+                try {
+                    const snap = await database.ref('pedidos/' + key).once('value');
+                    const pedido = snap.val();
+                    await database.ref('pedidos/' + key).remove();
+                    if (pedido && pedido.itens) await ajustarEstoquePorPedido(pedido.itens, 'devolver');
+                    carregarAndamento(); carregarFinalizados();
+                    if (mesAtual !== undefined) renderizarCalendario();
+                } catch (err) {
+                    toast('Erro: ' + err.message, 'erro');
+                }
+            }
+        );
+    });
+}
+
+/* ── TOAST COM DESFAZER (genérico) ── */
+function mostrarToastDesfazer(mensagem, onDesfazer, onConfirmar) {
+    const existente = document.getElementById('toastDesfazer');
+    if (existente) existente.remove();
+
+    const toastEl = document.createElement('div');
+    toastEl.id = 'toastDesfazer';
+    toastEl.style.cssText = `
+        position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+        background:var(--brown-dark); color:var(--white); padding:12px 16px 12px 18px;
+        border-radius:12px; display:flex; align-items:center; gap:16px;
+        font-family:'DM Sans',sans-serif; font-size:0.88rem; font-weight:600;
+        box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:9999; max-width:90vw;
+    `;
+    const texto = document.createElement('span');
+    texto.textContent = mensagem;
+    const btnDesfazer = document.createElement('button');
+    btnDesfazer.textContent = 'Desfazer';
+    btnDesfazer.style.cssText = `
+        background:none; border:none; color:var(--amber); font-weight:700;
+        font-size:0.88rem; cursor:pointer; padding:6px 4px; white-space:nowrap;
+    `;
+    toastEl.appendChild(texto);
+    toastEl.appendChild(btnDesfazer);
+    document.body.appendChild(toastEl);
+
+    let concluido = false;
+    const timer = setTimeout(() => {
+        if (concluido) return;
+        concluido = true;
+        toastEl.remove();
+        onConfirmar();
+    }, 5000);
+
+    btnDesfazer.addEventListener('click', () => {
+        if (concluido) return;
+        concluido = true;
+        clearTimeout(timer);
+        toastEl.remove();
+        onDesfazer();
+        if (typeof toast === 'function') toast('↩️ Ação desfeita');
     });
 }
 
@@ -559,6 +662,26 @@ function editarPedido(key) {
 }
 
 // ====================== FILTROS ======================
+/* ── DESTAQUE DE BUSCA ── */
+function destacarBusca(nomeEl, termo) {
+    if (!nomeEl.dataset.nomeBase) {
+        nomeEl.dataset.nomeBase = nomeEl.textContent.replace(/ (🔽|🔼)$/, '');
+    }
+    const base = nomeEl.dataset.nomeBase;
+    const iconeMatch = nomeEl.textContent.match(/ (🔽|🔼)$/);
+    const icone = iconeMatch ? iconeMatch[1] : '🔽';
+
+    const idx = termo ? base.toLowerCase().indexOf(termo) : -1;
+    if (idx === -1) {
+        nomeEl.textContent = base + ' ' + icone;
+        return;
+    }
+    const antes  = base.slice(0, idx);
+    const meio   = base.slice(idx, idx + termo.length);
+    const depois = base.slice(idx + termo.length);
+    nomeEl.innerHTML = `${escaparHTML(antes)}<mark style="background:var(--amber-light);color:var(--brown-dark);border-radius:3px;padding:0 1px;">${escaparHTML(meio)}</mark>${escaparHTML(depois)} ${icone}`;
+}
+
 function filtrarAndamentoPorNome() {
     const lista = document.getElementById('lista-andamento');
     if (lista.innerHTML.includes('Carregando')) return;
@@ -569,7 +692,8 @@ function filtrarAndamentoPorNome() {
         const nomeEl = card.querySelector('.pedido-nome');
         const statusEl = card.querySelector('.pedido-status');
         if (!nomeEl) return;
-        const nomeOk = !termo || nomeEl.textContent.toLowerCase().includes(termo);
+        destacarBusca(nomeEl, termo);
+        const nomeOk = !termo || nomeEl.dataset.nomeBase.toLowerCase().includes(termo);
         const statusOk = status === 'Todos' || !statusEl || statusEl.textContent.trim() === status;
         card.parentElement.style.display = (nomeOk && statusOk) ? '' : 'none';
     });
@@ -583,7 +707,8 @@ function filtrarStatus(status, btn) {
         const nomeEl = card.querySelector('.pedido-nome');
         const statusEl = card.querySelector('.pedido-status');
         if (!nomeEl || !statusEl) return;
-        const nomeOk = !termo || nomeEl.textContent.toLowerCase().includes(termo);
+        destacarBusca(nomeEl, termo);
+        const nomeOk = !termo || nomeEl.dataset.nomeBase.toLowerCase().includes(termo);
         const statusOk = status === 'todos' || statusEl.textContent.trim() === status;
         card.parentElement.style.display = (nomeOk && statusOk) ? '' : 'none';
     });
@@ -593,7 +718,8 @@ function filtrarFinalizadosPorNome() {
     const termo = document.getElementById('buscaFinalizados').value.toLowerCase().trim();
     document.querySelectorAll('#lista-finalizados .pedido-card').forEach(card => {
         const nomeEl = card.querySelector('.pedido-nome'); if (!nomeEl) return;
-        card.parentElement.style.display = (!termo || nomeEl.textContent.toLowerCase().includes(termo)) ? '' : 'none';
+        destacarBusca(nomeEl, termo);
+        card.parentElement.style.display = (!termo || nomeEl.dataset.nomeBase.toLowerCase().includes(termo)) ? '' : 'none';
     });
 }
 
