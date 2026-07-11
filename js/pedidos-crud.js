@@ -323,7 +323,6 @@ function criarCard(pedido, key, finalizado) {
             </div>
             <div class="menu-mais" id="menuMais-${key}" style="display:none;">
                 <button onclick="editarPedido('${key}');fecharMenuMais('menuMais-${key}')">✏️ Editar</button>
-                <button onclick="reenviarWhatsApp('${key}');fecharMenuMais('menuMais-${key}')">📲 WhatsApp (texto)</button>
                 <button onclick="gerarCobrancaPix('${key}');fecharMenuMais('menuMais-${key}')">💸 Pix</button>
                 <button onclick="abrirTemplates('${key}');fecharMenuMais('menuMais-${key}')">📋 Templates</button>
                 <hr>
