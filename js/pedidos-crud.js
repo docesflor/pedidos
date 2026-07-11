@@ -325,7 +325,7 @@ function criarCard(pedido, key, finalizado) {
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<div class="botoes-principais">
-                <button class="btn btn-verde" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
+                <button class="btn btn-finalizar-card" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
                 <button class="btn btn-cinza" onclick="imprimirComprovante('${key}')">🧾 Comprovante</button>
                 <button class="btn-mais" onclick="toggleMenuMais('${key}', event)" aria-label="Mais opções">⋯</button>
             </div>
