@@ -214,6 +214,8 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .btn-azul:hover     { background: #4a7de0; transform: translateY(-1px); }
 .btn-cinza    { background: var(--cream-dark); color: var(--brown-dark); }
 .btn-cinza:hover    { background: #ddd0c0; }
+.btn-finalizar-card { background: #25d366; color: white; }
+.btn-finalizar-card:hover { background: #1da851; transform: translateY(-1px); }
 .btn-bloco { display: block; width: 100%; margin-bottom: 10px; text-align: center; padding: 13px 18px; }
 
 /* Botão de avaliação DEPOIS de enviar (verde, mas clicável) */
