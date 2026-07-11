@@ -493,6 +493,22 @@ function aplicarVisualizacaoAndamento() {
     });
 }
 
+function mudarVisualizacaoFinalizados(modo) {
+    localStorage.setItem('visualizacaoFinalizados', modo);
+    aplicarVisualizacaoFinalizados();
+}
+
+function aplicarVisualizacaoFinalizados() {
+    const modo = localStorage.getItem('visualizacaoFinalizados') || 'lista';
+    const lista = document.getElementById('lista-finalizados');
+    const wrapper = document.getElementById('toggleVisFinalizados');
+    if (!lista || !wrapper) return;
+    lista.classList.toggle('grid-view', modo === 'grade');
+    wrapper.querySelectorAll('.toggle-vis-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.modo === modo);
+    });
+}
+
 // ====================== RESUMO PRODUÇÃO ======================
 
 function toggleResumoProd() {
