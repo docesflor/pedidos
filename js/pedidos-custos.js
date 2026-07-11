@@ -1084,15 +1084,34 @@ function carregarReceitasLista() {
     const lista = document.getElementById('lista-receitas');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
     database.ref('receitas').once('value', snapshot => {
-        const receitas = [];
-        snapshot.forEach(child => { const r = child.val(); r.key = child.key; receitas.push(r); });
-        receitas.sort((a,b) => a.sabor.localeCompare(b.sabor, 'pt-BR'));
-        if (receitas.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p>';
+        const receitasPorSabor = {};
+        snapshot.forEach(child => { const r = child.val(); r.key = child.key; receitasPorSabor[r.sabor] = r; });
+
+        const todosSabores = [
+            ...(DADOS_PEDIDOS?.sabores?.trads    || []),
+            ...(DADOS_PEDIDOS?.sabores?.gourmets || []),
+            ...(DADOS_PEDIDOS?.sabores?.frutas   || [])
+        ].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+
+        if (todosSabores.length === 0) {
+            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum sabor cadastrado no catálogo ainda.</p>';
             return;
         }
+
         lista.innerHTML = '';
-        receitas.forEach(r => {
+
+        todosSabores.forEach(nomeSabor => {
+            const r = receitasPorSabor[nomeSabor];
+            if (!r) {
+                const cardVazio = document.createElement('div');
+                cardVazio.className = 'receita-card receita-card-vazio';
+                cardVazio.innerHTML = `
+                    <div class="receita-sabor" style="margin-bottom:14px;">🍫 ${escaparHTML(nomeSabor)}</div>
+                    <button class="btn btn-laranja btn-bloco" style="margin-bottom:0;" onclick="irCadastrarReceita('${nomeSabor.replace(/'/g,"\\'")}')">+ Cadastrar receita</button>
+                `;
+                lista.appendChild(cardVazio);
+                return;
+            }
             const custoPorUn = r.custoPorUnidade || (r.custoTotal / r.rendimento);
             const card = document.createElement('div');
             card.className = 'receita-card';
@@ -1133,6 +1152,12 @@ function carregarReceitasLista() {
             lista.appendChild(card);
         });
     });
+}
+
+function irCadastrarReceita(sabor) {
+    document.getElementById('receitaSabor').value = sabor;
+    document.getElementById('receitaSabor').scrollIntoView({ behavior:'smooth', block:'center' });
+    document.getElementById('receitaSabor').focus();
 }
 
 
