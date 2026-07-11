@@ -801,3 +801,61 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 @media (max-width: 380px) {
     #lista-finalizados.grid-view { grid-template-columns: 1fr; }
 }
+
+/* ── RESTRINGE MODO GRADE A TELAS LARGAS (PC/tablet) ── */
+@media (max-width: 768px) {
+    #toggleVisAndamento,
+    #toggleVisFinalizados {
+        display: none;
+    }
+    #lista-andamento.grid-view,
+    #lista-finalizados.grid-view {
+        display: block;
+    }
+    #lista-andamento.grid-view .swipe-wrapper.card-expandido,
+    #lista-finalizados.grid-view .swipe-wrapper.card-expandido {
+        grid-column: unset;
+    }
+    #lista-andamento.grid-view .pedido-card,
+    #lista-finalizados.grid-view .pedido-card {
+        padding: 16px;
+    }
+    #lista-andamento.grid-view .pedido-header,
+    #lista-finalizados.grid-view .pedido-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #lista-andamento.grid-view .pedido-nome,
+    #lista-finalizados.grid-view .pedido-nome {
+        font-size: 1em;
+        white-space: normal;
+    }
+    #lista-andamento.grid-view .pedido-status,
+    #lista-finalizados.grid-view .pedido-status {
+        font-size: 0.78em;
+        padding: 4px 12px;
+    }
+    #lista-andamento.grid-view .pedido-resumo,
+    #lista-finalizados.grid-view .pedido-resumo {
+        font-size: 0.9em;
+    }
+    #lista-andamento.grid-view .pedido-info,
+    #lista-finalizados.grid-view .pedido-info {
+        font-size: 0.92em;
+        margin-bottom: 4px;
+    }
+    #lista-andamento.grid-view .pedido-info:first-child,
+    #lista-finalizados.grid-view .pedido-info:first-child {
+        display: block;
+    }
+    #lista-andamento.grid-view .botoes-principais .btn,
+    #lista-finalizados.grid-view .pedido-botoes .btn {
+        font-size: 0.85em;
+        padding: 10px;
+    }
+    #lista-andamento.grid-view .btn-mais {
+        flex: 0 0 auto;
+        width: auto;
+    }
+}
