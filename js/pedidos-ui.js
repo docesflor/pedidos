@@ -728,6 +728,8 @@ function toggleMenuMais(key, evento) {
 function fecharMenuMais(key) {
     const menu = document.getElementById('menuMais-' + key);
     if (menu) menu.style.display = 'none';
+    const overlay = document.getElementById('overlayMenuMais');
+    if (overlay) overlay.remove();
 }
 
 document.addEventListener('click', function(e) {
