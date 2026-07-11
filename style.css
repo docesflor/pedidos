@@ -878,3 +878,35 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .receita-card-vazio .receita-sabor {
     justify-content: center;
 }
+
+.evento-header-linha1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+
+.evento-arrecadado-destaque {
+    background:#EAF3DE; border-radius:12px; padding:12px 14px;
+    margin:12px 0 10px; text-align:center;
+}
+.evento-arrecadado-label {
+    font-size:0.72em; color:#3B6D11; text-transform:uppercase;
+    letter-spacing:0.04em; margin-bottom:2px;
+}
+.evento-arrecadado-valor {
+    font-family:'DM Sans',sans-serif; font-size:1.5em; font-weight:700; color:#27500A;
+}
+
+.evento-resumo-3grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.evento-resumo-mini { background:var(--cream); border-radius:10px; padding:8px; text-align:center; }
+.evento-resumo-mini.editable { cursor:pointer; border:1px dashed var(--cream-dark); background:var(--white); }
+.evento-resumo-mini-label { font-size:0.68em; color:var(--brown-warm); margin-bottom:2px; }
+.evento-resumo-mini-valor { font-size:0.9em; font-weight:700; color:var(--brown-dark); }
+
+.evento-editar-produzido {
+    background:var(--white); border-radius:12px; padding:12px;
+    border:1px solid var(--cream-dark); margin:-6px 0 14px;
+}
+
+.btn-toggle-historico {
+    width:100%; background:none; border:none;
+    border-top:1px solid var(--cream-dark); margin-top:12px; padding-top:10px;
+    font-size:0.8em; color:var(--brown-warm); font-weight:700;
+    text-align:left; cursor:pointer;
+}
