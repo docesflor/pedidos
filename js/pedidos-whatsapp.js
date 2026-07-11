@@ -344,7 +344,7 @@ function imprimirComprovante(key) {
         document.body.appendChild(container);
 
         // Modal de PREVIEW — mostra o comprovante na tela antes de gerar/enviar
-        container.style.cssText = 'display:none;';
+        container.style.display = 'none';
         const overlayPreview = document.createElement('div');
         overlayPreview.className = 'modal-overlay';
         overlayPreview.id = 'modalPreviewComprovante';
@@ -371,7 +371,8 @@ function imprimirComprovante(key) {
             this.textContent = '⏳ Gerando...';
             container.appendChild(conteudoPreview); // devolve o comprovante pro container antes de remover o modal
             overlayPreview.remove();
-            document.body.appendChild(container); // volta pro fluxo original (fora da tela, pro html2canvas capturar)
+            container.style.cssText = 'position:fixed;top:-9999px;left:0;z-index:-1;background:white;'; // restaura posição off-screen (o html2canvas precisa disso)
+            document.body.appendChild(container);
             gerarEEnviarComprovante(p, key, dataBr, horario, container);
         });
     });
