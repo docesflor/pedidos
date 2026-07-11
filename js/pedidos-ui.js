@@ -680,10 +680,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 window.addEventListener('online',  () => { document.getElementById('avisoOffline').style.display='none'; });
 window.addEventListener('offline', () => { document.getElementById('avisoOffline').style.display='block'; });
 
-// ====================== MENU "MAIS OPÇÕES" DOS PEDIDOS ======================
-function toggleMenuMais(key, evento) {
+// ====================== MENU "MAIS OPÇÕES" (genérico — usado em pedidos e insumos) ======================
+function toggleMenuMais(menuId, evento) {
     if (evento) evento.stopPropagation();
-    const menu = document.getElementById('menuMais-' + key);
+    const menu = document.getElementById(menuId);
     const btn  = evento ? evento.currentTarget : null;
     if (!menu || !btn) return;
 
@@ -725,8 +725,8 @@ function toggleMenuMais(key, evento) {
     menu.style.bottom = 'auto';
 }
 
-function fecharMenuMais(key) {
-    const menu = document.getElementById('menuMais-' + key);
+function fecharMenuMais(menuId) {
+    const menu = document.getElementById(menuId);
     if (menu) menu.style.display = 'none';
     const overlay = document.getElementById('overlayMenuMais');
     if (overlay) overlay.remove();
