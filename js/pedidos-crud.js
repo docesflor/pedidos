@@ -267,7 +267,7 @@ function criarCard(pedido, key, finalizado) {
     const card = document.createElement('div');
     card.className = 'pedido-card';
     card.dataset.key = key;
-    card.style.cssText = 'margin-bottom:0;position:relative;z-index:1;background:var(--white);';
+    card.style.cssText = 'margin-bottom:0;position:relative;z-index:1;';
     if (!finalizado) {
         const hoje  = new Date(); hoje.setHours(0,0,0,0);
         const amanha = new Date(hoje); amanha.setDate(amanha.getDate()+1);
