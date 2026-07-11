@@ -300,30 +300,31 @@ async function carregarInsumos() {
             div.className = 'insumo-card';
             div.style.flexDirection = 'column';
             div.style.alignItems = 'stretch';
+            div.style.position = 'relative';
             if (alerta) div.style.border = '2px solid #DC2626';
             div.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
-                    <div class="insumo-info">
-                        <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
-                        <div class="insumo-detalhe">
-                            R$ ${i.preco.toFixed(2).replace('.',',')} 
-                            ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
-                            &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
-                        </div>
-                        <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
-                            📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
-                        </div>
-                        ${sugestaoHTML}
+                <div class="insumo-info">
+                    <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
+                    <div class="insumo-detalhe">
+                        R$ ${i.preco.toFixed(2).replace('.',',')} 
+                        ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
+                        &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
                     </div>
-                    <button class="btn-remove" onclick="excluirInsumo('${i.key}')">Excluir</button>
+                    <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
+                        📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
+                    </div>
+                    ${sugestaoHTML}
                 </div>
-                <div style="display:flex;gap:6px;margin-top:10px;">
-                    <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;font-size:0.85em;padding:8px 12px;">
-                    <button class="btn btn-verde" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
-                    <button class="btn btn-amarelo" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;" onclick="abrirEdicaoInsumo('${i.key}')">✏️ Editar</button>
+                <div style="display:flex;gap:6px;margin-top:10px;width:100%;">
+                    <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;min-width:0;font-size:0.85em;padding:8px 12px;">
+                    <button class="btn btn-finalizar-card" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;flex-shrink:0;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
+                    <button class="btn-mais" style="flex-shrink:0;" onclick="toggleMenuMais('menuMaisInsumo-${i.key}', event)" aria-label="Mais opções">⋯</button>
                 </div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                    <button class="btn btn-cinza btn-bloco" style="padding:7px;font-size:0.78em;" onclick="verHistoricoPreco('${i.key}','${escaparHTML(i.nome).replace(/'/g,"\\'")}')">📈 Histórico de Preço</button>
+                <div class="menu-mais" id="menuMaisInsumo-${i.key}" style="display:none;">
+                    <button onclick="abrirEdicaoInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">✏️ Editar</button>
+                    <button onclick="verHistoricoPreco('${i.key}','${escaparHTML(i.nome).replace(/'/g,"\\'")}');fecharMenuMais('menuMaisInsumo-${i.key}')">📈 Histórico de preço</button>
+                    <hr>
+                    <button class="menu-mais-excluir" onclick="excluirInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">🗑️ Excluir</button>
                 </div>`;
             lista.appendChild(div);
         });
