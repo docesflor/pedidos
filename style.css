@@ -724,3 +724,80 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 @media (max-width: 380px) {
     #lista-andamento.grid-view { grid-template-columns: 1fr; }
 }
+
+/* ── MODO GRADE — FINALIZADOS ── */
+#lista-finalizados.grid-view {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+#lista-finalizados.grid-view .swipe-wrapper { margin-bottom: 0; }
+#lista-finalizados.grid-view .pedido-card {
+    padding: 10px 12px;
+    border-radius: 14px;
+}
+#lista-finalizados.grid-view .pedido-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+#lista-finalizados.grid-view .pedido-nome {
+    font-size: 0.92em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+#lista-finalizados.grid-view .pedido-status {
+    font-size: 0.68em;
+    padding: 2px 8px;
+}
+#lista-finalizados.grid-view .pedido-resumo {
+    font-size: 0.8em;
+}
+#lista-finalizados.grid-view .pedido-info {
+    font-size: 0.85em;
+    margin-bottom: 2px;
+}
+#lista-finalizados.grid-view .pedido-info:first-child {
+    display: none;
+}
+#lista-finalizados.grid-view .pedido-botoes {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+#lista-finalizados.grid-view .pedido-botoes .btn {
+    flex: 1;
+    font-size: 0.65em;
+    padding: 7px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* card expandido: largura total */
+#lista-finalizados.grid-view .swipe-wrapper.card-expandido {
+    grid-column: 1 / -1;
+}
+#lista-finalizados.grid-view .swipe-wrapper.card-expandido .pedido-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+#lista-finalizados.grid-view .swipe-wrapper.card-expandido .pedido-nome {
+    white-space: normal;
+    font-size: 1.05em;
+}
+#lista-finalizados.grid-view .swipe-wrapper.card-expandido .pedido-info:first-child {
+    display: block;
+}
+#lista-finalizados.grid-view .swipe-wrapper.card-expandido .pedido-botoes .btn {
+    font-size: 0.85em;
+    padding: 10px;
+}
+
+@media (max-width: 380px) {
+    #lista-finalizados.grid-view { grid-template-columns: 1fr; }
+}
