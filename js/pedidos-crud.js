@@ -254,6 +254,7 @@ function carregarFinalizados() {
         });
         lista.innerHTML = '';
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
+        aplicarVisualizacaoFinalizados();
     });
 }
 
@@ -735,6 +736,7 @@ function filtrarFinalizadosPorPeriodo() {
         pInfo.innerHTML = `📅 ${meses[mes]} de ${ano} — ${pedidos.length} pedido${pedidos.length>1?'s':''} — <a href="#" onclick="carregarFinalizados();return false;" style="color:var(--amber);">ver todos</a>`;
         lista.appendChild(pInfo);
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
+        aplicarVisualizacaoFinalizados();
     });
 }
 
@@ -939,6 +941,7 @@ function filtrarFinalizadosPorMes() {
         pFin.innerHTML = '📅 ' + meses[mesAtualFin] + ' de ' + anoAtualFin + ' — <a href="#" onclick="carregarFinalizados();return false;" style="color:var(--amber);">ver todos</a>';
         lista.appendChild(pFin);
         pedidos.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
+        aplicarVisualizacaoFinalizados();
     });
 }
 
@@ -961,6 +964,7 @@ function filtrarPorDiaFinalizados(dataISO) {
         }
         pedidosDia.sort((a,b) => (b.hora||'00:00').localeCompare(a.hora||'00:00'));
         pedidosDia.forEach(p => lista.appendChild(criarCard(p, p.key, true)));
+        aplicarVisualizacaoFinalizados();
     });
 }
 
