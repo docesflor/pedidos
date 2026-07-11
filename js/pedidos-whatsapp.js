@@ -142,6 +142,14 @@ function abrirTemplates(key) {
                         <span style="font-size:0.75rem;color:var(--amber);font-weight:700;white-space:nowrap;margin-top:2px;">Enviar →</span>
                     </button>
                 `).join('')}
+                <button class="template-btn" onclick="fecharTemplates();reenviarWhatsApp('${key}')">
+                    <span class="template-btn-emoji">📲</span>
+                    <span class="template-btn-texto">
+                        <span class="template-btn-label">Pedido completo (texto)</span>
+                        <span class="template-btn-preview">Copia todos os detalhes do pedido</span>
+                    </span>
+                    <span style="font-size:0.75rem;color:var(--amber);font-weight:700;white-space:nowrap;margin-top:2px;">Copiar →</span>
+                </button>
             </div>`;
         overlay.addEventListener('click', e => { if (e.target === overlay) fecharTemplates(); });
         document.body.appendChild(overlay);
