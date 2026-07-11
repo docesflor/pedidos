@@ -522,3 +522,69 @@ footer p { font-size: 0.82em; color: rgba(245,181,99,0.6); line-height: 1.8; }
 .btn-evento-finalizar { background: var(--amber); color: white; }
 .btn-evento-finalizar:hover { background: var(--laranja-escuro); }
 @media (max-width: 600px) { .evento-resumo-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.botoes-principais {
+    display: flex;
+    gap: 8px;
+}
+.botoes-principais .btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-mais {
+    flex: 0 0 auto;
+    background: var(--white);
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--brown-dark);
+    cursor: pointer;
+    line-height: 1;
+}
+.btn-mais:hover {
+    background: var(--cream);
+}
+.menu-mais {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 8px;
+    background: var(--white);
+    border: 1px solid var(--cream-dark);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    padding: 6px;
+    min-width: 190px;
+    z-index: 50;
+}
+.menu-mais button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 10px 12px;
+    font-size: 0.86em;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--brown-dark);
+    font-family: 'DM Sans', sans-serif;
+}
+.menu-mais button:hover {
+    background: var(--cream);
+}
+.menu-mais hr {
+    border: none;
+    border-top: 1px solid var(--cream-dark);
+    margin: 4px 0;
+}
+.menu-mais-excluir {
+    color: var(--red) !important;
+}
+.menu-mais-excluir:hover {
+    background: #FEE2E2 !important;
+}
