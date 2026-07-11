@@ -393,6 +393,12 @@ function criarCard(pedido, key, finalizado) {
             + escaparHTML(pedido.endereco.logradouro + ', ' + pedido.endereco.numero
             + ' — ' + pedido.endereco.bairro + ', ' + pedido.endereco.cidade);
         detalhes.appendChild(endEl);
+        if (pedido.endereco.complemento && pedido.endereco.complemento.trim()) {
+            const compEl = document.createElement('div');
+            compEl.className = 'pedido-info';
+            compEl.innerHTML = '<strong>Complemento:</strong> ' + escaparHTML(pedido.endereco.complemento);
+            detalhes.appendChild(compEl);
+        }
     }
     const itensBox = document.createElement('div');
     itensBox.className = 'pedido-itens-lista';
