@@ -101,6 +101,9 @@ function abrirTemplates(key) {
         const itensResumo = (p.itens || []).map(i => `${i.quantidade}x ${i.sabor || i.nome}`).join(', ');
         const tipoLocal = p.tipoEntrega === 'entrega' ? 'entregues no endereço combinado' : 'disponíveis para retirada';
         const enderecoRetirada = 'Rua Martim Kochella, 350, AP D508 — Ilha da Figueira, Jaraguá do Sul';
+        const vTotalTpl = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
+        const vFaltaTpl = Math.max(0, vTotalTpl - vPago);
+        const CHAVE_PIX_TPL = '+5547992745896'; // mesma chave usada em gerarCobrancaPix()
 
         const templates = [
             {
@@ -120,6 +123,12 @@ function abrirTemplates(key) {
                 label: 'Pedido pronto',
                 preview: `Avisa que os brigadeiros estão prontos`,
                 msg: `Olá, ${primeiroNome}! 🌸\n\nSeus brigadeiros estão prontos e ${p.tipoEntrega === 'entrega' ? 'saíram para a entrega no endereço combinado' : 'disponíveis para retirada'}! 🎉\n\n${p.tipoEntrega !== 'entrega' ? `📍 *Endereço para retirada:*\n${enderecoRetirada}\n\n` : ''}🍫 *Itens:* ${itensResumo}\n\nNos vemos em breve! — *Doces Flor* 🌸`
+            },
+            {
+                emoji: '💰',
+                label: 'Aguardando pagamento',
+                preview: `Cobrança educada com Pix anexo`,
+                msg: `Olá, ${primeiroNome}! 🌸\n\nTudo certo? Vi aqui que o pagamento do pedido entregue em *${dataBR}${horario}* ainda está pendente.\n\n💰 *Valor:* R$ ${vFaltaTpl.toFixed(2).replace('.', ',')}\n🔑 *Chave Pix:* ${CHAVE_PIX_TPL}\n\nAssim que efetuar, pode me mandar o comprovante. Obrigada! — *Doces Flor* 🌸`
             }
         ];
 
