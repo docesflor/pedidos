@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <script src="https://docesflor.github.io/shared/firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════
    AVALIAÇÃO — ESTILOS ESPECÍFICOS
@@ -91,6 +92,7 @@ h2 {
 .carinha { opacity: 0.25; transition: opacity 0.2s, transform 0.15s; display: inline-block; }
 .carinha.ativa { opacity: 1; animation: carinhaBounce 0.45s cubic-bezier(.34,1.56,.64,1); }
 .carinha:active { transform: scale(0.9); }
+.carinha:hover { opacity: 0.6; transform: scale(1.1); }
 @keyframes carinhaBounce {
     0%   { transform: scale(1); }
     40%  { transform: scale(1.35) rotate(-8deg); }
@@ -302,6 +304,9 @@ function mostrarTelaSucesso() {
             <a class="btn-google" style="display:block;text-decoration:none;box-sizing:border-box;" href="https://wa.me/${numeroWhats}?text=${msgWhats}" target="_blank" rel="noopener">💬 Falar no WhatsApp</a>
             <p class="google-skip" onclick="document.querySelector('.btn-google').parentElement.querySelectorAll('.btn-google,.google-skip').forEach(e=>e.style.display='none')">Agora não, obrigado</p>`;
     } else {
+        if (notaSelecionada === 3 && typeof confetti === 'function') {
+            confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+        }
         caixa.innerHTML = `
             <div class="sucesso-icon">💛</div>
             <div class="sucesso-titulo">Obrigada!</div>
