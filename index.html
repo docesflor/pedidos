@@ -20,6 +20,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ✨ MELHORIAS VISUAIS */
+.menu-btn { position: relative; transition: color 0.25s ease; }
+.menu-btn::after {
+  content: ''; position: absolute; left: 50%; bottom: 0;
+  height: 3px; width: 0; background: var(--amber); border-radius: 2px;
+  transform: translateX(-50%); transition: width 0.3s ease;
+}
+.menu-btn.active::after { width: 55%; }
+
+.btn { transition: transform 0.12s ease, box-shadow 0.2s ease; }
+.btn:active { transform: scale(0.96); }
+
+.secao.active { animation: secaoPedidosEntrar 0.4s ease both; }
+@keyframes secaoPedidosEntrar {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
 </head>
 <body>
 
@@ -389,7 +409,7 @@
 <section id="secao-gastos" class="secao">
     <div class="custos-tabs">
         <button class="custos-tab active" id="custosTabInsumos" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
-        <button class="custos-tab" id="custosTabCompras" onclick="mostrarAbaGastos('compras', this)">🛒 Compras</button>
+        <button class="custos-tab" id="custosTabCompras" onclick="mostrarAbaGastos('compras', this)">🔮 Previsão</button>
         <button class="custos-tab" id="custosTabReceitas" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
         <button class="custos-tab" id="custosTabGastos" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
     </div>
@@ -457,53 +477,84 @@
     <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
 
     <div class="form-card" style="margin-top:22px;">
-        <p class="form-card-titulo">➕ Novo Insumo</p>
+        <p class="form-card-titulo" id="tituloFormInsumo">➕ Novo Insumo</p>
         <label for="insumoNome">Nome do Insumo</label>
-        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado">
-        <div class="linha-dupla">
-            <div>
-                <label for="insumoPreco">Preço (R$)</label>
-                <input type="text" id="insumoPreco" placeholder="R$ 0,00">
+        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado" list="listaInsumosExistentes" oninput="verificarInsumoExistente()" autocomplete="off">
+        <datalist id="listaInsumosExistentes"></datalist>
+        <p id="avisoInsumoExistente" style="display:none;font-size:0.8em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+
+        <div id="blocoInsumoNovo">
+            <div class="linha-dupla">
+                <div>
+                    <label for="insumoPreco">Preço (R$)</label>
+                    <input type="text" id="insumoPreco" placeholder="R$ 0,00">
+                </div>
+                <div>
+                    <label for="insumoUnidade">Unidade</label>
+                    <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
+                        <option value="un">Unidade (un)</option>
+                        <option value="g">Gramas (g)</option>
+                        <option value="ml">Mililitros (ml)</option>
+                        <option value="kg">Quilograma (kg)</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label for="insumoUnidade">Unidade</label>
-                <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
-                    <option value="un">Unidade (un)</option>
-                    <option value="g">Gramas (g)</option>
-                    <option value="ml">Mililitros (ml)</option>
-                    <option value="kg">Quilograma (kg)</option>
-                </select>
+            <div id="insumoQtdWrapper">
+                <label for="insumoQtd">Quantidade por embalagem</label>
+                <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
             </div>
-        </div>
-        <div id="insumoQtdWrapper">
-            <label for="insumoQtd">Quantidade por embalagem</label>
-            <input type="number" id="insumoQtd" placeholder="Ex: 395 (para 395g)">
-        </div>
-        <div id="wrapperNomeEmbalagem">
-            <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
-            <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
-            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
-                💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
-            </p>
-        </div>
-        <div class="linha-dupla">
-            <div>
-                <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
-                <input type="number" id="insumoEstoqueAtual" placeholder="Ex: 3950" min="0">
+            <div id="wrapperNomeEmbalagem">
+                <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
+                <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
+                    💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
+                </p>
             </div>
-            <div>
-                <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
-                <input type="number" id="insumoEstoqueMinimo" placeholder="Ex: 800" min="0">
+            <div class="linha-dupla">
+                <div>
+                    <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
+                    <input type="number" id="insumoEstoqueAtual" placeholder="Ex: 3950" min="0">
+                </div>
+                <div>
+                    <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
+                    <input type="number" id="insumoEstoqueMinimo" placeholder="Ex: 800" min="0">
+                </div>
             </div>
+            <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
         </div>
-        <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
-        <button class="btn btn-laranja btn-bloco" onclick="salvarInsumo()">💾 Salvar Insumo</button>
+
+        <div id="blocoInsumoReposicao" style="display:none;">
+            <p id="infoInsumoReposicao" style="font-size:0.82em;color:var(--brown-warm);margin-bottom:10px;"></p>
+            <div class="linha-dupla">
+                <div>
+                    <label for="reposQtd" id="labelReposQtd">Quantidade comprada</label>
+                    <input type="number" id="reposQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewReposicao()">
+                </div>
+                <div>
+                    <label for="reposValor" id="labelReposValor">Valor pago (R$)</label>
+                    <input type="text" id="reposValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewReposicao()">
+                </div>
+            </div>
+            <label for="reposCategoria">Categoria do gasto</label>
+            <select id="reposCategoria">
+                <option value="Ingredientes">🧴 Ingredientes</option>
+                <option value="Embalagens">📦 Embalagens</option>
+                <option value="Gás/Energia">🔥 Gás/Energia</option>
+                <option value="Entrega">🚗 Entrega</option>
+                <option value="Outros">📋 Outros</option>
+            </select>
+            <label for="reposData">Data da compra</label>
+            <input type="date" id="reposData">
+            <p id="reposPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        </div>
+
+        <button class="btn btn-laranja btn-bloco" id="btnSalvarInsumo" onclick="salvarOuRepor()">💾 Salvar Insumo</button>
     </div>
 </div>
 
 <!-- ── ABA COMPRAS ── -->
 <div id="aba-compras" style="display:none;">
-    <div class="form-card" style="border:2px solid var(--amber);">
+    <div class="form-card" style="border:2px solid var(--amber);display:none;" id="cardRegistrarCompraLegado">
         <p class="form-card-titulo">🛒 Registrar Compra</p>
         <label for="compraInsumoSel">Insumo</label>
         <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
@@ -825,6 +876,39 @@ window.scrollTo(0, 0);
 <script src="js/pedidos-eventos.js"></script>
 <script src="js/pedidos-whatsapp.js"></script>
 <script src="js/pedidos-ui.js"></script>
+
+<script>
+(function() {
+  function animarNumero(el) {
+    const textoFinal = el.textContent.trim();
+    const valorNumerico = parseFloat(textoFinal.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    if (isNaN(valorNumerico)) return;
+    const prefixo = textoFinal.match(/^R\$\s?/) ? 'R$ ' : '';
+    const duracao = 600;
+    const inicio = performance.now();
+    function passo(agora) {
+      const progresso = Math.min((agora - inicio) / duracao, 1);
+      const atual = valorNumerico * progresso;
+      el.textContent = prefixo + atual.toLocaleString('pt-BR', { minimumFractionDigits: prefixo ? 2 : 0, maximumFractionDigits: prefixo ? 2 : 0 });
+      if (progresso < 1) requestAnimationFrame(passo);
+      else el.textContent = textoFinal;
+    }
+    requestAnimationFrame(passo);
+  }
+  const idsParaAnimar = ['dashFaturamento','dashTicket','dashGastos','dashLucro','dashEntregues','dashAndamento','dashTotalBrig','dashMediaBrig'];
+  const resultado = document.getElementById('dashboard-resultado');
+  if (!resultado) return;
+  const observer = new MutationObserver(() => {
+    if (resultado.style.display !== 'none') {
+      idsParaAnimar.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) animarNumero(el);
+      });
+    }
+  });
+  observer.observe(resultado, { attributes: true, attributeFilter: ['style'] });
+})();
+</script>
 
 </body>
 </html>
