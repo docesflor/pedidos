@@ -7,6 +7,31 @@ let _insumoEditandoKey = null;
 let ingredientesReceita = [];
 let _receitaEditandoKey = null;
 
+function maskQuantidade(valor) {
+    let v = valor.replace(/[^\d,]/g, '');
+    const partes = v.split(',');
+    let inteiro = partes[0].replace(/^0+(?=\d)/, '');
+    inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (partes.length > 1) {
+        const decimal = partes.slice(1).join('').slice(0, 3);
+        return inteiro + ',' + decimal;
+    }
+    return inteiro;
+}
+
+function parseQuantidade(valorMascarado) {
+    if (!valorMascarado) return 0;
+    const limpo = String(valorMascarado).replace(/\./g, '').replace(',', '.');
+    return parseFloat(limpo) || 0;
+}
+
+function formatarQuantidade(num) {
+    if (num === null || num === undefined || isNaN(num) || num === '') return '';
+    const partes = String(num).split('.');
+    const inteiro = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return partes.length > 1 ? inteiro + ',' + partes[1] : inteiro;
+}
+
 let _insumosCacheNomes = {};
 let _insumoDetectadoKey = null;
 
@@ -225,7 +250,7 @@ function toggleNomeEmbalagem() {
 
 function atualizarDicaEstoqueEmbalagem() {
     const nomeEmb = document.getElementById('insumoNomeEmbalagem').value.trim();
-    const qtd     = parseFloat(document.getElementById('insumoQtd').value) || 0;
+    const qtd     = parseQuantidade(document.getElementById('insumoQtd').value);
     const labelAtual  = document.getElementById('labelEstoqueAtual');
     const labelMinimo = document.getElementById('labelEstoqueMinimo');
     const dica = document.getElementById('dicaEstoqueEmbalagem');
@@ -255,10 +280,10 @@ function salvarInsumo() {
     const precoRaw = document.getElementById('insumoPreco').value;
     const preco    = parseFloat(precoRaw.replace('R$','').replace(',','.').trim()) || 0;
     const unidade  = document.getElementById('insumoUnidade').value;
-    const qtd      = parseFloat(document.getElementById('insumoQtd').value) || 1;
+    const qtd      = parseQuantidade(document.getElementById('insumoQtd').value) || 1;
     const nomeEmbalagem = document.getElementById('insumoNomeEmbalagem').value.trim();
-    const estoqueAtualInput  = parseFloat(document.getElementById('insumoEstoqueAtual').value) || 0;
-    const estoqueMinimoInput = parseFloat(document.getElementById('insumoEstoqueMinimo').value) || 0;
+    const estoqueAtualInput  = parseQuantidade(document.getElementById('insumoEstoqueAtual').value);
+    const estoqueMinimoInput = parseQuantidade(document.getElementById('insumoEstoqueMinimo').value);
 
     if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
     if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
@@ -356,7 +381,7 @@ async function carregarInsumos() {
         }
         lista.innerHTML = '';
         insumos.forEach(i => {
-            const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(4).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
+            const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(2).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
             const estoqueAtual  = i.estoqueAtual || 0;
             const estoqueMinimo = i.estoqueMinimo || 0;
             const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
@@ -480,10 +505,10 @@ function abrirEdicaoInsumo(key) {
         document.getElementById('editInsumoNome').value = i.nome || '';
         document.getElementById('editInsumoPreco').value = 'R$ ' + (i.preco || 0).toFixed(2).replace('.', ',');
         document.getElementById('editInsumoUnidade').value = i.unidade || 'un';
-        document.getElementById('editInsumoQtd').value = i.qtdEmbalagem || '';
+        document.getElementById('editInsumoQtd').value = formatarQuantidade(i.qtdEmbalagem || '');
         document.getElementById('editInsumoNomeEmbalagem').value = nomeEmb;
-        document.getElementById('editInsumoEstoqueAtual').value  = nomeEmb ? (i.estoqueAtual  || 0) / qtdEmb : (i.estoqueAtual  || 0);
-        document.getElementById('editInsumoEstoqueMinimo').value = nomeEmb ? (i.estoqueMinimo || 0) / qtdEmb : (i.estoqueMinimo || 0);
+        document.getElementById('editInsumoEstoqueAtual').value  = formatarQuantidade(nomeEmb ? (i.estoqueAtual  || 0) / qtdEmb : (i.estoqueAtual  || 0));
+        document.getElementById('editInsumoEstoqueMinimo').value = formatarQuantidade(nomeEmb ? (i.estoqueMinimo || 0) / qtdEmb : (i.estoqueMinimo || 0));
         toggleNomeEmbalagemEdicao();
         document.getElementById('modalEditarInsumo').style.display = 'flex';
     });
@@ -509,10 +534,10 @@ function salvarEdicaoInsumo() {
     const precoRaw = document.getElementById('editInsumoPreco').value;
     const preco    = parseFloat(precoRaw.replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
     const unidade  = document.getElementById('editInsumoUnidade').value;
-    const qtd      = parseFloat(document.getElementById('editInsumoQtd').value) || 1;
+    const qtd      = parseQuantidade(document.getElementById('editInsumoQtd').value) || 1;
     const nomeEmbalagem = document.getElementById('editInsumoNomeEmbalagem').value.trim();
-    const estoqueAtualInput  = parseFloat(document.getElementById('editInsumoEstoqueAtual').value) || 0;
-    const estoqueMinimoInput = parseFloat(document.getElementById('editInsumoEstoqueMinimo').value) || 0;
+    const estoqueAtualInput  = parseQuantidade(document.getElementById('editInsumoEstoqueAtual').value);
+    const estoqueMinimoInput = parseQuantidade(document.getElementById('editInsumoEstoqueMinimo').value);
 
     if (!nome)    { toast('❌ Informe o nome do insumo.', 'erro'); return; }
     if (preco<=0) { toast('❌ Informe um preço válido.', 'erro'); return; }
@@ -592,7 +617,7 @@ function verHistoricoPreco(key, nome) {
             const dataBR = r.data ? r.data.split('-').reverse().join('/') : 'N/A';
             html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.86em;">
                 <span>📅 ${dataBR}</span>
-                <span>${seta} R$ ${r.precoUnitario.toFixed(4).replace('.',',')}</span>
+                <span>${seta} R$ ${r.precoUnitario.toFixed(2).replace('.',',')}</span>
             </div>`;
         });
         lista.innerHTML = html;
@@ -620,8 +645,8 @@ function verHistoricoPreco(key, nome) {
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toFixed(4).replace('.',',') } } },
-                    scales: { y: { ticks: { callback: v => 'R$ ' + v.toFixed(3) } } }
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toFixed(2).replace('.',',') } } },
+                    scales: { y: { ticks: { callback: v => 'R$ ' + v.toFixed(2) } } }
                 }
             });
         }
@@ -676,7 +701,7 @@ function atualizarInfoCompraInsumo() {
         labelValor.textContent = `Valor por ${nomeEmb} (R$)`;
         campoQtd.placeholder = `Ex: 27 ${nomeEmb}s`;
     } else {
-        info.textContent = `📦 Estoque atual: ${estoqueG}${labelUn} · Custo atual: R$ ${custoUn.toFixed(4).replace('.',',')}/${labelUn}`;
+        info.textContent = `📦 Estoque atual: ${estoqueG}${labelUn} · Custo atual: R$ ${custoUn.toFixed(2).replace('.',',')}/${labelUn}`;
         labelQtd.textContent   = 'Quantidade comprada';
         labelValor.textContent = 'Valor pago (R$)';
         campoQtd.placeholder = 'Ex: 1000';
@@ -728,9 +753,9 @@ function calcularPreviewCompra() {
     if (nomeEmb) {
         const estoqueEmbTotal = estoqueTotal / qtdEmb;
         const estoqueEmbFmt = Number.isInteger(estoqueEmbTotal) ? estoqueEmbTotal : estoqueEmbTotal.toFixed(1);
-        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueEmbFmt} ${nomeEmb}(s)</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong> · Total pago: <strong>R$ ${valorPagoTotal.toFixed(2).replace('.',',')}</strong>`;
+        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueEmbFmt} ${nomeEmb}(s)</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(2).replace('.',',')}/${labelUn}</strong> · Total pago: <strong>R$ ${valorPagoTotal.toFixed(2).replace('.',',')}</strong>`;
     } else {
-        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueTotal}${labelUn}</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(4).replace('.',',')}/${labelUn}</strong>`;
+        preview.innerHTML = `📊 Novo estoque: <strong>${estoqueTotal}${labelUn}</strong> · Novo custo médio: <strong>R$ ${custoUnMedio.toFixed(2).replace('.',',')}/${labelUn}</strong>`;
     }
 }
 
