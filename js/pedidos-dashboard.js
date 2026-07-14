@@ -136,17 +136,17 @@ async function carregarDashboard() {
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <div style="flex:1;background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;min-width:100px;">
                         <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Custo Médio/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:#92400E;">R$ ${custoMedioUn.toFixed(3).replace('.',',')}</p>
+                        <p style="font-size:1.5em;font-weight:700;color:#92400E;">${formatarBRL(custoMedioUn)}</p>
                         <p style="font-size:0.7em;color:#92400E;margin-top:2px;">${qtdComReceita} sabor${qtdComReceita>1?'es':''} com receita</p>
                     </div>
                     ${precoMedioUn ? `
                     <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;min-width:100px;">
                         <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Preço Médio/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:var(--brown-dark);">R$ ${precoMedioUn.toFixed(3).replace('.',',')}</p>
+                        <p style="font-size:1.5em;font-weight:700;color:var(--brown-dark);">${formatarBRL(precoMedioUn)}</p>
                     </div>
                     <div style="flex:1;background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;min-width:100px;">
                         <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Margem/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:#065F46;">R$ ${margemUn.toFixed(3).replace('.',',')}</p>
+                        <p style="font-size:1.5em;font-weight:700;color:#065F46;">${formatarBRL(margemUn)}</p>
                         <p style="font-size:0.7em;color:#065F46;margin-top:2px;">${margemPct}% de margem</p>
                     </div>` : ''}
                 </div>`;
@@ -206,10 +206,10 @@ async function carregarDashboard() {
                 });
                 const faturamentoTotal = faturamento + totalEventos;
                 const lucro = faturamentoTotal - totalGastos;
-                document.getElementById('dashGastos').textContent = 'R$ ' + totalGastos.toFixed(2).replace('.', ',');
-                document.getElementById('dashLucro').textContent = 'R$ ' + lucro.toFixed(2).replace('.', ',');
+                document.getElementById('dashGastos').textContent = formatarBRL(totalGastos);
+                document.getElementById('dashLucro').textContent = formatarBRL(lucro);
                 document.getElementById('dashLucro').style.color = lucro >= 0 ? '#065F46' : 'var(--red)';
-                document.getElementById('dashFaturamento').textContent = 'R$ ' + faturamentoTotal.toFixed(2).replace('.', ',');
+                document.getElementById('dashFaturamento').textContent = formatarBRL(faturamentoTotal);
 
                 // ── Projeção do mês ──
                 let projecao = 0;
@@ -242,8 +242,8 @@ async function carregarDashboard() {
                     const totalComProjecao = faturamentoTotal + projecao;
                     elProjecao.style.color = 'var(--brown-warm)';
                     elProjecao.style.display = 'block';
-                    elProjecao.innerHTML = '📈 Projeção: <strong style="color:var(--brown-dark);">R$ ' + totalComProjecao.toFixed(2).replace('.', ',') + '</strong>'
-                        + ' <span style="font-size:0.85em;opacity:0.8;">(+R$ ' + projecao.toFixed(2).replace('.', ',') + ' em aberto)</span>';
+                    elProjecao.innerHTML = '📈 Projeção: <strong style="color:var(--brown-dark);">' + formatarBRL(totalComProjecao) + '</strong>'
+                        + ' <span style="font-size:0.85em;opacity:0.8;">(+' + formatarBRL(projecao) + ' em aberto)</span>';
                 } else {
                     elProjecao.style.display = 'none';
                 }
@@ -276,14 +276,14 @@ async function carregarDashboard() {
                         <div style="display:flex;gap:12px;flex-wrap:wrap;">
                             <div style="flex:1;background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
                                 <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Custo Produção</p>
-                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#92400E;">R$ ${custoProducaoEstimado.toFixed(2).replace('.',',')}</p>
+                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#92400E;">${formatarBRL(custoProducaoEstimado)}</p>
                                 <p style="font-size:0.72em;color:#92400E;margin-top:2px;">apenas sabores com receita cadastrada</p>
                             </div>
                             ${margemBruta !== null ? `
                             <div style="flex:1;background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
                                 <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Margem Bruta</p>
                                 <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#065F46;">${margemBruta}%</p>
-                                <p style="font-size:0.72em;color:#065F46;margin-top:2px;">lucro estimado: R$ ${(faturamentoTotal - custoProducaoEstimado).toFixed(2).replace('.',',')}</p>
+                                <p style="font-size:0.72em;color:#065F46;margin-top:2px;">lucro estimado: ${formatarBRL(faturamentoTotal - custoProducaoEstimado)}</p>
                             </div>` : ''}
                         </div>`;
                 } else {
@@ -308,7 +308,7 @@ async function carregarDashboard() {
                 if(graficoFaturamento){graficoFaturamento.destroy();graficoFaturamento=null;}
                 const coresBarra=Object.values(fatMensal).map((_,i)=>(mes===null||i===mes)?'rgba(232,148,58,1)':'rgba(232,148,58,0.2)');
                 const ctx=document.getElementById('graficoFaturamento').getContext('2d');
-                graficoFaturamento=new Chart(ctx,{type:'bar',data:{labels:mesesNomeG,datasets:[{label:'Faturamento',data:Object.values(fatMensal),backgroundColor:coresBarra,borderColor:'rgba(232,148,58,1)',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' R$ '+ctx.parsed.y.toFixed(2).replace('.',',')}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'R$ '+v.toFixed(0)}}}}});
+                graficoFaturamento=new Chart(ctx,{type:'bar',data:{labels:mesesNomeG,datasets:[{label:'Faturamento',data:Object.values(fatMensal),backgroundColor:coresBarra,borderColor:'rgba(232,148,58,1)',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+formatarBRL(ctx.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>formatarBRL(v)}}}}});
                 document.getElementById('dashboard-resultado').style.display='block';
                 document.getElementById('btnExportarCSV').style.display='block';
                 document.getElementById('btnExportarPDF').style.display='block';
@@ -381,8 +381,8 @@ function renderizarGraficoGastosCategoria(ano) {
             data: { labels: mesesNomeG, datasets },
             options: {
                 responsive: true, maintainAspectRatio: true,
-                plugins: { legend: { position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: R$ ${ctx.parsed.y.toFixed(2).replace('.',',')}` } } },
-                scales: { y: { beginAtZero:true, ticks:{ callback: v => 'R$ '+v.toFixed(0) } } }
+                plugins: { legend: { position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatarBRL(ctx.parsed.y)}` } } },
+                scales: { y: { beginAtZero:true, ticks:{ callback: v => formatarBRL(v) } } }
             }
         });
     });
