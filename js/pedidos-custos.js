@@ -7,6 +7,95 @@ let _insumoEditandoKey = null;
 let ingredientesReceita = [];
 let _receitaEditandoKey = null;
 
+let _insumosCacheNomes = {};
+let _insumoDetectadoKey = null;
+
+function popularDatalistInsumos(insumosList) {
+    const dl = document.getElementById('listaInsumosExistentes');
+    if (!dl) return;
+    dl.innerHTML = '';
+    _insumosCacheNomes = {};
+    insumosList.forEach(i => {
+        _insumosCacheNomes[i.nome.trim().toLowerCase()] = i;
+        const opt = document.createElement('option');
+        opt.value = i.nome;
+        dl.appendChild(opt);
+    });
+}
+
+function verificarInsumoExistente() {
+    const nomeDigitado = document.getElementById('insumoNome').value.trim().toLowerCase();
+    const existente = _insumosCacheNomes[nomeDigitado];
+    const blocoNovo  = document.getElementById('blocoInsumoNovo');
+    const blocoRepos = document.getElementById('blocoInsumoReposicao');
+    const aviso  = document.getElementById('avisoInsumoExistente');
+    const titulo = document.getElementById('tituloFormInsumo');
+    const btn    = document.getElementById('btnSalvarInsumo');
+
+    if (existente) {
+        _insumoDetectadoKey = existente.key;
+        blocoNovo.style.display  = 'none';
+        blocoRepos.style.display = 'block';
+        aviso.style.display = 'block';
+        aviso.textContent = '✅ Insumo já cadastrado — preencha os dados da nova compra.';
+        titulo.textContent = '🔄 Repor estoque';
+        btn.textContent = '✅ Registrar Compra';
+
+        const precoUn = existente.qtdEmbalagem > 0 ? (existente.preco / existente.qtdEmbalagem) : 0;
+        const labelUn = existente.unidade === 'un' ? 'un' : existente.unidade;
+        const estoqueTexto = existente.nomeEmbalagem
+            ? (existente.estoqueAtual / existente.qtdEmbalagem).toFixed(1) + ' ' + existente.nomeEmbalagem + '(s)'
+            : existente.estoqueAtual + labelUn;
+        document.getElementById('infoInsumoReposicao').textContent =
+            '📦 Estoque atual: ' + estoqueTexto + ' · Custo médio: R$ ' + precoUn.toFixed(4).replace('.', ',') + '/' + labelUn;
+        document.getElementById('labelReposQtd').textContent = existente.nomeEmbalagem
+            ? 'Quantidade de ' + existente.nomeEmbalagem + 's compradas'
+            : 'Quantidade comprada';
+        document.getElementById('labelReposValor').textContent = existente.nomeEmbalagem
+            ? 'Valor por ' + existente.nomeEmbalagem + ' (R$)'
+            : 'Valor pago (R$)';
+        const campoData = document.getElementById('reposData');
+        if (campoData && !campoData.value) {
+            const hoje = new Date();
+            campoData.value = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+        }
+    } else {
+        _insumoDetectadoKey = null;
+        blocoNovo.style.display  = 'block';
+        blocoRepos.style.display = 'none';
+        aviso.style.display = 'none';
+        titulo.textContent = '➕ Novo Insumo';
+        btn.textContent = '💾 Salvar Insumo';
+    }
+}
+
+function calcularPreviewReposicao() {
+    if (!_insumoDetectadoKey) return;
+    document.getElementById('compraInsumoSel').value = _insumoDetectadoKey;
+    document.getElementById('compraQtd').value   = document.getElementById('reposQtd').value;
+    document.getElementById('compraValor').value = document.getElementById('reposValor').value;
+    atualizarInfoCompraInsumo();
+    document.getElementById('reposPreview').innerHTML = document.getElementById('compraPreview').innerHTML;
+}
+
+function salvarOuRepor() {
+    if (_insumoDetectadoKey) {
+        document.getElementById('compraInsumoSel').value = _insumoDetectadoKey;
+        document.getElementById('compraQtd').value      = document.getElementById('reposQtd').value;
+        document.getElementById('compraValor').value    = document.getElementById('reposValor').value;
+        document.getElementById('compraCategoria').value = document.getElementById('reposCategoria').value;
+        document.getElementById('compraData').value      = document.getElementById('reposData').value;
+        registrarCompraInsumo().then(() => {
+            document.getElementById('insumoNome').value = '';
+            document.getElementById('reposQtd').value = '';
+            document.getElementById('reposValor').value = '';
+            verificarInsumoExistente();
+        });
+    } else {
+        salvarInsumo();
+    }
+}
+
 function atualizarDescricaoGasto() {
   const categoria = document.getElementById('gastoCategoria').value;
   const select    = document.getElementById('gastoDescricao');
@@ -180,7 +269,16 @@ function salvarInsumo() {
     const estoqueMinimo = nomeEmbalagem ? estoqueMinimoInput * qtd : estoqueMinimoInput;
 
     const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
-    database.ref('insumos').push(insumo).then(() => {
+    database.ref('insumos').push(insumo).then(ref => {
+        const hoje = new Date();
+        const dataISO = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
+        return database.ref('historicoPrecos/' + ref.key).push({
+            data: dataISO,
+            precoUnitario: preco / qtd,
+            precoEmbalagem: preco,
+            timestamp: Date.now()
+        });
+    }).then(() => {
         toast('✅ Insumo salvo!');
         document.getElementById('insumoNome').value  = '';
         document.getElementById('insumoPreco').value = '';
@@ -189,6 +287,7 @@ function salvarInsumo() {
         document.getElementById('insumoEstoqueAtual').value = '';
         document.getElementById('insumoEstoqueMinimo').value = '';
         atualizarDicaEstoqueEmbalagem();
+        verificarInsumoExistente();
         carregarInsumos();
     }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
 }
@@ -250,6 +349,7 @@ async function carregarInsumos() {
         snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
         insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
         popularSelectCompraInsumo(insumos);
+        popularDatalistInsumos(insumos);
         if (insumos.length === 0) {
             lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
             return;
