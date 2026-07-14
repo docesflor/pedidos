@@ -487,7 +487,7 @@
             <div class="linha-dupla">
                 <div>
                 <label for="insumoPreco">Preço (R$)</label>
-                <input type="text" id="insumoPreco" placeholder="R$ 0,00" inputmode="decimal" oninput="this.value=maskMoeda(this.value)">
+                <input type="text" id="insumoPreco" placeholder="R$ 0,00" inputmode="decimal" maxlength="15" oninput="this.value=maskMoeda(this.value)">
                 </div>
                 <div>
                     <label for="insumoUnidade">Unidade</label>
@@ -501,7 +501,7 @@
             </div>
             <div id="insumoQtdWrapper">
                 <label for="insumoQtd">Quantidade por embalagem</label>
-                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
             </div>
             <div id="wrapperNomeEmbalagem">
                 <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
@@ -513,11 +513,11 @@
             <div class="linha-dupla">
                 <div>
                     <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
-                    <input type="text" id="insumoEstoqueAtual" placeholder="Ex: 3950" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+                    <input type="text" id="insumoEstoqueAtual" placeholder="Ex: 3950" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
                 </div>
                 <div>
                     <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
-                    <input type="text" id="insumoEstoqueMinimo" placeholder="Ex: 800" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+                    <input type="text" id="insumoEstoqueMinimo" placeholder="Ex: 800" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
                 </div>
             </div>
             <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
@@ -806,7 +806,7 @@
         <div class="linha-dupla">
             <div>
                 <label for="editInsumoPreco">Preço (R$)</label>
-                <input type="text" id="editInsumoPreco" oninput="this.value=maskMoeda(this.value)">
+                <input type="text" id="editInsumoPreco" maxlength="15" oninput="this.value=maskMoeda(this.value)">
             </div>
             <div>
                 <label for="editInsumoUnidade">Unidade</label>
@@ -820,7 +820,7 @@
         </div>
         <div id="editInsumoQtdWrapper">
             <label for="editInsumoQtd">Quantidade por embalagem</label>
-            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
         </div>
         <div id="editWrapperNomeEmbalagem">
             <label for="editInsumoNomeEmbalagem">Como você chama a embalagem?</label>
@@ -829,11 +829,11 @@
         <div class="linha-dupla">
             <div>
                 <label id="editLabelEstoqueAtual" for="editInsumoEstoqueAtual">Estoque Atual</label>
-                <input type="text" id="editInsumoEstoqueAtual" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+                <input type="text" id="editInsumoEstoqueAtual" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
             </div>
             <div>
                 <label id="editLabelEstoqueMinimo" for="editInsumoEstoqueMinimo">Estoque Mínimo</label>
-                <input type="text" id="editInsumoEstoqueMinimo" inputmode="decimal" oninput="this.value=maskQuantidade(this.value)">
+                <input type="text" id="editInsumoEstoqueMinimo" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
             </div>
         </div>
         <div class="modal-botoes" style="margin-top:6px;">
