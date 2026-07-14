@@ -645,8 +645,8 @@ function verHistoricoPreco(key, nome) {
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R$ ' + ctx.parsed.y.toFixed(2).replace('.',',') } } },
-                    scales: { y: { ticks: { callback: v => 'R$ ' + v.toFixed(2) } } }
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + formatarBRL(ctx.parsed.y) } } },
+                    scales: { y: { ticks: { callback: v => formatarBRL(v) } } }
                 }
             });
         }
