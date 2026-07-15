@@ -447,7 +447,9 @@ async function carregarInsumos() {
                 placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
             } else {
                 const labelUn = i.unidade !== 'un' ? i.unidade : ' un';
-                estoqueLinha = `${estoqueAtual}${labelUn}`;
+                estoqueLinha = (i.unidade === 'g' && estoqueAtual >= 1000)
+                    ? formatarPesoAmigavel(estoqueAtual)
+                    : `${estoqueAtual}${labelUn}`;
                 if (estoqueReservado > 0) {
                     estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${estoqueReservado}${labelUn} reservado em pedidos · disponível: ${disponivel}${labelUn})</span>`;
                 }
