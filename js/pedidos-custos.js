@@ -474,7 +474,6 @@ async function carregarInsumos() {
                     <div class="insumo-detalhe">
                         R$ ${i.preco.toFixed(2).replace('.',',')} 
                         ${i.unidade !== 'un' ? '/ ' + (i.unidade === 'g' && i.qtdEmbalagem >= 1000 ? formatarPesoAmigavel(i.qtdEmbalagem) : i.qtdEmbalagem + i.unidade) : '/un'}
-                        &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
                     </div>
                     <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
                         📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
