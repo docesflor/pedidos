@@ -280,15 +280,24 @@ function toggleNomeEmbalagem() {
     atualizarDicaEstoqueEmbalagem();
 }
 
+function formatarPesoAmigavel(qtd) {
+    const g = Math.round(qtd);
+    if (g < 1000) return `${g}g`;
+    const kg = Math.floor(g / 1000);
+    const resto = g % 1000;
+    return resto === 0 ? `${kg}kg` : `${kg}kg e ${resto}g`;
+}
 
 function atualizarDicaEstoqueEmbalagem() {
     const nomeEmb = document.getElementById('insumoNomeEmbalagem').value.trim();
+    const unidade = document.getElementById('insumoUnidade').value;
     const qtd     = parseQuantidade(document.getElementById('insumoQtd').value);
     const labelAtual  = document.getElementById('labelEstoqueAtual');
     const labelMinimo = document.getElementById('labelEstoqueMinimo');
     const dica = document.getElementById('dicaEstoqueEmbalagem');
     const campoAtual = document.getElementById('insumoEstoqueAtual');
     const campoMinimo = document.getElementById('insumoEstoqueMinimo');
+    const pesoAmigavel = (unidade === 'g' && qtd > 0) ? ` (≈ ${formatarPesoAmigavel(qtd)})` : '';
     if (nomeEmb) {
         labelAtual.textContent  = `Estoque Atual (em ${nomeEmb}s)`;
         labelMinimo.textContent = `Estoque Mínimo (em ${nomeEmb}s)`;
@@ -296,13 +305,26 @@ function atualizarDicaEstoqueEmbalagem() {
         campoMinimo.placeholder = 'Ex: 5';
         if (qtd > 0) {
             dica.style.display = 'block';
-            dica.textContent = `💡 Cada ${nomeEmb} tem ${qtd}${document.getElementById('insumoUnidade').value}. Informe aqui a quantidade de ${nomeEmb}s, não o peso.`;
+            dica.textContent = `💡 Cada ${nomeEmb} tem ${qtd}${unidade}${pesoAmigavel}. Informe aqui a quantidade de ${nomeEmb}s, não o peso.`;
         } else { dica.style.display = 'none'; }
     } else {
         labelAtual.textContent  = 'Estoque Atual';
         labelMinimo.textContent = 'Estoque Mínimo (alerta)';
         campoAtual.placeholder  = 'Ex: 3950';
         campoMinimo.placeholder = 'Ex: 800';
+        if (pesoAmigavel) { dica.style.display = 'block'; dica.textContent = `💡 ${qtd}${unidade}${pesoAmigavel}`; }
+        else { dica.style.display = 'none'; }
+    }
+}
+
+function atualizarDicaPesoEdicao() {
+    const unidade = document.getElementById('editInsumoUnidade').value;
+    const qtd     = parseQuantidade(document.getElementById('editInsumoQtd').value);
+    const dica    = document.getElementById('dicaPesoEdicao');
+    if (unidade === 'g' && qtd > 0) {
+        dica.style.display = 'block';
+        dica.textContent = `💡 ≈ ${formatarPesoAmigavel(qtd)}`;
+    } else {
         dica.style.display = 'none';
     }
 }
@@ -521,12 +543,13 @@ function abrirEdicaoInsumo(key) {
         const qtdEmb  = i.qtdEmbalagem || 1;
         document.getElementById('editInsumoNome').value = i.nome || '';
         document.getElementById('editInsumoPreco').value = 'R$ ' + (i.preco || 0).toFixed(2).replace('.', ',');
-        document.getElementById('editInsumoUnidade').value = i.unidade || 'un';
+        document.getElementById('editInsumoUnidade').value = (i.unidade === 'kg' ? 'g' : i.unidade) || 'un';
         document.getElementById('editInsumoQtd').value = formatarQuantidade(i.qtdEmbalagem || '');
         document.getElementById('editInsumoNomeEmbalagem').value = nomeEmb;
         document.getElementById('editInsumoEstoqueAtual').value  = formatarQuantidade(nomeEmb ? (i.estoqueAtual  || 0) / qtdEmb : (i.estoqueAtual  || 0));
         document.getElementById('editInsumoEstoqueMinimo').value = formatarQuantidade(nomeEmb ? (i.estoqueMinimo || 0) / qtdEmb : (i.estoqueMinimo || 0));
         toggleNomeEmbalagemEdicao();
+        atualizarDicaPesoEdicao();
         document.getElementById('modalEditarInsumo').style.display = 'flex';
     });
 }
@@ -536,6 +559,7 @@ function toggleNomeEmbalagemEdicao() {
     const unidade = document.getElementById('editInsumoUnidade').value;
     document.getElementById('editWrapperNomeEmbalagem').style.display = unidade === 'un' ? 'none' : 'block';
     if (unidade === 'un') document.getElementById('editInsumoNomeEmbalagem').value = '';
+    atualizarDicaPesoEdicao();
 }
 
 
