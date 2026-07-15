@@ -124,10 +124,10 @@ async function salvarEAjustarEstoque() {
     dispararConfete(btnSalvar);
     pulseBotaoSucesso(btnSalvar, '✓ Salvo!');
     if (ehNovoPedido) {
-        await ajustarEstoquePorPedido(pedido.itens, 'abater');
+        await ajustarEstoquePorPedido(pedido.itens, 'estoqueReservado', +1);
     } else {
-        if (itensAntigos) await ajustarEstoquePorPedido(itensAntigos, 'devolver');
-        await ajustarEstoquePorPedido(pedido.itens, 'abater');
+        if (itensAntigos) await ajustarEstoquePorPedido(itensAntigos, 'estoqueReservado', -1);
+        await ajustarEstoquePorPedido(pedido.itens, 'estoqueReservado', +1);
     }
     limparFormulario();
 }
@@ -136,8 +136,9 @@ salvarEAjustarEstoque()
     .finally(() => { btnSalvar.disabled = false; });
 }
 
-async function ajustarEstoquePorPedido(itensPedido, operacao) {
-    // operacao: 'abater' (consome estoque) ou 'devolver' (repõe estoque)
+async function ajustarEstoquePorPedido(itensPedido, campo, direcao) {
+    // campo: 'estoqueReservado' (reserva de pedidos em andamento) ou 'estoqueAtual' (estoque físico real)
+    // direcao: +1 soma ao campo, -1 subtrai do campo
     if (!itensPedido || itensPedido.length === 0) return;
     const snapshotReceitas = await database.ref('receitas').once('value');
     const receitasMap = {};
@@ -162,16 +163,15 @@ async function ajustarEstoquePorPedido(itensPedido, operacao) {
     for (const [insumoKey, consumido] of Object.entries(consumoTotal)) {
         const resultado = await database.ref('insumos/' + insumoKey).transaction(insumo => {
             if (!insumo) return insumo; // insumo não existe mais, não mexe
-            const atual = insumo.estoqueAtual || 0;
-            insumo.estoqueAtual = operacao === 'devolver'
-                ? atual + consumido
-                : Math.max(0, atual - consumido);
+            const atual = insumo[campo] || 0;
+            insumo[campo] = Math.max(0, atual + (direcao * consumido));
             return insumo;
         });
 
         if (resultado.committed && resultado.snapshot.exists()) {
             const insumoFinal = resultado.snapshot.val();
-            if (operacao === 'abater' && insumoFinal.estoqueMinimo > 0 && insumoFinal.estoqueAtual <= insumoFinal.estoqueMinimo) {
+            const disponivel = (insumoFinal.estoqueAtual || 0) - (insumoFinal.estoqueReservado || 0);
+            if (insumoFinal.estoqueMinimo > 0 && disponivel <= insumoFinal.estoqueMinimo) {
                 avisosEstoque.push(insumoFinal.nome);
             }
         }
@@ -479,7 +479,11 @@ function finalizarPedido(key) {
         const statusAtual = p.statusPagamento || '';
         const msg = statusAtual === 'Pago' ? 'Finalizar este pedido?' : `⚠️ Pagamento: "${statusAtual}". Finalizar mesmo assim?`;
         showConfirmModal(msg, function() {
-            database.ref('pedidos/' + key).update({ statusPagamento: 'entregue' }).then(() => {
+            database.ref('pedidos/' + key).update({ statusPagamento: 'entregue' }).then(async () => {
+                if (p.itens) {
+                    await ajustarEstoquePorPedido(p.itens, 'estoqueReservado', -1);
+                    await ajustarEstoquePorPedido(p.itens, 'estoqueAtual', -1);
+                }
                 toast('Pedido finalizado!');
                 dispararConfete();
                 mostrarCheckAnimado();
@@ -553,7 +557,10 @@ function excluirPedido(key) {
                     const snap = await database.ref('pedidos/' + key).once('value');
                     const pedido = snap.val();
                     await database.ref('pedidos/' + key).remove();
-                    if (pedido && pedido.itens) await ajustarEstoquePorPedido(pedido.itens, 'devolver');
+                    if (pedido && pedido.itens) {
+                        const eraFinalizado = pedido.statusPagamento === 'entregue';
+                        await ajustarEstoquePorPedido(pedido.itens, eraFinalizado ? 'estoqueAtual' : 'estoqueReservado', +1);
+                    }
                     carregarAndamento(); carregarFinalizados();
                     if (mesAtual !== undefined) renderizarCalendario();
                 } catch (err) {
