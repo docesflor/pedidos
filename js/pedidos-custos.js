@@ -473,7 +473,7 @@ async function carregarInsumos() {
                     <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
                     <div class="insumo-detalhe">
                         R$ ${i.preco.toFixed(2).replace('.',',')} 
-                        ${i.unidade !== 'un' ? '/ ' + i.qtdEmbalagem + i.unidade : '/un'}
+                        ${i.unidade !== 'un' ? '/ ' + (i.unidade === 'g' && i.qtdEmbalagem >= 1000 ? formatarPesoAmigavel(i.qtdEmbalagem) : i.qtdEmbalagem + i.unidade) : '/un'}
                         &nbsp;·&nbsp; <strong>${precoPorUnidade}</strong>
                     </div>
                     <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
