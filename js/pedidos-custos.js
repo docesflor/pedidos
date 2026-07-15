@@ -836,6 +836,19 @@ function popularSelectInsumos() {
 }
 
 
+function iconePorInsumo(nome) {
+    const n = (nome || '').toLowerCase();
+    if (n.includes('leite')) return '🥛';
+    if (n.includes('chocolate') || n.includes('cacau')) return '🍫';
+    if (n.includes('nescau') || n.includes('achocolatado')) return '🥤';
+    if (n.includes('manteiga')) return '🧈';
+    if (n.includes('açúcar') || n.includes('acucar')) return '🧂';
+    if (n.includes('morango') || n.includes('fruta')) return '🍓';
+    if (n.includes('coco')) return '🥥';
+    if (n.includes('forminha') || n.includes('embalagem') || n.includes('caixinha')) return '📦';
+    return '🧴';
+}
+
 async function calcularPrevisaoCompra(dias, btn) {
     document.querySelectorAll('#previsao-compra-filtros .chip-filtro').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -904,10 +917,19 @@ async function calcularPrevisaoCompra(dias, btn) {
         });
     });
 
-    itensComprar.sort((a,b) => b.necessario - a.necessario);
+    itensComprar.sort((a,b) => {
+        if (a.dataRisco && b.dataRisco) return a.dataRisco - b.dataRisco;
+        if (a.dataRisco) return -1;
+        if (b.dataRisco) return 1;
+        return b.necessario - a.necessario;
+    });
 
     if (itensComprar.length === 0) {
-        painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente!</p>`;
+        painel.innerHTML = `<div style="text-align:center;padding:36px 16px;background:var(--cream);border-radius:18px;">
+            <div style="font-size:2.2em;margin-bottom:8px;">🌸</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:1.15em;color:var(--brown-dark);">Tudo certo por aqui!</div>
+            <div style="font-size:0.85em;color:var(--brown-warm);margin-top:4px;">Estoque cobre os pedidos agendados nos próximos ${dias} dias.</div>
+        </div>`;
         return;
     }
 
@@ -919,29 +941,42 @@ async function calcularPrevisaoCompra(dias, btn) {
             ? `${qtdEmb} ${nomeEmb}${qtdEmb === 1 ? '' : 's'}`
             : unidade === 'un' ? `${qtdEmb} un.` : `${qtdEmb} embalagem${qtdEmb > 1 ? 's' : ''}`;
 
-    let html = '';
+    const hojeMs = hoje.getTime();
+    let html = `<p style="font-size:0.8em;color:var(--brown-warm);margin-bottom:12px;">${itensComprar.length} insumo${itensComprar.length > 1 ? 's precisam' : ' precisa'} de reposição</p>`;
+
     itensComprar.forEach(i => {
         const label = labelQtd(i.embalagensNecessario, i.nomeEmbalagem, i.unidade);
-        let riscoTexto = '';
+
+        let accent = 'var(--brown-warm)', accentBg = 'var(--cream)', riscoTexto = '📅 Sem prazo definido';
         if (i.dataRisco) {
+            const diffDias = Math.round((i.dataRisco.getTime() - hojeMs) / 86400000);
             const dia = String(i.dataRisco.getDate()).padStart(2,'0');
             const mes = String(i.dataRisco.getMonth()+1).padStart(2,'0');
-            riscoTexto = ` — risco a partir de ${dia}/${mes}`;
+            if (diffDias <= 2)      { accent = '#DC2626'; accentBg = '#FEE2E2'; riscoTexto = `🔴 Risco em ${diffDias <= 0 ? 'até hoje' : diffDias + ' dia' + (diffDias > 1 ? 's' : '')} (${dia}/${mes})`; }
+            else if (diffDias <= 7) { accent = '#B45309'; accentBg = '#FEF3C7'; riscoTexto = `⏰ Risco a partir de ${dia}/${mes}`; }
+            else                    { accent = 'var(--brown-warm)'; accentBg = 'var(--cream)'; riscoTexto = `📅 Risco a partir de ${dia}/${mes}`; }
         }
 
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#FEF3C7;border-radius:12px;margin-bottom:8px;">
-            <div>
-                <strong style="font-size:0.95em;">${escaparHTML(i.nome)}</strong>
-                <div style="font-size:0.78em;color:#DC2626;font-weight:600;margin-top:2px;">🔴 Necessário para pedidos agendados${riscoTexto}</div>
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;background:var(--white);border-left:5px solid ${accent};border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 12px var(--shadow);transition:transform 0.18s ease, box-shadow 0.18s ease;"
+            onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 20px var(--shadow)';"
+            onmouseleave="this.style.transform='';this.style.boxShadow='0 3px 12px var(--shadow)';">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+                <div style="width:42px;height:42px;border-radius:12px;background:${accentBg};display:flex;align-items:center;justify-content:center;font-size:1.3em;flex-shrink:0;">${iconePorInsumo(i.nome)}</div>
+                <div style="min-width:0;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:1.12em;color:var(--brown-dark);line-height:1.2;">${escaparHTML(i.nome)}</div>
+                    <div style="font-size:0.78em;font-weight:600;color:${accent};margin-top:3px;">${riscoTexto}</div>
+                </div>
             </div>
             <div style="text-align:right;flex-shrink:0;">
-                <div style="font-weight:700;color:#92400E;white-space:nowrap;">${label}</div>
-                <div style="font-size:0.75em;color:var(--brown-warm);">≈ R$ ${i.custoNecessario.toFixed(2).replace('.',',')}</div>
+                <div style="font-family:'DM Sans',sans-serif;font-size:1.15em;font-weight:700;color:var(--brown-dark);white-space:nowrap;">${label}</div>
+                <div style="font-size:0.74em;color:var(--brown-warm);">≈ R$ ${i.custoNecessario.toFixed(2).replace('.',',')}</div>
             </div>
         </div>`;
     });
-    html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
-        <span>Custo total estimado (necessário + colchão)</span><span style="color:var(--amber);">R$ ${custoTotalCompra.toFixed(2).replace('.',',')}</span>
+
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--cream);border-radius:16px;padding:16px 18px;margin-top:6px;">
+        <span style="font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--brown-dark);font-size:1.05em;">Custo total estimado</span>
+        <span style="font-family:'DM Sans',sans-serif;font-weight:700;font-size:1.3em;color:var(--amber);">R$ ${custoTotalCompra.toFixed(2).replace('.',',')}</span>
     </div>`;
     painel.innerHTML = html;
 }
