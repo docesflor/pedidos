@@ -27,6 +27,7 @@ function limparFormulario() {
     document.getElementById('valorPago').value = '';
     document.getElementById('valorPagoContainer').style.display = 'none';
     delete window.pedidoEmEdicao;
+    delete window.itensOriginaisEdicao;
     document.getElementById('btnEnviar').textContent = '💾 Salvar Pedido';
     ['cep','endereco','bairro','cidade','numero','pontoReferencia'].forEach(id => {
         const el = document.getElementById(id);
@@ -98,10 +99,8 @@ const ehNovoPedido = !window.pedidoEmEdicao;
 
 async function salvarEAjustarEstoque() {
     let itensAntigos = null;
-    if (!ehNovoPedido && navigator.onLine) {
-        const snapAntigo = await database.ref(refPath).once('value');
-        const pedidoAntigo = snapAntigo.val();
-        itensAntigos = pedidoAntigo ? pedidoAntigo.itens : null;
+    if (!ehNovoPedido) {
+        itensAntigos = window.itensOriginaisEdicao || null;
     }
 
     if (!navigator.onLine) {
@@ -559,7 +558,9 @@ function excluirPedido(key) {
                     await database.ref('pedidos/' + key).remove();
                     if (pedido && pedido.itens) {
                         const eraFinalizado = pedido.statusPagamento === 'entregue';
-                        await ajustarEstoquePorPedido(pedido.itens, eraFinalizado ? 'estoqueAtual' : 'estoqueReservado', +1);
+                        const campo   = eraFinalizado ? 'estoqueAtual' : 'estoqueReservado';
+                        const direcao = eraFinalizado ? +1 : -1;
+                        await ajustarEstoquePorPedido(pedido.itens, campo, direcao);
                     }
                     carregarAndamento(); carregarFinalizados();
                     if (mesAtual !== undefined) renderizarCalendario();
@@ -647,6 +648,7 @@ function editarPedido(key) {
         setTimeout(() => { renderizarItens(); atualizarValorBrigadeiros(); atualizarTotal(); }, 50);
         document.getElementById('btnEnviar').textContent = '✏️ Atualizar Pedido';
         window.pedidoEmEdicao = key;
+        window.itensOriginaisEdicao = (data.itens && Array.isArray(data.itens)) ? JSON.parse(JSON.stringify(data.itens)) : null;
     });
 }
 
