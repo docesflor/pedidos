@@ -30,10 +30,10 @@ async function processarFilaOffline() {
         try {
             await database.ref(item.refPath).set(item.pedido);
             if (item.ehNovoPedido) {
-                await ajustarEstoquePorPedido(item.pedido.itens, 'abater');
+                await ajustarEstoquePorPedido(item.pedido.itens, 'estoqueReservado', +1);
             } else {
-                if (item.itensAntigos) await ajustarEstoquePorPedido(item.itensAntigos, 'devolver');
-                await ajustarEstoquePorPedido(item.pedido.itens, 'abater');
+                if (item.itensAntigos) await ajustarEstoquePorPedido(item.itensAntigos, 'estoqueReservado', -1);
+                await ajustarEstoquePorPedido(item.pedido.itens, 'estoqueReservado', +1);
             }
         } catch (err) {
             console.error('Erro ao sincronizar pedido da fila offline:', err);
