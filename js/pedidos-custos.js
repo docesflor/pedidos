@@ -293,7 +293,7 @@ function salvarInsumo() {
     const estoqueAtual  = nomeEmbalagem ? estoqueAtualInput  * qtd : estoqueAtualInput;
     const estoqueMinimo = nomeEmbalagem ? estoqueMinimoInput * qtd : estoqueMinimoInput;
 
-    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueMinimo, timestamp: Date.now() };
+    const insumo = { nome, preco, unidade, qtdEmbalagem: qtd, nomeEmbalagem, estoqueAtual, estoqueReservado: 0, estoqueMinimo, timestamp: Date.now() };
     database.ref('insumos').push(insumo).then(ref => {
         const hoje = new Date();
         const dataISO = hoje.getFullYear() + '-' + String(hoje.getMonth()+1).padStart(2,'0') + '-' + String(hoje.getDate()).padStart(2,'0');
@@ -382,21 +382,32 @@ async function carregarInsumos() {
         lista.innerHTML = '';
         insumos.forEach(i => {
             const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(2).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
-            const estoqueAtual  = i.estoqueAtual || 0;
-            const estoqueMinimo = i.estoqueMinimo || 0;
-            const alerta = estoqueMinimo > 0 && estoqueAtual <= estoqueMinimo;
+            const estoqueAtual     = i.estoqueAtual || 0;
+            const estoqueReservado = i.estoqueReservado || 0;
+            const disponivel       = estoqueAtual - estoqueReservado;
+            const estoqueMinimo    = i.estoqueMinimo || 0;
+            const alerta = estoqueMinimo > 0 && disponivel <= estoqueMinimo;
             const temEmbalagem = !!i.nomeEmbalagem;
 
             let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
             if (temEmbalagem) {
-                const embalagens = i.estoqueAtual / i.qtdEmbalagem;
+                const embalagens          = estoqueAtual / i.qtdEmbalagem;
+                const embalagensReservado = estoqueReservado / i.qtdEmbalagem;
+                const embalagensDisponivel = disponivel / i.qtdEmbalagem;
                 const embalagensMin = i.estoqueMinimo ? (i.estoqueMinimo / i.qtdEmbalagem) : 0;
-                const embFormatado = Number.isInteger(embalagens) ? embalagens : embalagens.toFixed(1);
-                estoqueLinha = `${embFormatado} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
+                const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
+                estoqueLinha = `${fmt(embalagens)} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
+                if (estoqueReservado > 0) {
+                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmt(embalagensReservado)} reservada${embalagensReservado === 1 ? '' : 's'} em pedidos · disponível: ${fmt(embalagensDisponivel)})</span>`;
+                }
                 estoqueMinimoTexto = embalagensMin > 0 ? ` (mín: ${embalagensMin} ${i.nomeEmbalagem}s)` : '';
                 placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
             } else {
-                estoqueLinha = `${estoqueAtual}${i.unidade !== 'un' ? i.unidade : ' un'}`;
+                const labelUn = i.unidade !== 'un' ? i.unidade : ' un';
+                estoqueLinha = `${estoqueAtual}${labelUn}`;
+                if (estoqueReservado > 0) {
+                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${estoqueReservado}${labelUn} reservado em pedidos · disponível: ${disponivel}${labelUn})</span>`;
+                }
                 estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${estoqueMinimo}${i.unidade})` : '';
                 placeholderEntrada = 'Qtd a adicionar';
             }
@@ -406,7 +417,7 @@ async function carregarInsumos() {
                 const consumoUn = consumoSemanal[i.key] || 0;
                 if (consumoUn > 0) {
                     const semanasCobertura = 3;
-                    const qtdSugeridaBase = Math.max(0, (consumoUn * semanasCobertura) - estoqueAtual);
+                    const qtdSugeridaBase = Math.max(0, (consumoUn * semanasCobertura) - disponivel);
                     if (qtdSugeridaBase > 0) {
                         const qtdSugeridaEmb = temEmbalagem ? Math.ceil(qtdSugeridaBase / i.qtdEmbalagem) : Math.ceil(qtdSugeridaBase);
                         const labelSugestao = temEmbalagem
