@@ -846,11 +846,10 @@ async function calcularPrevisaoCompra(dias, btn) {
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
 
-    const [snapPedidos, snapReceitas, snapInsumos, consumoSemanal] = await Promise.all([
+    const [snapPedidos, snapReceitas, snapInsumos] = await Promise.all([
         database.ref('pedidos').once('value'),
         database.ref('receitas').once('value'),
-        database.ref('insumos').once('value'),
-        calcularConsumoMedioSemanal()
+        database.ref('insumos').once('value')
     ]);
 
     const receitasMap = {};
@@ -888,39 +887,31 @@ async function calcularPrevisaoCompra(dias, btn) {
     Object.values(insumosMap).forEach(insumo => {
         const estoqueAtual     = insumo.estoqueAtual || 0;
         const estoqueReservado = insumo.estoqueReservado || 0;
-        const disponivel       = estoqueAtual - estoqueReservado;
         // Necessário: fato, calculado a partir de pedidos já confirmados no banco.
         const necessario       = Math.max(0, estoqueReservado - estoqueAtual);
-        // Buffer extra: estimativa, baseada no consumo médio histórico — além do necessário.
-        const consumoUn        = consumoSemanal[insumo.key] || 0;
-        const totalAlvo        = Math.max(0, (consumoUn * SEMANAS_BUFFER) - disponivel);
-        const bufferExtra      = Math.max(0, totalAlvo - necessario);
 
-        if (necessario <= 0 && bufferExtra <= 0) return;
+        if (necessario <= 0) return;
 
         const qtdEmbalagem = insumo.qtdEmbalagem || 1;
-        const arred = (valor) => insumo.unidade === 'un' ? Math.ceil(valor) : Math.ceil(valor / qtdEmbalagem);
+        const embalagensNecessario = insumo.unidade === 'un' ? Math.ceil(necessario) : Math.ceil(necessario / qtdEmbalagem);
 
         itensComprar.push({
             key: insumo.key, nome: insumo.nome, unidade: insumo.unidade,
             nomeEmbalagem: insumo.nomeEmbalagem || '', qtdEmbalagem, preco: insumo.preco,
-            necessario, bufferExtra,
-            embalagensNecessario: arred(necessario),
-            embalagensBuffer: arred(bufferExtra),
+            necessario, embalagensNecessario,
             custoNecessario: (insumo.preco / qtdEmbalagem) * necessario,
-            custoBuffer: (insumo.preco / qtdEmbalagem) * bufferExtra,
             dataRisco: primeiraDataAfetada[insumo.key] || null
         });
     });
 
-    itensComprar.sort((a,b) => (b.necessario - a.necessario) || (b.bufferExtra - a.bufferExtra));
+    itensComprar.sort((a,b) => b.necessario - a.necessario);
 
     if (itensComprar.length === 0) {
         painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente!</p>`;
         return;
     }
 
-    const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoNecessario + i.custoBuffer, 0);
+    const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoNecessario, 0);
 
     const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
     const labelQtd = (qtdEmb, nomeEmb, unidade) =>
@@ -930,33 +921,23 @@ async function calcularPrevisaoCompra(dias, btn) {
 
     let html = '';
     itensComprar.forEach(i => {
-        let linhaNecessario = '';
-        if (i.necessario > 0) {
-            const label = labelQtd(i.embalagensNecessario, i.nomeEmbalagem, i.unidade);
-            let riscoTexto = '';
-            if (i.dataRisco) {
-                const dia = String(i.dataRisco.getDate()).padStart(2,'0');
-                const mes = String(i.dataRisco.getMonth()+1).padStart(2,'0');
-                riscoTexto = ` — risco a partir de ${dia}/${mes}`;
-            }
-            linhaNecessario = `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--cream-dark);">
-                <span style="font-size:0.85em;color:#DC2626;font-weight:600;">🔴 Necessário para pedidos agendados${riscoTexto}</span>
-                <span style="font-weight:700;color:#92400E;white-space:nowrap;">${label} <span style="font-weight:500;color:var(--brown-warm);font-size:0.85em;">(≈ R$ ${i.custoNecessario.toFixed(2).replace('.',',')})</span></span>
-            </div>`;
+        const label = labelQtd(i.embalagensNecessario, i.nomeEmbalagem, i.unidade);
+        let riscoTexto = '';
+        if (i.dataRisco) {
+            const dia = String(i.dataRisco.getDate()).padStart(2,'0');
+            const mes = String(i.dataRisco.getMonth()+1).padStart(2,'0');
+            riscoTexto = ` — risco a partir de ${dia}/${mes}`;
         }
 
-        let linhaBuffer = '';
-        if (i.bufferExtra > 0) {
-            const label = labelQtd(i.embalagensBuffer, i.nomeEmbalagem, i.unidade);
-            linhaBuffer = `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
-                <span style="font-size:0.85em;color:var(--brown-warm);">💡 Sugestão de colchão extra (consumo médio)</span>
-                <span style="font-weight:600;color:var(--brown-warm);white-space:nowrap;">+${label} <span style="font-size:0.85em;">(≈ R$ ${i.custoBuffer.toFixed(2).replace('.',',')})</span></span>
-            </div>`;
-        }
-
-        html += `<div style="padding:12px 14px;background:#FEF3C7;border-radius:12px;margin-bottom:10px;">
-            <strong style="font-size:0.95em;">${escaparHTML(i.nome)}</strong>
-            ${linhaNecessario}${linhaBuffer}
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#FEF3C7;border-radius:12px;margin-bottom:8px;">
+            <div>
+                <strong style="font-size:0.95em;">${escaparHTML(i.nome)}</strong>
+                <div style="font-size:0.78em;color:#DC2626;font-weight:600;margin-top:2px;">🔴 Necessário para pedidos agendados${riscoTexto}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                <div style="font-weight:700;color:#92400E;white-space:nowrap;">${label}</div>
+                <div style="font-size:0.75em;color:var(--brown-warm);">≈ R$ ${i.custoNecessario.toFixed(2).replace('.',',')}</div>
+            </div>
         </div>`;
     });
     html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
