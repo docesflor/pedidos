@@ -913,8 +913,11 @@ async function calcularPrevisaoCompra(dias, btn) {
     Object.entries(necessidadeTotal).forEach(([insumoKey, necessario]) => {
         const insumo = insumosMap[insumoKey];
         if (!insumo) return;
-        const estoqueAtual = insumo.estoqueAtual || 0;
-        const falta = necessario - estoqueAtual;
+        const estoqueAtual     = insumo.estoqueAtual || 0;
+        // A falta real considera TODOS os pedidos em aberto (não só os desta janela),
+        // porque um pedido distante já está "reservando" o mesmo estoque físico.
+        const estoqueReservado = insumo.estoqueReservado || 0;
+        const falta = estoqueReservado - estoqueAtual;
         if (falta > 0) {
             const qtdEmbalagem = insumo.qtdEmbalagem || 1;
             const embalagensNecessarias = insumo.unidade === 'un' ? Math.ceil(falta) : Math.ceil(falta / qtdEmbalagem);
@@ -922,7 +925,7 @@ async function calcularPrevisaoCompra(dias, btn) {
                 nome: insumo.nome,
                 unidade: insumo.unidade,
                 nomeEmbalagem: insumo.nomeEmbalagem || '',
-                necessario, estoqueAtual, falta,
+                necessario, estoqueAtual, estoqueReservado, falta,
                 qtdEmbalagem,
                 embalagensNecessarias,
                 custoEstimado: (insumo.preco / qtdEmbalagem) * falta,
@@ -953,6 +956,9 @@ async function calcularPrevisaoCompra(dias, btn) {
         const estoqueTexto = i.nomeEmbalagem
             ? `${i.estoqueAtual.toFixed(0)}${i.unidade} (${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.estoqueAtual / i.qtdEmbalagem) === 1 ? '' : 's'})`
             : `${i.estoqueAtual}${i.unidade}`;
+        const reservadoTexto = i.nomeEmbalagem
+            ? `${i.estoqueReservado.toFixed(0)}${i.unidade} (${(i.estoqueReservado / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.estoqueReservado / i.qtdEmbalagem) === 1 ? '' : 's'})`
+            : `${i.estoqueReservado}${i.unidade}`;
         const faltaEmbalagemTexto = i.nomeEmbalagem
             ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.falta / i.qtdEmbalagem) === 1 ? '' : 's'}`
             : `${i.falta.toFixed(0)}${i.unidade}`;
@@ -963,7 +969,8 @@ async function calcularPrevisaoCompra(dias, btn) {
         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
             <div>
                 <strong>${escaparHTML(i.nome)}</strong>
-                <div style="font-size:0.78em;color:var(--brown-warm);">Necessário: ${necessarioTexto} | Em estoque: ${estoqueTexto}</div>
+                <div style="font-size:0.78em;color:var(--brown-warm);">Consumo nesta janela: ${necessarioTexto}</div>
+                <div style="font-size:0.78em;color:var(--brown-warm);">Reservado (todos os pedidos): ${reservadoTexto} | Físico em estoque: ${estoqueTexto}</div>
                 ${riscoTexto ? `<div style="font-size:0.75em;color:#DC2626;font-weight:700;margin-top:2px;">${riscoTexto}</div>` : ''}
             </div>
             <div style="text-align:right;">
