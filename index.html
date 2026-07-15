@@ -495,13 +495,13 @@
                         <option value="un">Unidade (un)</option>
                         <option value="g">Gramas (g)</option>
                         <option value="ml">Mililitros (ml)</option>
-                        <option value="kg">Quilograma (kg)</option>
+                        
                     </select>
                 </div>
             </div>
             <div id="insumoQtdWrapper">
                 <label for="insumoQtd">Quantidade por embalagem</label>
-                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaEstoqueEmbalagem()">
             </div>
             <div id="wrapperNomeEmbalagem">
                 <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
@@ -814,13 +814,14 @@
                     <option value="un">Unidade (un)</option>
                     <option value="g">Gramas (g)</option>
                     <option value="ml">Mililitros (ml)</option>
-                    <option value="kg">Quilograma (kg)</option>
+                    
                 </select>
             </div>
         </div>
         <div id="editInsumoQtdWrapper">
             <label for="editInsumoQtd">Quantidade por embalagem</label>
-            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaPesoEdicao()">
+            <p id="dicaPesoEdicao" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;"></p>
         </div>
         <div id="editWrapperNomeEmbalagem">
             <label for="editInsumoNomeEmbalagem">Como você chama a embalagem?</label>
