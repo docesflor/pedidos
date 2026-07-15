@@ -108,9 +108,17 @@ function renderizarItens() {
     const precoTradAuto    = precoUnitarioPorFaixa('trad', qtdTrad);
     const precoFrutasAuto  = precoUnitarioPorFaixa('frutas', qtdFrutas);
     const precoGourmetAuto = precoUnitarioPorFaixa('gourmet', qtdGourmet);
-    const faixasTrad    = [{label:'Avulso — R$ 1,50/un',valor:1.50},{label:'Caixa 25 — R$ 1,40/un',valor:1.40},{label:'Caixa 50 — R$ 1,20/un',valor:1.20},{label:'Caixa 75 — R$ 1,13/un',valor:1.13},{label:'Cento 100 — R$ 1,10/un',valor:1.10}];
-    const faixasFrutas  = [{label:'Avulso — R$ 1,75/un',valor:1.75},{label:'Caixa 25 — R$ 1,60/un',valor:1.60},{label:'Caixa 50 — R$ 1,40/un',valor:1.40},{label:'Caixa 75 — R$ 1,33/un',valor:1.33},{label:'Cento 100 — R$ 1,25/un',valor:1.25}];
-    const faixasGourmet = [{label:'Avulso — R$ 2,00/un',valor:2.00},{label:'Caixa 25 — R$ 1,80/un',valor:1.80},{label:'Caixa 50 — R$ 1,60/un',valor:1.60},{label:'Caixa 75 — R$ 1,53/un',valor:1.53},{label:'Cento 100 — R$ 1,40/un',valor:1.40}];
+    function gerarFaixas(cat) {
+        const tabela = TABELA_PRECOS[cat];
+        const niveis = [['avulso','Avulso'], [25,'Caixa 25'], [50,'Caixa 50'], [75,'Caixa 75'], [100,'Cento 100']];
+        return niveis.map(([chave, nome]) => {
+            const valorExato = chave === 'avulso' ? tabela.avulso : tabela[chave] / chave;
+            return { label: `${nome} — R$ ${valorExato.toFixed(2).replace('.', ',')}/un`, valor: valorExato };
+        });
+    }
+    const faixasTrad    = gerarFaixas('trad');
+    const faixasFrutas  = gerarFaixas('frutas');
+    const faixasGourmet = gerarFaixas('gourmet');
     const grupos = [
         { cat:'trad',    label:'🍫 Tradicionais', cor:'#92400E', bg:'#FEF3C7', precoAuto:precoTradAuto,    faixas:faixasTrad    },
         { cat:'frutas',  label:'🍓 Frutas',        cor:'#065F46', bg:'#D1FAE5', precoAuto:precoFrutasAuto,  faixas:faixasFrutas  },
