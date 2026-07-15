@@ -199,7 +199,40 @@ function criarCardGasto(g) {
 
 
 function excluirGasto(key) {
-    showConfirmModal('Excluir este gasto?',()=>database.ref('gastos/'+key).remove().then(()=>{toast('🗑️ Gasto excluído.');carregarGastos();}).catch(err=>toast('Erro: '+err.message,'erro')));
+    database.ref('gastos/' + key).once('value', snapGasto => {
+        const g = snapGasto.val();
+        if (!g) return;
+
+        if (g.tipoMovimento === 'reposicaoInsumo' && g.insumoKey) {
+            showConfirmModal('⚠️ Este gasto é de uma reposição de estoque. Excluir também vai devolver o estoque e o preço médio anteriores do insumo. Continuar?', async () => {
+                try {
+                    await database.ref('insumos/' + g.insumoKey).transaction(insumo => {
+                        if (!insumo) return insumo; // insumo já foi excluído, não mexe
+                        insumo.estoqueAtual = (g.estoqueAntigoAtual != null)
+                            ? g.estoqueAntigoAtual
+                            : Math.max(0, (insumo.estoqueAtual || 0) - (g.quantidade || 0));
+                        if (g.precoAntigo != null) insumo.preco = g.precoAntigo;
+                        return insumo;
+                    });
+                    if (g.historicoPrecoKey) {
+                        await database.ref('historicoPrecos/' + g.insumoKey + '/' + g.historicoPrecoKey).remove();
+                    }
+                    await database.ref('gastos/' + key).remove();
+                    toast('🗑️ Gasto excluído e estoque revertido.');
+                    carregarGastos();
+                    if (typeof carregarInsumos === 'function') carregarInsumos();
+                } catch (err) {
+                    toast('Erro: ' + err.message, 'erro');
+                }
+            });
+        } else {
+            showConfirmModal('Excluir este gasto?', () => {
+                database.ref('gastos/' + key).remove()
+                    .then(() => { toast('🗑️ Gasto excluído.'); carregarGastos(); })
+                    .catch(err => toast('Erro: ' + err.message, 'erro'));
+            });
+        }
+    });
 }
 
 // ====================== EXPORTAR CSV ======================
@@ -554,6 +587,7 @@ function excluirInsumo(key) {
             const lista = receitasQueUsam.join(', ');
             showConfirmModal(`⚠️ Este insumo é usado em ${receitasQueUsam.length} receita(s): ${lista}. Excluir mesmo assim? O custo dessas receitas ficará incorreto.`, () => {
                 database.ref('insumos/' + key).remove()
+                    .then(() => database.ref('historicoPrecos/' + key).remove())
                     .then(() => { toast('🗑️ Insumo excluído.'); carregarInsumos(); })
                     .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
             });
@@ -775,18 +809,25 @@ async function registrarCompraInsumo() {
         const novoPreco = custoUnMedio * insumo.qtdEmbalagem;
 
         await database.ref('insumos/' + key).update({ estoqueAtual: estoqueTotal, preco: novoPreco });
+
+        const historicoRef = await database.ref('historicoPrecos/' + key).push({
+            data,
+            precoUnitario: custoUnNovo,
+            precoEmbalagem: novoPreco,
+            timestamp: Date.now()
+        });
+
         await database.ref('gastos').push({
             data, categoria,
             descricao: insumo.nome,
             quantidade: qtdComprada_base,
             valor: valorPagoTotal,
-            timestamp: Date.now()
-        });
-        await database.ref('historicoPrecos/' + key).push({
-            data,
-            precoUnitario: custoUnNovo,
-            precoEmbalagem: novoPreco,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            insumoKey: key,
+            tipoMovimento: 'reposicaoInsumo',
+            estoqueAntigoAtual: estoqueAntigo,
+            precoAntigo: insumo.preco,
+            historicoPrecoKey: historicoRef.key
         });
 
         if (custoUnAntigo > 0) {
