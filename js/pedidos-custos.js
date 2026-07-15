@@ -354,21 +354,9 @@ async function calcularConsumoMedioSemanal(diasHistorico = 60) {
     return consumoSemanal;
 }
 
-function irComprarInsumoSugerido(key, qtdSugerida) {
-    mostrarAbaGastos('compras', document.getElementById('custosTabCompras'));
-    setTimeout(() => {
-        const sel = document.getElementById('compraInsumoSel');
-        if (sel) { sel.value = key; atualizarInfoCompraInsumo(); }
-        const campoQtd = document.getElementById('compraQtd');
-        if (campoQtd) campoQtd.value = qtdSugerida;
-        calcularPreviewCompra();
-    }, 150);
-}
-
 async function carregarInsumos() {
     const lista = document.getElementById('lista-insumos');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
-    const consumoSemanal = await calcularConsumoMedioSemanal();
     database.ref('insumos').once('value', snapshot => {
         const insumos = [];
         snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
@@ -414,22 +402,7 @@ async function carregarInsumos() {
 
             let sugestaoHTML = '';
             if (alerta) {
-                const consumoUn = consumoSemanal[i.key] || 0;
-                if (consumoUn > 0) {
-                    const semanasCobertura = 3;
-                    const qtdSugeridaBase = Math.max(0, (consumoUn * semanasCobertura) - disponivel);
-                    if (qtdSugeridaBase > 0) {
-                        const qtdSugeridaEmb = temEmbalagem ? Math.ceil(qtdSugeridaBase / i.qtdEmbalagem) : Math.ceil(qtdSugeridaBase);
-                        const labelSugestao = temEmbalagem
-                            ? `${qtdSugeridaEmb} ${i.nomeEmbalagem}${qtdSugeridaEmb > 1 ? 's' : ''}`
-                            : `${qtdSugeridaEmb}${i.unidade !== 'un' ? i.unidade : ' un'}`;
-                        sugestaoHTML = `<div class="insumo-sugestao">
-                            💡 Sugestão: comprar <strong>${labelSugestao}</strong>
-                            <span style="opacity:0.75;">(consumo médio: ${consumoUn.toFixed(0)}${i.unidade !== 'un' ? i.unidade : ' un'}/semana)</span>
-                            <button class="btn-sugestao-comprar" onclick="irComprarInsumoSugerido('${i.key}', ${qtdSugeridaEmb})">🛒 Comprar</button>
-                        </div>`;
-                    }
-                }
+                sugestaoHTML = `<div class="insumo-sugestao">💡 Veja quanto comprar na aba <strong>🔮 Previsão</strong></div>`;
             }
 
             const div = document.createElement('div');
@@ -873,10 +846,11 @@ async function calcularPrevisaoCompra(dias, btn) {
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
 
-    const [snapPedidos, snapReceitas, snapInsumos] = await Promise.all([
+    const [snapPedidos, snapReceitas, snapInsumos, consumoSemanal] = await Promise.all([
         database.ref('pedidos').once('value'),
         database.ref('receitas').once('value'),
-        database.ref('insumos').once('value')
+        database.ref('insumos').once('value'),
+        calcularConsumoMedioSemanal()
     ]);
 
     const receitasMap = {};
@@ -884,9 +858,9 @@ async function calcularPrevisaoCompra(dias, btn) {
     const insumosMap = {};
     snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
 
-    const necessidadeTotal = {};
-    const primeiraDataAfetada = {}; // insumoKey -> Date mais próxima que consome esse insumo
-
+    // Data mais próxima, dentro da janela escolhida, em que cada insumo é consumido —
+    // usada só pra indicar urgência ("risco a partir de..."), não pra calcular quantidade.
+    const primeiraDataAfetada = {};
     snapPedidos.forEach(child => {
         const p = child.val();
         if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
@@ -895,13 +869,10 @@ async function calcularPrevisaoCompra(dias, btn) {
         else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
         else return;
         if (dataP < hoje || dataP > limite) return;
-
         (p.itens || []).forEach(item => {
             const receita = receitasMap[item.sabor];
             if (!receita || !receita.ingredientes) return;
-            const fator = item.quantidade / receita.rendimento;
             receita.ingredientes.forEach(ing => {
-                necessidadeTotal[ing.insumoKey] = (necessidadeTotal[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
                 if (!primeiraDataAfetada[ing.insumoKey] || dataP < primeiraDataAfetada[ing.insumoKey]) {
                     primeiraDataAfetada[ing.insumoKey] = dataP;
                 }
@@ -909,75 +880,79 @@ async function calcularPrevisaoCompra(dias, btn) {
         });
     });
 
+    // Quantidade a comprar = déficit já existente pros pedidos agendados (qualquer prazo)
+    // + margem de segurança de 3 semanas baseada no consumo médio histórico.
+    const SEMANAS_BUFFER = 3;
     const itensComprar = [];
-    Object.entries(necessidadeTotal).forEach(([insumoKey, necessario]) => {
-        const insumo = insumosMap[insumoKey];
-        if (!insumo) return;
+
+    Object.values(insumosMap).forEach(insumo => {
         const estoqueAtual     = insumo.estoqueAtual || 0;
-        // A falta real considera TODOS os pedidos em aberto (não só os desta janela),
-        // porque um pedido distante já está "reservando" o mesmo estoque físico.
         const estoqueReservado = insumo.estoqueReservado || 0;
-        const falta = estoqueReservado - estoqueAtual;
-        if (falta > 0) {
-            const qtdEmbalagem = insumo.qtdEmbalagem || 1;
-            const embalagensNecessarias = insumo.unidade === 'un' ? Math.ceil(falta) : Math.ceil(falta / qtdEmbalagem);
-            itensComprar.push({
-                nome: insumo.nome,
-                unidade: insumo.unidade,
-                nomeEmbalagem: insumo.nomeEmbalagem || '',
-                necessario, estoqueAtual, estoqueReservado, falta,
-                qtdEmbalagem,
-                embalagensNecessarias,
-                custoEstimado: (insumo.preco / qtdEmbalagem) * falta,
-                dataRisco: primeiraDataAfetada[insumoKey] || null
-            });
-        }
+        const disponivel       = estoqueAtual - estoqueReservado;
+        const faltaPedidos     = Math.max(0, estoqueReservado - estoqueAtual);
+        const consumoUn        = consumoSemanal[insumo.key] || 0;
+        const totalComprar     = Math.max(0, (consumoUn * SEMANAS_BUFFER) - disponivel);
+
+        if (totalComprar <= 0) return;
+
+        const qtdEmbalagem = insumo.qtdEmbalagem || 1;
+        const embalagensComprar = insumo.unidade === 'un' ? Math.ceil(totalComprar) : Math.ceil(totalComprar / qtdEmbalagem);
+
+        itensComprar.push({
+            key: insumo.key, nome: insumo.nome, unidade: insumo.unidade,
+            nomeEmbalagem: insumo.nomeEmbalagem || '', qtdEmbalagem,
+            estoqueAtual, estoqueReservado, faltaPedidos, totalComprar,
+            embalagensComprar,
+            custoEstimado: (insumo.preco / qtdEmbalagem) * totalComprar,
+            dataRisco: primeiraDataAfetada[insumo.key] || null
+        });
     });
 
-    itensComprar.sort((a,b) => b.falta - a.falta);
+    itensComprar.sort((a,b) => b.totalComprar - a.totalComprar);
 
     if (itensComprar.length === 0) {
-        painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente para os próximos ${dias} dias!</p>`;
+        painel.innerHTML = `<p style="color:var(--green);font-weight:700;text-align:center;padding:20px 0;">✅ Estoque suficiente!</p>`;
         return;
     }
 
+    const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
     const custoTotalCompra = itensComprar.reduce((s,i) => s + i.custoEstimado, 0);
+
     let html = '';
     itensComprar.forEach(i => {
-        const labelEmbalagem = i.nomeEmbalagem
-            ? `${i.embalagensNecessarias} ${i.nomeEmbalagem}${i.embalagensNecessarias > 1 ? 's' : ''}`
+        const labelComprar = i.nomeEmbalagem
+            ? `${i.embalagensComprar} ${i.nomeEmbalagem}${i.embalagensComprar === 1 ? '' : 's'}`
             : i.unidade === 'un'
-                ? `${i.embalagensNecessarias} un.`
-                : `${i.embalagensNecessarias} embalagem${i.embalagensNecessarias > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
+                ? `${i.embalagensComprar} un.`
+                : `${i.embalagensComprar} embalagem${i.embalagensComprar > 1 ? 's' : ''} de ${i.qtdEmbalagem}${i.unidade}`;
 
-        const necessarioTexto = i.nomeEmbalagem
-            ? `${i.necessario.toFixed(0)}${i.unidade} (${(i.necessario / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.necessario / i.qtdEmbalagem) === 1 ? '' : 's'})`
-            : `${i.necessario.toFixed(1)}${i.unidade}`;
-        const estoqueTexto = i.nomeEmbalagem
-            ? `${i.estoqueAtual.toFixed(0)}${i.unidade} (${(i.estoqueAtual / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.estoqueAtual / i.qtdEmbalagem) === 1 ? '' : 's'})`
+        const estoqueLabel = i.nomeEmbalagem
+            ? `${fmt(i.estoqueAtual / i.qtdEmbalagem)} ${i.nomeEmbalagem}${(i.estoqueAtual / i.qtdEmbalagem) === 1 ? '' : 's'}`
             : `${i.estoqueAtual}${i.unidade}`;
-        const reservadoTexto = i.nomeEmbalagem
-            ? `${i.estoqueReservado.toFixed(0)}${i.unidade} (${(i.estoqueReservado / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.estoqueReservado / i.qtdEmbalagem) === 1 ? '' : 's'})`
+        const reservadoLabel = i.nomeEmbalagem
+            ? `${fmt(i.estoqueReservado / i.qtdEmbalagem)} ${i.nomeEmbalagem}${(i.estoqueReservado / i.qtdEmbalagem) === 1 ? '' : 's'}`
             : `${i.estoqueReservado}${i.unidade}`;
-        const faltaEmbalagemTexto = i.nomeEmbalagem
-            ? `${(i.falta / i.qtdEmbalagem).toFixed(1)} ${i.nomeEmbalagem}${(i.falta / i.qtdEmbalagem) === 1 ? '' : 's'}`
-            : `${i.falta.toFixed(0)}${i.unidade}`;
-        const riscoTexto = i.dataRisco
-            ? `⚠️ risco a partir de ${String(i.dataRisco.getDate()).padStart(2,'0')}/${String(i.dataRisco.getMonth()+1).padStart(2,'0')}`
-            : '';
 
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FEF3C7;border-radius:10px;margin-bottom:8px;">
-            <div>
-                <strong>${escaparHTML(i.nome)}</strong>
-                <div style="font-size:0.78em;color:var(--brown-warm);">Consumo nesta janela: ${necessarioTexto}</div>
-                <div style="font-size:0.78em;color:var(--brown-warm);">Reservado (todos os pedidos): ${reservadoTexto} | Físico em estoque: ${estoqueTexto}</div>
-                ${riscoTexto ? `<div style="font-size:0.75em;color:#DC2626;font-weight:700;margin-top:2px;">${riscoTexto}</div>` : ''}
+        let riscoTexto = '';
+        if (i.dataRisco && i.faltaPedidos > 0) {
+            const faltaLabel = i.nomeEmbalagem
+                ? `${fmt(i.faltaPedidos / i.qtdEmbalagem)} ${i.nomeEmbalagem}${(i.faltaPedidos / i.qtdEmbalagem) === 1 ? '' : 's'}`
+                : `${i.faltaPedidos}${i.unidade}`;
+            const dia = String(i.dataRisco.getDate()).padStart(2,'0');
+            const mes = String(i.dataRisco.getMonth()+1).padStart(2,'0');
+            riscoTexto = `⚠️ Faltam ${faltaLabel} pros pedidos já agendados — risco a partir de ${dia}/${mes}`;
+        }
+
+        html += `<div style="padding:12px 14px;background:#FEF3C7;border-radius:12px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                <strong style="font-size:0.95em;">${escaparHTML(i.nome)}</strong>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-weight:700;color:#92400E;white-space:nowrap;">Comprar: ${labelComprar}</div>
+                    <div style="font-size:0.75em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
+                </div>
             </div>
-            <div style="text-align:right;">
-                <div style="font-weight:700;color:#92400E;">Comprar: ${labelEmbalagem}</div>
-                <div style="font-size:0.72em;color:var(--brown-warm);">(${faltaEmbalagemTexto} faltando)</div>
-                <div style="font-size:0.78em;color:var(--brown-warm);">≈ R$ ${i.custoEstimado.toFixed(2).replace('.',',')}</div>
-            </div>
+            <div style="font-size:0.78em;color:var(--brown-warm);margin-top:6px;">Estoque: ${estoqueLabel} · Reservado: ${reservadoLabel}</div>
+            ${riscoTexto ? `<div style="font-size:0.76em;color:#DC2626;font-weight:700;margin-top:4px;">${riscoTexto}</div>` : ''}
         </div>`;
     });
     html += `<div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700;">
