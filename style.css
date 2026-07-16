@@ -325,6 +325,11 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .dash-tab { padding: 8px 20px; border: 2px solid var(--cream-dark); border-radius: 50px; background: var(--white); color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .dash-tab.active { background: var(--surface-brand); color: var(--amber-light); border-color: var(--surface-brand); }
 
+.dash-gastos-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) {
+    .dash-gastos-cat-grid { grid-template-columns: 1fr; gap: 20px; }
+}
+
 #dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="producao"],
 #dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="clientes"],
 #dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="financeiro"],
