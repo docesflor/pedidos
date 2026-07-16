@@ -447,13 +447,12 @@ async function carregarInsumos() {
                 placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
             } else {
                 const labelUn = i.unidade !== 'un' ? i.unidade : ' un';
-                estoqueLinha = (i.unidade === 'g' && estoqueAtual >= 1000)
-                    ? formatarPesoAmigavel(estoqueAtual)
-                    : `${estoqueAtual}${labelUn}`;
+                const fmtPeso = (v) => i.unidade === 'g' ? formatarPesoAmigavel(v) : `${v}${labelUn}`;
+                estoqueLinha = fmtPeso(estoqueAtual);
                 if (estoqueReservado > 0) {
-                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${estoqueReservado}${labelUn} reservado em pedidos · disponível: ${disponivel}${labelUn})</span>`;
+                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmtPeso(estoqueReservado)} reservado em pedidos · disponível: ${fmtPeso(disponivel)})</span>`;
                 }
-                estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${estoqueMinimo}${i.unidade})` : '';
+                estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${fmtPeso(estoqueMinimo)})` : '';
                 placeholderEntrada = 'Qtd a adicionar';
             }
 
