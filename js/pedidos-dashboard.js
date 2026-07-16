@@ -9,6 +9,13 @@ let graficoHistoricoPreco = null;
 let _dadosLucratividadeSabores = [];
 const CORES_CATEGORIA_GASTO = { 'Ingredientes':'#E8943A', 'Embalagens':'#5C2A0E', 'Gás/Energia':'#DC2626', 'Entrega':'#5b8def', 'Outros':'#8B4513' };
 
+function mostrarAbaDash(aba, btn) {
+    const resultado = document.getElementById('dashboard-resultado');
+    if (resultado) resultado.dataset.abaAtiva = aba;
+    document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+}
+
 /* ── CONTADOR ANIMADO DO DASHBOARD ── */
 function animarNumeroDash(el, valorFinal, formatarFn) {
     if (!el) return;
