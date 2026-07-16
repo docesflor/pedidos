@@ -41,7 +41,7 @@ async function carregarDashboard() {
         receitasMap[r.sabor] = r;
     });
     database.ref('pedidos').once('value', snapshot => {
-        let faturamento=0, faturamentoMesAnterior=0, totalPendente=0, qtdPendente=0, entregues=0, andamento=0;
+        let faturamento=0, faturamentoMesAnterior=0, totalPendente=0, qtdPendente=0, entregues=0, andamento=0, pedidosFaturados=0;
         const sabores={}, pagamentos={};
         let totalBrigadeiros=0;
         let mesAnterior = mes!==null?mes-1:null, anoMesAnterior=ano;
@@ -61,14 +61,14 @@ async function carregarDashboard() {
             if(dataP.getFullYear()!==ano) return;
             if(mes!==null&&dataP.getMonth()!==mes) return;
             if(finalizado) entregues++; else andamento++;
-            if(finalizado||pago) faturamento+=limparValor(p.valorTotal);
+            if(finalizado||pago) { faturamento+=limparValor(p.valorTotal); pedidosFaturados++; }
             else if(parcial){const vp=limparValor(p.valorPago),vt=limparValor(p.valorTotal);faturamento+=vp>0?vp:vt;}
             pagamentos[status]=(pagamentos[status]||0)+1;
             if(status==='A pagar'){totalPendente+=limparValor(p.valorTotal);qtdPendente++;}
             else if(parcial){const vPago=limparValor(p.valorPago),vTotal=limparValor(p.valorTotal);totalPendente+=Math.max(0,vTotal-vPago);qtdPendente++;}
             (p.itens||[]).forEach(item=>{const nome=item.sabor||item.nome||'Desconhecido';sabores[nome]=(sabores[nome]||0)+(parseInt(item.quantidade)||0);totalBrigadeiros+=parseInt(item.quantidade)||0;});
         });
-        const ticket = entregues>0?faturamento/entregues:0;
+        const ticket = pedidosFaturados>0?faturamento/pedidosFaturados:0;
         animarNumeroDash(document.getElementById('dashFaturamento'), faturamento, v => 'R$ '+v.toFixed(2).replace('.',','));
         const elComp = document.getElementById('dashFaturamentoComparativo');
         const mesesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -107,53 +107,12 @@ async function carregarDashboard() {
         const mediaBrig=(entregues+andamento)>0?Math.round(totalBrigadeiros/(entregues+andamento)):0;
         animarNumeroDash(document.getElementById('dashTotalBrig'), totalBrigadeiros, v => Math.round(v).toLocaleString('pt-BR'));
         animarNumeroDash(document.getElementById('dashMediaBrig'), mediaBrig, v => Math.round(v).toLocaleString('pt-BR'));
-        // Custo médio por unidade
-        database.ref('receitas').once('value', snapshotRec => {
-        let custoTotalRec = 0, qtdComReceita = 0;
-        snapshotRec.forEach(child => {
-            const r = child.val();
-            const custoPorUn = r.custoPorUnidade || (r.custoTotal / r.rendimento);
-            custoTotalRec += custoPorUn;
-            qtdComReceita++;
-        });
-        const custoMedioUn = qtdComReceita > 0 ? custoTotalRec / qtdComReceita : null;
-        const precoMedioUn = (entregues + andamento) > 0 && totalBrigadeiros > 0 ? faturamento / totalBrigadeiros : null;
-        let cardCustoMedio = document.getElementById('cardCustoMedioDash');
-        if (!cardCustoMedio) {
-            cardCustoMedio = document.createElement('div');
-            cardCustoMedio.className = 'form-card';
-            cardCustoMedio.id = 'cardCustoMedioDash';
-            const refCard = document.getElementById('cardCustoProdDash');
-            if (refCard) refCard.parentNode.insertBefore(cardCustoMedio, refCard.nextSibling);
-            else document.getElementById('dashboard-resultado').appendChild(cardCustoMedio);
-        }
-        if (custoMedioUn !== null) {
-            const margemUn = precoMedioUn ? precoMedioUn - custoMedioUn : null;
-            const margemPct = precoMedioUn ? (margemUn / precoMedioUn * 100).toFixed(1) : null;
-            cardCustoMedio.style.display = 'block';
-            cardCustoMedio.innerHTML = `
-                <p class="form-card-titulo">📊 Custo Médio por Brigadeiro</p>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <div style="flex:1;background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;min-width:100px;">
-                        <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Custo Médio/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:#92400E;">${formatarBRL(custoMedioUn)}</p>
-                        <p style="font-size:0.7em;color:#92400E;margin-top:2px;">${qtdComReceita} sabor${qtdComReceita>1?'es':''} com receita</p>
-                    </div>
-                    ${precoMedioUn ? `
-                    <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;min-width:100px;">
-                        <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Preço Médio/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:var(--brown-dark);">${formatarBRL(precoMedioUn)}</p>
-                    </div>
-                    <div style="flex:1;background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;min-width:100px;">
-                        <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Margem/un</p>
-                        <p style="font-size:1.5em;font-weight:700;color:#065F46;">${formatarBRL(margemUn)}</p>
-                        <p style="font-size:0.7em;color:#065F46;margin-top:2px;">${margemPct}% de margem</p>
-                    </div>` : ''}
-                </div>`;
-        } else {
-            cardCustoMedio.style.display = 'none';
-        }
-        }); // fecha database.ref('receitas')
+        // Card "Custo Médio por Brigadeiro" removido: era uma média simples entre receitas
+        // (sem pesar pela quantidade vendida), redundante e menos preciso que o card
+        // "Custo de Produção Estimado" logo abaixo. Isso só esconde o card se ele ainda
+        // existir na tela de uma sessão anterior.
+        const cardCustoMedioAntigo = document.getElementById('cardCustoMedioDash');
+        if (cardCustoMedioAntigo) cardCustoMedioAntigo.style.display = 'none';
         const saboresOrdenados=Object.entries(sabores).sort((a,b)=>b[1]-a[1]);
         const maxSabor=saboresOrdenados[0]?.[1]||1;
         document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
@@ -228,7 +187,12 @@ async function carregarDashboard() {
                             dataP = new Date(pts[0], pts[1]-1, pts[2]);
                         } else return;
                         if (dataP.getFullYear() !== ano || dataP.getMonth() !== mes) return;
-                        projecao += limparValor(p.valorTotal);
+                        if (st === 'Pago Parcialmente') {
+                            const vt = limparValor(p.valorTotal), vp = limparValor(p.valorPago);
+                            projecao += Math.max(0, vt - vp); // só o que falta, o que já foi pago já está no faturamento
+                        } else {
+                            projecao += limparValor(p.valorTotal);
+                        }
                     });
                 }
                 let elProjecao = document.getElementById('dashProjecao');
