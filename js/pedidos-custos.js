@@ -935,8 +935,10 @@ async function calcularPrevisaoCompra(dias, btn) {
     const insumosMap = {};
     snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
 
-    // Data mais próxima, dentro da janela escolhida, em que cada insumo é consumido —
-    // usada só pra indicar urgência ("risco a partir de..."), não pra calcular quantidade.
+    // Consumo somado só dos pedidos cuja entrega cai dentro da janela escolhida
+    // (inclui atrasados, já que são ainda mais urgentes). Também guarda a data
+    // mais próxima de cada insumo, pra exibir o "risco a partir de...".
+    const consumoNoPeriodo = {};
     const primeiraDataAfetada = {};
     snapPedidos.forEach(child => {
         const p = child.val();
@@ -945,11 +947,13 @@ async function calcularPrevisaoCompra(dias, btn) {
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
         else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
         else return;
-        if (dataP < hoje || dataP > limite) return;
+        if (dataP > limite) return; // fora da janela escolhida — não conta pra essa consulta
         (p.itens || []).forEach(item => {
             const receita = receitasMap[item.sabor];
             if (!receita || !receita.ingredientes) return;
+            const fator = (item.quantidade || 0) / receita.rendimento;
             receita.ingredientes.forEach(ing => {
+                consumoNoPeriodo[ing.insumoKey] = (consumoNoPeriodo[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
                 if (!primeiraDataAfetada[ing.insumoKey] || dataP < primeiraDataAfetada[ing.insumoKey]) {
                     primeiraDataAfetada[ing.insumoKey] = dataP;
                 }
@@ -957,16 +961,12 @@ async function calcularPrevisaoCompra(dias, btn) {
         });
     });
 
-    // Quantidade a comprar = déficit já existente pros pedidos agendados (qualquer prazo)
-    // + margem de segurança de 3 semanas baseada no consumo médio histórico.
-    const SEMANAS_BUFFER = 3;
+    // Quantidade a comprar = consumo dos pedidos dentro da janela escolhida, menos o estoque físico atual.
     const itensComprar = [];
 
     Object.values(insumosMap).forEach(insumo => {
-        const estoqueAtual     = insumo.estoqueAtual || 0;
-        const estoqueReservado = insumo.estoqueReservado || 0;
-        // Necessário: fato, calculado a partir de pedidos já confirmados no banco.
-        const necessario       = Math.max(0, estoqueReservado - estoqueAtual);
+        const estoqueAtual = insumo.estoqueAtual || 0;
+        const necessario    = Math.max(0, (consumoNoPeriodo[insumo.key] || 0) - estoqueAtual);
 
         if (necessario <= 0) return;
 
