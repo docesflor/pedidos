@@ -1,915 +1,562 @@
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doces Flor – Sistema de Pedidos</title>
-    <link rel="icon" type="image/png" href="https://docesflor.github.io/shared/icone.png">
-    <link rel="apple-touch-icon" href="https://docesflor.github.io/shared/icone.png">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://docesflor.github.io/shared/theme.css">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://docesflor.github.io/shared/firebase-config.js"></script>
-    <script src="https://docesflor.github.io/shared/sabores-precos.js"></script>
-    <script src="https://docesflor.github.io/shared/utils.js"></script>
-    <link rel="manifest" href="manifest.json">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<style>
-/* ✨ MELHORIAS VISUAIS */
-.menu-btn { position: relative; transition: color 0.25s ease; }
-.menu-btn::after {
-  content: ''; position: absolute; left: 50%; bottom: 0;
-  height: 3px; width: 0; background: var(--amber); border-radius: 2px;
-  transform: translateX(-50%); transition: width 0.3s ease;
-}
-.menu-btn.active::after { width: 55%; }
+/* ═══════════════════════════════════════════
+   PEDIDOS — DASHBOARD, GRÁFICOS E RELATÓRIOS
+   Depende de: shared/*, pedidos-auth.js, pedidos-precos.js, pedidos-crud.js
+═══════════════════════════════════════════ */
 
-.btn { transition: transform 0.12s ease, box-shadow 0.2s ease; }
-.btn:active { transform: scale(0.96); }
+let graficoFaturamento = null;
+let graficoGastosCategoria = null;
+let graficoHistoricoPreco = null;
+let _dadosLucratividadeSabores = [];
+const CORES_CATEGORIA_GASTO = { 'Ingredientes':'#E8943A', 'Embalagens':'#5C2A0E', 'Gás/Energia':'#DC2626', 'Entrega':'#5b8def', 'Outros':'#8B4513' };
 
-.secao.active { animation: secaoPedidosEntrar 0.4s ease both; }
-@keyframes secaoPedidosEntrar {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-</style>
-</head>
-</head>
-<body>
-
-<!-- ═══ TELA DE LOGIN ═══ -->
-<div id="tela-login">
-    <div class="login-box">
-        <div class="login-logo-ring">
-            <img src="icone.png" alt="Doces Flor">
-        </div>
-        <div class="login-title">Doces <span>Flor</span></div>
-        <div class="login-sub">Sistema de Pedidos</div>
-        <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email">
-        <input type="password" id="loginSenha" placeholder="Senha">
-        <p id="loginErro"></p>
-        <button id="btnLogin" class="btn-login" onclick="fazerLogin()">Entrar</button>
-        <p class="login-esqueci">Esqueceu a senha? <a href="#" onclick="recuperarSenha()">Redefinir</a></p>
-    </div>
-</div>
-
-<!-- ═══ MENU FIXO ═══ -->
-<nav id="menu-fixo">
-    <div id="menu-hero">
-        <div id="menu-acoes">
-            <button class="btn-toggle-tema" onclick="alternarTema()" aria-label="Alternar modo escuro">🌙</button>
-            <button class="btn-sair-topo" onclick="fazerLogout()">🚪 Sair</button>
-            <button class="hamburger" id="btnHamburger" onclick="toggleGaveta()" aria-label="Menu">
-                <span></span><span></span><span></span>
-            </button>
-        </div>
-        <img src="icone.png" id="logo-topo" alt="Doces Flor">
-        <div id="menu-brand">
-            <span id="menu-brand-nome">Doces <span>Flor</span></span>
-            <span id="menu-brand-sub">Sistema de Pedidos</span>
-        </div>
-    </div>
-    <div class="menu-botoes">
-        <div class="menu-tabs-inner">
-            <button class="menu-btn active" onclick="irPara('criar', this)">➕ Novo Pedido</button>
-            <div class="menu-btn-wrapper">
-                <button class="menu-btn" id="btnAndamento" onclick="irPara('andamento', this)">📦 Andamento</button>
-            </div>
-            <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
-            <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
-            <div class="menu-btn-wrapper">
-                <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
-            </div>
-            <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
-        </div>
-    </div>
-</nav>
-
-<!-- ═══ GAVETA ═══ -->
-<div class="gaveta-overlay" id="gavetaOverlay" onclick="fecharGaveta()"></div>
-<div class="gaveta" id="gaveta">
-    <div class="gaveta-header">
-        <img src="icone.png" alt="Doces Flor">
-        <span class="gaveta-header-titulo">Doces Flor</span>
-        <button class="gaveta-fechar" onclick="fecharGaveta()">✕</button>
-    </div>
-    <nav class="gaveta-nav">
-        <button class="gaveta-btn active" id="gbtnCriar" onclick="irParaGaveta('criar')">➕ Novo Pedido</button>
-        <button class="gaveta-btn" id="gbtnAndamento" onclick="irParaGaveta('andamento')">
-            📦 Andamento
-            <span class="gaveta-badge" id="gavetaBadge" style="display:none;"></span>
-        </button>
-        <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
-        <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
-        <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
-        <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
-        <hr class="gaveta-separador">
-        <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
-    </nav>
-</div>
-
-<!-- ═══ AVISO PRÓXIMOS ═══ -->
-<div id="avisoProximos" onclick="abrirPainelUrgentes()"></div>
-
-<!-- ═══ SEÇÃO 1: CRIAR PEDIDO ═══ -->
-<section id="secao-criar" class="secao active">
-    <h2 class="secao-titulo">
-        🌸 Novo Pedido
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Feito com amor, entregue com carinho ♥</span>
-    </h2>
-    <div class="form-card">
-        <p class="form-card-titulo">👤 Dados do Cliente</p>
-        <label for="nome">Nome</label>
-        <div class="autocomplete-wrapper">
-            <input type="text" id="nome" placeholder="Nome do cliente" autocomplete="off">
-            <div class="autocomplete-lista" id="autocompleteLista" style="display:none;"></div>
-        </div>
-        <label for="telefone">Telefone</label>
-        <input type="text" id="telefone" placeholder="(47) 99999-9999">
-    </div>
-    <div class="form-card">
-        <p class="form-card-titulo">📅 Entrega / Retirada</p>
-        <div class="linha-dupla">
-            <div>
-                <label for="dataEntrega">Data</label>
-                <input type="date" id="dataEntrega">
-            </div>
-            <div>
-                <label for="horarioEntrega">Horário</label>
-                <input type="time" id="horarioEntrega">
-                <div id="aviso-data-bloqueada">
-                    🔒 <span id="aviso-data-bloqueada-texto"></span>
-                </div>
-            </div>
-        </div>
-        <label for="tipoEntrega">Tipo</label>
-        <select id="tipoEntrega">
-            <option value="retirada" selected>Retirada</option>
-            <option value="entrega">Entrega</option>
-        </select>
-        <div id="enderecoFields">
-            <hr class="divisor">
-            <label for="cep">CEP</label>
-            <input type="text" id="cep" placeholder="00000-000">
-            <div class="linha-dupla">
-                <div><label for="endereco">Endereço</label><input type="text" id="endereco"></div>
-                <div class="estreito"><label for="numero">Nº</label><input type="text" id="numero"></div>
-            </div>
-            <label for="pontoReferencia">Complemento</label>
-            <input type="text" id="pontoReferencia">
-            <label for="bairro">Bairro</label>
-            <input type="text" id="bairro">
-            <label for="cidade">Cidade</label>
-            <input type="text" id="cidade">
-        </div>
-    </div>
-    <div class="form-card">
-        <p class="form-card-titulo">🍫 Adicionar Brigadeiros</p>
-        <div id="contadorCategorias" style="display:none;gap:8px;margin-bottom:14px;">
-            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
-                <div style="font-size:1.3em;margin-bottom:4px;">🍫</div>
-                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Tradicional</div>
-                <div id="infoTrad" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
-            </div>
-            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
-                <div style="font-size:1.3em;margin-bottom:4px;">✨</div>
-                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Gourmet</div>
-                <div id="infoGourmet" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
-            </div>
-            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
-                <div style="font-size:1.3em;margin-bottom:4px;">🍓</div>
-                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Frutas</div>
-                <div id="infoFrutas" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
-            </div>
-        </div>
-        <label for="sabor">Sabor</label>
-        <select id="sabor">
-            <option value="">Selecione o sabor</option>
-            <optgroup label="Tradicionais">
-            <option value="Amendoim">Amendoim</option>
-            <option value="Beijinho">Beijinho</option>
-            <option value="Brigadeiro">Brigadeiro</option>
-            <option value="Café">Café</option>
-            <option value="Chocotone">Chocotone</option>
-            <option value="Dois Amores">Dois Amores</option>
-            <option value="Leite Ninho">Leite Ninho</option>
-            <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
-            <option value="Morango Ninho">Morango Ninho</option>
-            <option value="Prestígio">Prestígio</option>
-            <option value="Quebra Queixo">Quebra Queixo</option>
-            <option value="Sensação">Sensação</option>
-            <option value="Tapioca">Tapioca</option>
-            </optgroup>
-            <optgroup label="Gourmet">
-            <option value="Banoffee">Banoffee</option>
-            <option value="Black Cacau">Black Cacau</option>
-            <option value="Canjica">Canjica</option>
-            <option value="Chocolate Gourmet">Chocolate Gourmet</option>
-            <option value="Churros">Churros</option>
-            <option value="Confete">Confete</option>
-            <option value="Doritos">Doritos</option>
-            <option value="Ferrero Rocher">Ferrero Rocher</option>
-            <option value="Floresta Negra">Floresta Negra</option>
-            <option value="Guacamole">Guacamole</option>
-            <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
-            <option value="Menta">Menta</option>
-            <option value="Negresco">Negresco</option>
-            <option value="Nutella">Nutella</option>
-            <option value="Ovomaltine">Ovomaltine</option>
-            </optgroup>
-            <optgroup label="Frutas">
-                <option value="Amora">Amora</option>
-                <option value="Banana">Banana</option>
-                <option value="Cereja">Cereja</option>
-                <option value="Frutas Vermelhas">Frutas Vermelhas</option>
-                <option value="Limão">Limão</option>
-                <option value="Maracujá">Maracujá</option>
-                <option value="Milho">Milho</option>
-                <option value="Uva">Uva</option>
-            </optgroup>
-        </select>
-        <div class="linha-dupla">
-            <div>
-                <label for="formato">Formato</label>
-                <select id="formato">
-                    <option value="">Selecione</option>
-                    <option value="Redondo">Redondo</option>
-                    <option value="Flor">Flor</option>
-                    <option value="Coração">Coração</option>
-                </select>
-            </div>
-            <div>
-                <label for="tipoForma">Forminha</label>
-                <select id="tipoForma">
-                    <option value="">Selecione</option>
-                    <option value="Redonda">Redonda</option>
-                    <option value="Quadrada">Quadrada</option>
-                </select>
-            </div>
-        </div>
-        <label for="cor">Cor da Forminha</label>
-        <select id="cor">
-            <option value="">Selecione a cor</option>
-            <option value="Branca">Branca</option>
-            <option value="Preta">Preta</option>
-            <option value="Vermelha">Vermelha</option>
-            <option value="Rosa">Rosa</option>
-            <option value="Azul">Azul</option>
-            <option value="Verde">Verde</option>
-            <option value="Amarela">Amarela</option>
-            <option value="Roxa">Roxa</option>
-            <option value="Laranja">Laranja</option>
-            <option value="Marrom">Marrom</option>
-            <option value="Cinza">Cinza</option>
-            <option value="Dourada">Dourada</option>
-            <option value="Prateada">Prateada</option>
-            <option value="Outra">Outra (especificar)</option>
-        </select>
-        <input type="text" id="corCustomizada" placeholder="Especifique a cor" style="display:none;">
-        <label for="quantidade">Quantidade</label>
-        <select id="quantidade" onchange="toggleQuantidadeCustomizada(this)">
-            <option value="">Selecione</option>
-            <option value="25">25 unidades</option>
-            <option value="33">33 unidades</option>
-            <option value="34">34 unidades</option>
-            <option value="50">50 unidades</option>
-            <option value="75">75 unidades</option>
-            <option value="100">100 unidades</option>
-            <option value="125">125 unidades</option>
-            <option value="150">150 unidades</option>
-            <option value="200">200 unidades</option>
-            <option value="outro">✏️ Especificar...</option>
-        </select>
-        <input type="number" id="quantidadeCustomizada" placeholder="Digite a quantidade" min="1" style="display:none;margin-top:-10px;margin-bottom:14px;">
-        <button class="btn btn-laranja btn-bloco" id="btnAdicionarItem" onclick="adicionarItem()">+ Adicionar Item</button>
-        <div id="itensList"></div>
-    </div>
-    <div class="form-card">
-        <p class="form-card-titulo">💰 Valores</p>
-        <label for="valor">Valor Brigadeiros</label>
-        <input type="text" id="valor" readonly>
-        <label for="valorFrete">Custo Frete</label>
-        <input type="text" id="valorFrete" placeholder="R$ 0,00">
-        <label for="valorDesconto">Desconto</label>
-        <input type="text" id="valorDesconto" placeholder="R$ 0,00">
-        <label for="valorTotal">Valor Total</label>
-        <input type="text" id="valorTotal" readonly>
-    </div>
-    <div class="form-card">
-        <p class="form-card-titulo">💳 Pagamento</p>
-        <label for="observacoes">Observações</label>
-        <textarea id="observacoes" placeholder="Alguma observação especial?"></textarea>
-        <label for="statusPagamento">Status do Pagamento</label>
-        <select id="statusPagamento">
-            <option value="A pagar">A pagar</option>
-            <option value="Pago Parcialmente">Pago Parcialmente</option>
-            <option value="Pago">Pago</option>
-        </select>
-        <div id="valorPagoContainer">
-            <label for="valorPago">Valor Pago</label>
-            <input type="text" id="valorPago" placeholder="R$ 0,00">
-        </div>
-    </div>
-    <div id="custo-pedido-estimado" style="display:none;">
-    <div class="custo-pedido-card">
-        <div class="custo-pedido-titulo">🧮 Custo Estimado de Produção</div>
-        <div id="custo-pedido-linhas"></div>
-        <div class="custo-pedido-total">
-            <span>Custo Total</span>
-            <span id="custo-pedido-total-valor">R$ 0,00</span>
-        </div>
-        <div class="custo-pedido-margem" id="custo-pedido-margem"></div>
-    </div>
-</div>
-    <button class="btn btn-verde btn-bloco" id="btnEnviar" onclick="salvarPedido()">💾 Salvar Pedido</button>
-</section>
-
-<!-- ═══ SEÇÃO 2: ANDAMENTO ═══ -->
-<section id="secao-andamento" class="secao">
-    <h2 class="secao-titulo">
-        <span class="titulo-linha-principal">📦 Pedidos em Andamento <span id="tituloAndamentoContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span></span>
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Acompanhe seus pedidos ativos</span>
-    </h2>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
-        <button class="btn-filtro-status" onclick="toggleMenuMais('menuFiltroStatus', event)" aria-label="Filtrar por status">🔽 <span id="filtroStatusLabel">Todos</span></button>
-        <div class="toggle-visualizacao" id="toggleVisAndamento">
-            <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoAndamento('lista')" aria-label="Visualização em lista">☰</button>
-            <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoAndamento('grade')" aria-label="Visualização em grade">▦</button>
-        </div>
-    </div>
-    <div class="menu-mais" id="menuFiltroStatus" style="display:none;">
-        <button onclick="filtrarStatusMenu('todos','Todos')">Todos</button>
-        <button onclick="filtrarStatusMenu('A pagar','A pagar')">A pagar</button>
-        <button onclick="filtrarStatusMenu('Pago Parcialmente','Parcial')">Parcial</button>
-        <button onclick="filtrarStatusMenu('Pago','Pago')">Pago</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button class="btn btn-amarelo" style="flex:1;" onclick="toggleResumoProd()">🍫 Produção Semanal</button>
-        <button class="btn btn-marrom" style="flex:1;" onclick="toggleCalendario()">📅 Calendário</button>
-    </div>
-    <div id="resumoProducao" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
-        <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir na Semana</p>
-        <div id="resumoProducaoConteudo"></div>
-    </div>
-    <div id="calendario-wrapper"><div id="calendario-container"></div></div>
-    <div id="lista-andamento"><p style="color:var(--brown-warm);">Carregando...</p></div>
-</section>
-
-<!-- ═══ SEÇÃO 3: FINALIZADOS ═══ -->
-<section id="secao-finalizados" class="secao">
-    <h2 class="secao-titulo">
-        <span class="titulo-linha-principal">✅ Pedidos Finalizados <span id="tituloFinalizadosContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span></span>
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Histórico de entregas realizadas</span>
-    </h2>
-
-<div style="display:flex;gap:8px;margin-bottom:12px;">
-    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;">
-    <div class="toggle-visualizacao" id="toggleVisFinalizados">
-        <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoFinalizados('lista')" aria-label="Visualização em lista">☰</button>
-        <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoFinalizados('grade')" aria-label="Visualização em grade">▦</button>
-    </div>
-</div>
-
-<div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch;">
-    <div style="display:flex;gap:8px;flex:1;min-width:0;">
-        <select id="filtroFinalizadosMes" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
-            <option value="">Todos os meses</option>
-            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
-            <option value="2">Março</option><option value="3">Abril</option>
-            <option value="4">Maio</option><option value="5">Junho</option>
-            <option value="6">Julho</option><option value="7">Agosto</option>
-            <option value="8">Setembro</option><option value="9">Outubro</option>
-            <option value="10">Novembro</option><option value="11">Dezembro</option>
-        </select>
-        <select id="filtroFinalizadosAno" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026" selected>2026</option>
-            <option value="2027">2027</option>
-        </select>
-    </div>
-    <button class="btn btn-marrom" style="flex:1;min-width:0;white-space:nowrap;" onclick="toggleCalendarioFinalizados()">📅 Calendário</button>
-</div>
-
-<div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
-<div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
-</section>
-
-<!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
-<section id="secao-gastos" class="secao">
-    <div class="custos-tabs">
-        <button class="custos-tab active" id="custosTabInsumos" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
-        <button class="custos-tab" id="custosTabCompras" onclick="mostrarAbaGastos('compras', this)">🔮 Previsão</button>
-        <button class="custos-tab" id="custosTabReceitas" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
-        <button class="custos-tab" id="custosTabGastos" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
-    </div>
-    <h2 class="secao-titulo">
-        🧮 Custos & Produção
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Insumos, receitas e gastos em um só lugar</span>
-    </h2>
-    <div id="aba-gastos" style="display:none;">
-    <div class="form-card">
-        <p class="form-card-titulo">➕ Novo Gasto</p>
-        <div class="linha-dupla">
-            <div><label for="gastoData">Data</label><input type="date" id="gastoData"></div>
-            <div>
-                <label for="gastoCategoria">Categoria</label>
-                <select id="gastoCategoria" onchange="atualizarDescricaoGasto()">
-                    <option value="">Selecione</option>
-                    <option value="Ingredientes">🧴 Ingredientes</option>
-                    <option value="Embalagens">📦 Embalagens</option>
-                    <option value="Gás/Energia">🔥 Gás/Energia</option>
-                    <option value="Entrega">🚗 Entrega</option>
-                    <option value="Outros">📋 Outros</option>
-                </select>
-            </div>
-        </div>
-        <label for="gastoDescricao">Descrição</label>
-        <select id="gastoDescricao"><option value="">Selecione uma opção</option></select>
-        <div class="linha-dupla">
-            <div><label for="gastoQuantidade">Quantidade</label><input type="number" id="gastoQuantidade" placeholder="Ex: 2" min="1" step="1"></div>
-            <div><label for="gastoValor">Valor Total (R$)</label><input type="text" id="gastoValor" placeholder="R$ 0,00"></div>
-        </div>
-        <button class="btn btn-laranja btn-bloco" id="btnSalvarGasto" onclick="salvarGasto()">💾 Salvar Gasto</button>
-    </div>
-    <div class="form-card">
-        <p class="form-card-titulo">🔍 Filtrar</p>
-        <div class="linha-dupla">
-            <div>
-                <label>Mês</label>
-                <select id="gastoFiltroMes">
-                    <option value="todos">Todos</option>
-                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
-                    <option value="2">Março</option><option value="3">Abril</option>
-                    <option value="4">Maio</option><option value="5">Junho</option>
-                    <option value="6">Julho</option><option value="7">Agosto</option>
-                    <option value="8">Setembro</option><option value="9">Outubro</option>
-                    <option value="10">Novembro</option><option value="11">Dezembro</option>
-                </select>
-            </div>
-            <div><label>Ano</label><input type="number" id="gastoFiltroAno" value="2026" min="2024" max="2030"></div>
-        </div>
-        <button class="btn btn-marrom btn-bloco" onclick="carregarGastos()">🔍 Filtrar</button>
-    </div>
-    <div id="gastoResumo" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:16px;text-align:center;box-shadow:0 4px 18px var(--shadow);">
-        <p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total no Período</p>
-        <p id="gastoTotalPeriodo" style="font-family:'DM Sans',sans-serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
-    </div>
-    <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
-    </div>
-
-<!-- ── ABA INSUMOS ── -->
-<div id="aba-insumos" style="display:block;">
-    <div id="alertasInsumos"></div>
-    <p class="form-card-titulo" style="margin:4px 4px 14px;">📦 Estoque Atual</p>
-    <input type="text" id="buscaInsumos" placeholder="🔍 Buscar insumo por nome..." style="margin-bottom:12px;" oninput="filtrarInsumosPorNome()">
-    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
-
-    <div class="form-card" style="margin-top:22px;">
-        <p class="form-card-titulo" id="tituloFormInsumo">➕ Novo Insumo</p>
-        <label for="insumoNome">Nome do Insumo</label>
-        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado" list="listaInsumosExistentes" oninput="verificarInsumoExistente()" autocomplete="off">
-        <datalist id="listaInsumosExistentes"></datalist>
-        <p id="avisoInsumoExistente" style="display:none;font-size:0.8em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
-
-        <div id="blocoInsumoNovo">
-            <div class="linha-dupla">
-                <div>
-                <label for="insumoPreco">Preço (R$)</label>
-                <input type="text" id="insumoPreco" placeholder="R$ 0,00" inputmode="decimal" maxlength="15" oninput="this.value=maskMoeda(this.value)">
-                </div>
-                <div>
-                    <label for="insumoUnidade">Unidade</label>
-                    <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
-                        <option value="un">Unidade (un)</option>
-                        <option value="g">Gramas (g)</option>
-                        <option value="ml">Mililitros (ml)</option>
-                        
-                    </select>
-                </div>
-            </div>
-            <div id="insumoQtdWrapper">
-                <label for="insumoQtd">Quantidade por embalagem</label>
-                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaEstoqueEmbalagem()">
-            </div>
-            <div id="wrapperNomeEmbalagem">
-                <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
-                <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
-                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
-                    💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
-                </p>
-            </div>
-            <div class="linha-dupla">
-                <div>
-                    <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
-                    <input type="text" id="insumoEstoqueAtual" placeholder="Ex: 3950" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
-                </div>
-                <div>
-                    <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
-                    <input type="text" id="insumoEstoqueMinimo" placeholder="Ex: 800" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
-                </div>
-            </div>
-            <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
-        </div>
-
-        <div id="blocoInsumoReposicao" style="display:none;">
-            <p id="infoInsumoReposicao" style="font-size:0.82em;color:var(--brown-warm);margin-bottom:10px;"></p>
-            <div class="linha-dupla">
-                <div>
-                    <label for="reposQtd" id="labelReposQtd">Quantidade comprada</label>
-                    <input type="number" id="reposQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewReposicao()">
-                </div>
-                <div>
-                    <label for="reposValor" id="labelReposValor">Valor pago (R$)</label>
-                    <input type="text" id="reposValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewReposicao()">
-                </div>
-            </div>
-            <label for="reposCategoria">Categoria do gasto</label>
-            <select id="reposCategoria">
-                <option value="Ingredientes">🧴 Ingredientes</option>
-                <option value="Embalagens">📦 Embalagens</option>
-                <option value="Gás/Energia">🔥 Gás/Energia</option>
-                <option value="Entrega">🚗 Entrega</option>
-                <option value="Outros">📋 Outros</option>
-            </select>
-            <label for="reposData">Data da compra</label>
-            <input type="date" id="reposData">
-            <p id="reposPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
-        </div>
-
-        <button class="btn btn-laranja btn-bloco" id="btnSalvarInsumo" onclick="salvarOuRepor()">💾 Salvar Insumo</button>
-    </div>
-</div>
-
-<!-- ── ABA COMPRAS ── -->
-<div id="aba-compras" style="display:none;">
-    <div class="form-card" style="border:2px solid var(--amber);display:none;" id="cardRegistrarCompraLegado">
-        <p class="form-card-titulo">🛒 Registrar Compra</p>
-        <label for="compraInsumoSel">Insumo</label>
-        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
-            <option value="">Selecione o insumo</option>
-        </select>
-        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
-        <div class="linha-dupla">
-            <div>
-                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
-                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
-            </div>
-            <div>
-                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
-                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
-            </div>
-        </div>
-        <label for="compraCategoria">Categoria do gasto</label>
-        <select id="compraCategoria">
-            <option value="Ingredientes">🧴 Ingredientes</option>
-            <option value="Embalagens">📦 Embalagens</option>
-            <option value="Gás/Energia">🔥 Gás/Energia</option>
-            <option value="Entrega">🚗 Entrega</option>
-            <option value="Outros">📋 Outros</option>
-        </select>
-        <label for="compraData">Data da compra</label>
-        <input type="date" id="compraData">
-        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
-        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
-    </div>
-
-    <div class="form-card" style="border:2px solid var(--blue);">
-        <p class="form-card-titulo">🔮 Previsão de Compras</p>
-        <p style="font-size:0.8em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;">O que falta comprar para não faltar insumo nos pedidos já agendados.</p>
-        <div id="previsao-compra-filtros" style="display:flex;gap:6px;margin-bottom:14px;">
-            <button class="chip-filtro" onclick="calcularPrevisaoCompra(7,this)">7 dias</button>
-            <button class="chip-filtro active" id="chipPrevisao15" onclick="calcularPrevisaoCompra(15,this)">15 dias</button>
-            <button class="chip-filtro" onclick="calcularPrevisaoCompra(30,this)">30 dias</button>
-        </div>
-        <div id="painel-previsao-compra"></div>
-    </div>
-</div>
-
-<!-- ── ABA RECEITAS ── -->
-<div id="aba-receitas" style="display:none;">
-    <div class="form-card">
-        <p class="form-card-titulo">➕ Nova Receita</p>
-        <label for="receitaSabor">Sabor</label>
-        <select id="receitaSabor">
-            <option value="">Selecione o sabor</option>
-        </select>
-        <label for="receitaRendimento">Rendimento médio (unidades)</label>
-        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1" value="25">
-        <hr class="divisor">
-        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em;">🧴 Ingredientes da Receita</p>
-        <div class="linha-dupla">
-            <div>
-                <label for="receitaInsumoSel">Insumo</label>
-                <select id="receitaInsumoSel">
-                    <option value="">Selecione</option>
-                </select>
-            </div>
-            <div>
-                <label for="receitaInsumoQtd">Quantidade usada</label>
-                <input type="number" id="receitaInsumoQtd" placeholder="Ex: 80">
-            </div>
-        </div>
-        <p id="receitaInsumoHint" style="font-size:0.76em;color:var(--brown-warm);margin-top:-8px;margin-bottom:10px;padding-left:4px;"></p>
-        <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
-        <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
-        <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
-        <button class="btn btn-cinza btn-bloco" id="btnCancelarEdicaoReceita" style="display:none;" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
-    </div>
-    <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
-</div>
-</section>
-
-<!-- ═══ SEÇÃO 4: DASHBOARD ═══ -->
-<section id="secao-dashboard" class="secao">
-    <h2 class="secao-titulo">
-        📊 Dashboard
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Resumo financeiro e de produção</span>
-    </h2>
-    <div class="form-card">
-        <p class="form-card-titulo">📅 Período</p>
-        <div class="linha-dupla">
-            <div>
-                <label>Mês</label>
-                <select id="dashMes">
-                    <option value="geral">Geral (ano todo)</option>
-                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
-                    <option value="2">Março</option><option value="3">Abril</option>
-                    <option value="4">Maio</option><option value="5">Junho</option>
-                    <option value="6">Julho</option><option value="7">Agosto</option>
-                    <option value="8">Setembro</option><option value="9">Outubro</option>
-                    <option value="10">Novembro</option><option value="11">Dezembro</option>
-                </select>
-            </div>
-            <div><label>Ano</label><input type="number" id="dashAno" value="2026" min="2024" max="2030"></div>
-        </div>
-        <button class="btn btn-laranja btn-bloco" onclick="carregarDashboard()">Gerar Relatório</button>
-        <button class="btn btn-marrom btn-bloco" id="btnExportarCSV" onclick="exportarDashboardCSV()" style="display:none;">📥 Exportar CSV</button>
-        <button class="btn btn-vermelho btn-bloco" id="btnExportarPDF" onclick="exportarDashboardPDF()" style="display:none;">📄 Exportar PDF</button>
-    </div>
-    <div id="dashboard-resultado" style="display:none;">
-        <div class="form-card">
-            <p class="form-card-titulo">💰 Resumo Financeiro</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Faturamento</p>
-                    <p id="dashFaturamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
-                    <p id="dashFaturamentoComparativo" style="font-size:0.72em;margin-top:4px;font-weight:600;"></p>
-                </div>
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Ticket Médio</p>
-                    <p id="dashTicket" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
-                </div>
-                <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Gastos</p>
-                    <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
-                </div>
-                <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Lucro Líquido</p>
-                    <p id="dashLucro" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
-                </div>
-            </div>
-        </div>
-        <div class="form-card" id="cardPendencias" style="display:none;">
-            <p class="form-card-titulo">💰 Valor a Receber</p>
-            <div style="background:#FEF3C7;border-radius:14px;padding:16px;text-align:center;">
-                <p id="dashPendenciasValor" style="font-family:'DM Sans',sans-serif;font-size:1.8em;font-weight:700;color:#92400E;">R$ 0,00</p>
-                <p id="dashPendenciasDetalhe" style="font-size:0.78em;color:var(--brown-warm);margin-top:4px;"></p>
-            </div>
-            <div id="dashPendenciasLista" style="margin-top:12px;"></div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">📦 Pedidos</p>
-            <div class="linha-dupla">
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('finalizados')">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
-                    <p id="dashEntregues" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
-                </div>
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('andamento')">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
-                    <p id="dashAndamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
-                </div>
-            </div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">🍫 Produção</p>
-            <div style="display:flex;gap:12px;">
-                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Brigadeiros</p>
-                    <p id="dashTotalBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
-                </div>
-                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
-                    <p id="dashMediaBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
-                </div>
-            </div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
-            <div id="dashSabores"></div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                <label style="margin:0;text-transform:none;font-weight:500;font-size:0.8em;letter-spacing:0;">Mostrar apenas margem abaixo de</label>
-                <input type="number" id="filtroMargemSabor" placeholder="Ex: 30" min="0" max="100" style="margin-bottom:0;width:80px;" oninput="reaplicarFiltroMargemSabor()">
-                <span style="font-size:0.85em;color:var(--brown-warm);">%</span>
-            </div>
-            <div id="dashLucratividadeSabores"></div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
-            <div id="dashAvaliacoes"></div>
-        </div>
-        <div class="form-card" id="cardEventosDash" style="display:none;">
-            <p class="form-card-titulo">🔒 Eventos do Período</p>
-            <div id="dashEventosLista"></div>
-            <div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">Total Eventos</span>
-                <strong id="dashEventosTotal" style="color:var(--green);font-size:1.1em;">R$ 0,00</strong>
-            </div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">📈 Faturamento por Período</p>
-            <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💸 Gastos por Categoria</p>
-            <div id="dashGastosCategorias"></div>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">📉 Gastos por Categoria ao Longo do Ano</p>
-            <canvas id="graficoGastosCategoria" style="max-height:280px;"></canvas>
-        </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💳 Status de Pagamento</p>
-            <div id="dashPagamentos"></div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══ SEÇÃO 5: EVENTOS ═══ -->
-<section id="secao-eventos" class="secao">
-    <h2 class="secao-titulo">
-        🔒 Eventos
-        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
-        <span class="secao-sub">Gerencie seus eventos</span>
-    </h2>
-    <div class="form-card">
-        <p class="form-card-titulo">➕ Novo Evento / Bloqueio</p>
-        <label for="eventoNome">Nome do Evento</label>
-        <input type="text" id="eventoNome" placeholder="Ex: Casamento da Ana, Férias...">
-        <div class="linha-dupla">
-            <div><label for="eventoInicio">Data Início</label><input type="date" id="eventoInicio"></div>
-            <div><label for="eventoFim">Data Fim</label><input type="date" id="eventoFim"></div>
-        </div>
-        <label for="eventoObs">Observação (opcional)</label>
-        <input type="text" id="eventoObs" placeholder="Detalhes adicionais...">
-        <button class="btn btn-vermelho btn-bloco" onclick="salvarEvento()">🔒 Bloquear Período</button>
-    </div>
-    <div id="filtros-eventos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="chip-filtro active" onclick="filtrarEventos('todos', this)">Todos</button>
-        <button class="chip-filtro" onclick="filtrarEventos('aberto', this)">Em andamento</button>
-        <button class="chip-filtro" onclick="filtrarEventos('finalizado', this)">Finalizados</button>
-    </div>
-    <div id="lista-eventos"><p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p></div>
-</section>
-
-<!-- ═══ MODAL ═══ -->
-<div id="modalConfirmacao" class="modal-overlay" style="display:none;">
-    <div class="modal-box">
-        <p id="modalMensagem"></p>
-        <div class="modal-botoes">
-            <button class="btn btn-cinza" onclick="fecharModal(false)">Cancelar</button>
-            <button class="btn btn-vermelho" onclick="fecharModal(true)">Confirmar</button>
-        </div>
-    </div>
-</div>
-
-<div id="modalEditarInsumo" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width:420px;text-align:left;">
-        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;text-align:center;">✏️ Editar Insumo</p>
-        <label for="editInsumoNome">Nome do Insumo</label>
-        <input type="text" id="editInsumoNome">
-        <div class="linha-dupla">
-            <div>
-                <label for="editInsumoPreco">Preço (R$)</label>
-                <input type="text" id="editInsumoPreco" maxlength="15" oninput="this.value=maskMoeda(this.value)">
-            </div>
-            <div>
-                <label for="editInsumoUnidade">Unidade</label>
-                <select id="editInsumoUnidade" onchange="toggleNomeEmbalagemEdicao()">
-                    <option value="un">Unidade (un)</option>
-                    <option value="g">Gramas (g)</option>
-                    <option value="ml">Mililitros (ml)</option>
-                    
-                </select>
-            </div>
-        </div>
-        <div id="editInsumoQtdWrapper">
-            <label for="editInsumoQtd">Quantidade por embalagem</label>
-            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaPesoEdicao()">
-            <p id="dicaPesoEdicao" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;"></p>
-        </div>
-        <div id="editWrapperNomeEmbalagem">
-            <label for="editInsumoNomeEmbalagem">Como você chama a embalagem?</label>
-            <input type="text" id="editInsumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
-        </div>
-        <div class="linha-dupla">
-            <div>
-                <label id="editLabelEstoqueAtual" for="editInsumoEstoqueAtual">Estoque Atual</label>
-                <input type="text" id="editInsumoEstoqueAtual" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
-            </div>
-            <div>
-                <label id="editLabelEstoqueMinimo" for="editInsumoEstoqueMinimo">Estoque Mínimo</label>
-                <input type="text" id="editInsumoEstoqueMinimo" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
-            </div>
-        </div>
-        <div class="modal-botoes" style="margin-top:6px;">
-            <button class="btn btn-cinza" onclick="fecharEdicaoInsumo()">Cancelar</button>
-            <button class="btn btn-verde" onclick="salvarEdicaoInsumo()">💾 Salvar</button>
-        </div>
-    </div>
-</div>
-
-<div id="modalHistoricoPreco" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width:420px;text-align:left;">
-        <p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:4px;">📈 Histórico de Preço</p>
-        <p id="historicoPrecoInsumoNome" style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;"></p>
-        <canvas id="graficoHistoricoPreco" style="max-height:180px;margin-bottom:14px;"></canvas>
-        <div id="historicoPrecoLista" style="max-height:260px;overflow-y:auto;"></div>
-        <div class="modal-botoes" style="margin-top:14px;">
-            <button class="btn btn-cinza btn-bloco" onclick="document.getElementById('modalHistoricoPreco').style.display='none'">Fechar</button>
-        </div>
-    </div>
-</div>
-
-<div id="avisoOffline">📵 Sem conexão</div>
-
-
-<!-- ═══════════════════════════════════════════
-     MÓDULOS DO PEDIDOS — ordem importa:
-     auth → precos → crud → dashboard → custos → eventos → whatsapp → ui (init)
-═══════════════════════════════════════════ -->
-<script>
-if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-}
-window.scrollTo(0, 0);
-</script>
-<script src="js/pedidos-auth.js"></script>
-<script src="js/pedidos-precos.js"></script>
-<script src="js/pedidos-crud.js"></script>
-<script src="js/pedidos-dashboard.js"></script>
-<script src="js/pedidos-custos.js"></script>
-<script src="js/pedidos-eventos.js"></script>
-<script src="js/pedidos-whatsapp.js"></script>
-<script src="js/pedidos-ui.js"></script>
-
-<script>
-(function() {
-  function animarNumero(el) {
-    const textoFinal = el.textContent.trim();
-    const valorNumerico = parseFloat(textoFinal.replace(/[^\d,.-]/g, '').replace(',', '.'));
-    if (isNaN(valorNumerico)) return;
-    const prefixo = textoFinal.match(/^R\$\s?/) ? 'R$ ' : '';
+/* ── CONTADOR ANIMADO DO DASHBOARD ── */
+function animarNumeroDash(el, valorFinal, formatarFn) {
+    if (!el) return;
+    const valorInicial = parseFloat(el.dataset.valorAtual || '0') || 0;
+    el.dataset.valorAtual = valorFinal;
     const duracao = 600;
     const inicio = performance.now();
     function passo(agora) {
-      const progresso = Math.min((agora - inicio) / duracao, 1);
-      const atual = valorNumerico * progresso;
-      el.textContent = prefixo + atual.toLocaleString('pt-BR', { minimumFractionDigits: prefixo ? 2 : 0, maximumFractionDigits: prefixo ? 2 : 0 });
-      if (progresso < 1) requestAnimationFrame(passo);
-      else el.textContent = textoFinal;
+        const t = Math.min(1, (agora - inicio) / duracao);
+        const atual = valorInicial + (valorFinal - valorInicial) * (1 - Math.pow(1 - t, 3));
+        el.textContent = formatarFn(atual);
+        if (t < 1) requestAnimationFrame(passo);
     }
     requestAnimationFrame(passo);
-  }
-  const idsParaAnimar = ['dashFaturamento','dashTicket','dashGastos','dashLucro','dashEntregues','dashAndamento','dashTotalBrig','dashMediaBrig'];
-  const resultado = document.getElementById('dashboard-resultado');
-  if (!resultado) return;
-  const observer = new MutationObserver(() => {
-    if (resultado.style.display !== 'none') {
-      idsParaAnimar.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) animarNumero(el);
-      });
-    }
-  });
-  observer.observe(resultado, { attributes: true, attributeFilter: ['style'] });
-})();
-</script>
+}
 
-</body>
-</html>
+async function carregarDashboard() {
+    const mesVal = document.getElementById('dashMes').value;
+    const mes    = mesVal === 'geral' ? null : parseInt(mesVal);
+    const ano    = parseInt(document.getElementById('dashAno').value);
+    function limparValor(v) {
+        if (v===null||v===undefined||v==='') return 0;
+        if (typeof v==='number') return isNaN(v)?0:v;
+        const str = String(v).replace(/R\$\s*/g,'').trim().replace(/\./g,'').replace(',','.');
+        const num = parseFloat(str); return isNaN(num)?0:num;
+    }
+    const snapshotReceitas = await database.ref('receitas').once('value');
+    const receitasMap = {};
+    snapshotReceitas.forEach(child => {
+        const r = child.val();
+        receitasMap[r.sabor] = r;
+    });
+    database.ref('pedidos').once('value', snapshot => {
+        let faturamento=0, faturamentoMesAnterior=0, totalPendente=0, qtdPendente=0, entregues=0, andamento=0, pedidosFaturados=0;
+        const sabores={}, pagamentos={};
+        let totalBrigadeiros=0;
+        let mesAnterior = mes!==null?mes-1:null, anoMesAnterior=ano;
+        if (mesAnterior===-1) { mesAnterior=11; anoMesAnterior=ano-1; }
+        snapshot.forEach(child => {
+            const p=child.val(); if (!p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
+            else if(/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('-');dataP=new Date(pts[0],pts[1]-1,pts[2]);}
+            else return;
+            if(dataP.getFullYear()!==ano&&dataP.getFullYear()!==anoMesAnterior) return;
+            const status=p.statusPagamento||'', finalizado=status==='entregue', pago=status==='Pago', parcial=status==='Pago Parcialmente';
+            if(mes!==null&&dataP.getFullYear()===anoMesAnterior&&dataP.getMonth()===mesAnterior){
+                if(finalizado||pago) faturamentoMesAnterior+=limparValor(p.valorTotal);
+                else if(parcial){const vp=limparValor(p.valorPago),vt=limparValor(p.valorTotal);faturamentoMesAnterior+=vp>0?vp:vt;}
+            }
+            if(dataP.getFullYear()!==ano) return;
+            if(mes!==null&&dataP.getMonth()!==mes) return;
+            if(finalizado) entregues++; else andamento++;
+            if(finalizado||pago) { faturamento+=limparValor(p.valorTotal); pedidosFaturados++; }
+            else if(parcial){const vp=limparValor(p.valorPago),vt=limparValor(p.valorTotal);faturamento+=vp>0?vp:vt;}
+            pagamentos[status]=(pagamentos[status]||0)+1;
+            if(status==='A pagar'){totalPendente+=limparValor(p.valorTotal);qtdPendente++;}
+            else if(parcial){const vPago=limparValor(p.valorPago),vTotal=limparValor(p.valorTotal);totalPendente+=Math.max(0,vTotal-vPago);qtdPendente++;}
+            (p.itens||[]).forEach(item=>{const nome=item.sabor||item.nome||'Desconhecido';sabores[nome]=(sabores[nome]||0)+(parseInt(item.quantidade)||0);totalBrigadeiros+=parseInt(item.quantidade)||0;});
+        });
+        const ticket = pedidosFaturados>0?faturamento/pedidosFaturados:0;
+        animarNumeroDash(document.getElementById('dashFaturamento'), faturamento, v => 'R$ '+v.toFixed(2).replace('.',','));
+        const elComp = document.getElementById('dashFaturamentoComparativo');
+        const mesesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        if(mes!==null&&faturamentoMesAnterior>0){const diff=((faturamento-faturamentoMesAnterior)/faturamentoMesAnterior)*100;const seta=diff>=0?'↑':'↓';elComp.style.color=diff>=0?'var(--green)':'var(--red)';elComp.textContent=`${seta} ${Math.abs(diff).toFixed(0)}% vs ${mesesNome[mesAnterior]}`;}
+        else if(mes!==null){elComp.style.color='var(--brown-warm)';elComp.textContent='— sem dados anteriores';}
+        else elComp.textContent='';
+        animarNumeroDash(document.getElementById('dashTicket'), ticket, v => 'R$ '+v.toFixed(2).replace('.',','));
+        animarNumeroDash(document.getElementById('dashEntregues'), entregues, v => Math.round(v).toLocaleString('pt-BR'));
+        animarNumeroDash(document.getElementById('dashAndamento'), andamento, v => Math.round(v).toLocaleString('pt-BR'));
+        const pendentesOrdenados=[];
+        snapshot.forEach(child=>{
+            const p=child.val(); if(!p.dataEntrega) return;
+            let dataP;
+            if(/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
+            else if(/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('-');dataP=new Date(pts[0],pts[1]-1,pts[2]);}
+            else return;
+            if(dataP.getFullYear()!==ano) return;
+            if(mes!==null&&dataP.getMonth()!==mes) return;
+            const st=p.statusPagamento||'';
+            if(st!=='A pagar'&&st!=='Pago Parcialmente') return;
+            const vTotal=limparValor(p.valorTotal),vPago=limparValor(p.valorPago);
+            const vPend=st==='Pago Parcialmente'?Math.max(0,vTotal-vPago):vTotal;
+            if(vPend<=0) return;
+            pendentesOrdenados.push({p,dataP,vPend});
+        });
+        pendentesOrdenados.sort((a,b)=>a.dataP-b.dataP);
+        let htmlPendentes='';
+        pendentesOrdenados.forEach(({p,vPend})=>{
+            const st=p.statusPagamento||'', vPago=limparValor(p.valorPago);
+            const dataFormatada = formatarDataComDia(p.dataEntrega);
+            const statusLabel=st==='Pago Parcialmente'?`<span style="color:var(--amber);font-size:0.75em;font-weight:700;">Parcial</span>`:`<span style="color:var(--red);font-size:0.75em;font-weight:700;">A pagar</span>`;
+            htmlPendentes+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><strong>${escaparHTML(p.nome||'N/A')}</strong><span style="color:var(--brown-warm);font-size:0.82em;margin-left:6px;">📅 ${dataFormatada}</span><br>${statusLabel}${st==='Pago Parcialmente'&&vPago>0?`<span style="color:var(--brown-warm);font-size:0.75em;">(pago R$ ${vPago.toFixed(2).replace('.',',')})</span>`:''}</div><strong style="color:var(--amber);white-space:nowrap;margin-left:8px;">R$ ${vPend.toFixed(2).replace('.',',')}</strong></div>`;
+        });
+        if(qtdPendente>0){document.getElementById('cardPendencias').style.display='block';document.getElementById('dashPendenciasValor').textContent='R$ '+totalPendente.toFixed(2).replace('.',',');document.getElementById('dashPendenciasDetalhe').textContent=`${qtdPendente} pedido${qtdPendente>1?'s':''} com pagamento pendente`;document.getElementById('dashPendenciasLista').innerHTML=htmlPendentes;}
+        else document.getElementById('cardPendencias').style.display='none';
+        const mediaBrig=(entregues+andamento)>0?Math.round(totalBrigadeiros/(entregues+andamento)):0;
+        animarNumeroDash(document.getElementById('dashTotalBrig'), totalBrigadeiros, v => Math.round(v).toLocaleString('pt-BR'));
+        animarNumeroDash(document.getElementById('dashMediaBrig'), mediaBrig, v => Math.round(v).toLocaleString('pt-BR'));
+        // Card "Custo Médio por Brigadeiro" removido: era uma média simples entre receitas
+        // (sem pesar pela quantidade vendida), redundante e menos preciso que o card
+        // "Custo de Produção Estimado" logo abaixo. Isso só esconde o card se ele ainda
+        // existir na tela de uma sessão anterior.
+        const cardCustoMedioAntigo = document.getElementById('cardCustoMedioDash');
+        if (cardCustoMedioAntigo) cardCustoMedioAntigo.style.display = 'none';
+        const saboresOrdenados=Object.entries(sabores).sort((a,b)=>b[1]-a[1]);
+        const maxSabor=saboresOrdenados[0]?.[1]||1;
+        document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
+        calcularLucratividadeSabores(sabores, receitasMap, faturamento, totalBrigadeiros);
+        calcularAvaliacoes(ano, mes);
+        document.getElementById('dashPagamentos').innerHTML=Object.entries(pagamentos).length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':Object.entries(pagamentos).map(([sk,qtd])=>{const nomes={'entregue':'Entregue','A pagar':'A pagar','Pago Parcialmente':'Pago Parcialmente','Pago':'Pago'};return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.88em;"><span>${nomes[sk]||sk}</span><strong>${qtd} pedido${qtd>1?'s':''}</strong></div>`;}).join('');
+        let custoProducaoEstimado = 0;
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2], pts[1]-1, pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0], pts[1]-1, pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== ano) return;
+            if (mes !== null && dataP.getMonth() !== mes) return;
+            (p.itens || []).forEach(item => {
+                const receita = receitasMap[item.sabor];
+                if (!receita) return;
+                const custoPorUn = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
+                custoProducaoEstimado += custoPorUn * (parseInt(item.quantidade) || 0);
+            });
+        });
+        database.ref('gastos').once('value', snapGastos=>{
+            let totalGastos=0; const categorias={};
+            snapGastos.forEach(child=>{
+                const g=child.val(); if(!g.data) return;
+                let dataG;
+                if(/^\d{4}-\d{2}-\d{2}$/.test(g.data)){const pts=g.data.split('-');dataG=new Date(pts[0],pts[1]-1,pts[2]);}else return;
+                if(dataG.getFullYear()!==ano) return;
+                if(mes!==null&&dataG.getMonth()!==mes) return;
+                totalGastos+=g.valor||0;
+                const cat=g.categoria||'Outros';categorias[cat]=(categorias[cat]||0)+(g.valor||0);
+            });
+            database.ref('eventos').once('value', snapEventos => {
+                let totalEventos = 0;
+                const eventosLista = [];
+                snapEventos.forEach(child => {
+                    const e = child.val();
+                    if (!e.inicio) return;
+                    const anoEvento = parseInt(e.inicio.split('-')[0]);
+                    const mesEvento = parseInt(e.inicio.split('-')[1]) - 1;
+                    if (anoEvento !== ano) return;
+                    if (mes !== null && mesEvento !== mes) return;
+                    const vendas = e.vendas ? Object.values(e.vendas) : [];
+                    const totalEvento = vendas.reduce((s, v) => s + (parseFloat(v.valor) || 0), 0);
+                    if (totalEvento <= 0) return;
+                    totalEventos += totalEvento;
+                    eventosLista.push({ nome: e.nome, total: totalEvento });
+                });
+                const faturamentoTotal = faturamento + totalEventos;
+                const lucro = faturamentoTotal - totalGastos;
+                document.getElementById('dashGastos').textContent = formatarBRL(totalGastos);
+                document.getElementById('dashLucro').textContent = formatarBRL(lucro);
+                document.getElementById('dashLucro').style.color = lucro >= 0 ? '#065F46' : 'var(--red)';
+                document.getElementById('dashFaturamento').textContent = formatarBRL(faturamentoTotal);
+
+                // ── Projeção do mês ──
+                let projecao = 0;
+                if (mes !== null) {
+                    snapshot.forEach(child => {
+                        const p = child.val();
+                        if (!p.dataEntrega) return;
+                        const st = p.statusPagamento || '';
+                        if (st === 'entregue' || st === 'Pago') return;
+                        let dataP;
+                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) {
+                            const pts = p.dataEntrega.split('/');
+                            dataP = new Date(pts[2], pts[1]-1, pts[0]);
+                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) {
+                            const pts = p.dataEntrega.split('-');
+                            dataP = new Date(pts[0], pts[1]-1, pts[2]);
+                        } else return;
+                        if (dataP.getFullYear() !== ano || dataP.getMonth() !== mes) return;
+                        if (st === 'Pago Parcialmente') {
+                            const vt = limparValor(p.valorTotal), vp = limparValor(p.valorPago);
+                            projecao += Math.max(0, vt - vp); // só o que falta, o que já foi pago já está no faturamento
+                        } else {
+                            projecao += limparValor(p.valorTotal);
+                        }
+                    });
+                }
+                let elProjecao = document.getElementById('dashProjecao');
+                if (!elProjecao) {
+                    elProjecao = document.createElement('p');
+                    elProjecao.id = 'dashProjecao';
+                    elProjecao.style.cssText = 'font-size:0.82em;margin-top:6px;font-weight:600;padding:6px 10px;background:rgba(232,148,58,0.12);border-radius:8px;';
+                    document.getElementById('dashFaturamento').parentElement.appendChild(elProjecao);
+                }
+                if (mes !== null && projecao > 0) {
+                    const totalComProjecao = faturamentoTotal + projecao;
+                    elProjecao.style.color = 'var(--brown-warm)';
+                    elProjecao.style.display = 'block';
+                    elProjecao.innerHTML = '📈 Projeção: <strong style="color:var(--brown-dark);">' + formatarBRL(totalComProjecao) + '</strong>'
+                        + ' <span style="font-size:0.85em;opacity:0.8;">(+' + formatarBRL(projecao) + ' em aberto)</span>';
+                } else {
+                    elProjecao.style.display = 'none';
+                }
+                const cardEventos = document.getElementById('cardEventosDash');
+                const listaEventos = document.getElementById('dashEventosLista');
+                const totalEventosEl = document.getElementById('dashEventosTotal');
+                if (eventosLista.length > 0) {
+                    cardEventos.style.display = 'block';
+                    listaEventos.innerHTML = eventosLista.map(e => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><span>🔒 ${escaparHTML(e.nome)}</span></div><strong style="color:var(--amber);">R$ ${e.total.toFixed(2).replace('.', ',')}</strong></div>`).join('');
+                    totalEventosEl.textContent = 'R$ ' + totalEventos.toFixed(2).replace('.', ',');
+                } else { cardEventos.style.display = 'none'; }
+                // card custo de produção no dashboard (posição fixa no HTML, só preenche/mostra aqui)
+                const cardCustoProd = document.getElementById('cardCustoProdDash');
+                if (custoProducaoEstimado > 0 && cardCustoProd) {
+                    const margemBruta = faturamentoTotal > 0
+                        ? ((faturamentoTotal - custoProducaoEstimado) / faturamentoTotal * 100).toFixed(1)
+                        : null;
+                    cardCustoProd.style.display = 'block';
+                    cardCustoProd.innerHTML = `
+                        <p class="form-card-titulo">🧮 Custo de Produção Estimado</p>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                            <div style="flex:1;background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
+                                <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Custo Produção</p>
+                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#92400E;">${formatarBRL(custoProducaoEstimado)}</p>
+                                <p style="font-size:0.72em;color:#92400E;margin-top:2px;">apenas sabores com receita cadastrada</p>
+                            </div>
+                            ${margemBruta !== null ? `
+                            <div style="flex:1;background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;min-width:120px;">
+                                <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Margem Bruta</p>
+                                <p style="font-family:'DM Sans',sans-serif;font-size:1.5em;font-weight:700;color:#065F46;">${margemBruta}%</p>
+                                <p style="font-size:0.72em;color:#065F46;margin-top:2px;">lucro estimado: ${formatarBRL(faturamentoTotal - custoProducaoEstimado)}</p>
+                            </div>` : ''}
+                        </div>`;
+                } else if (cardCustoProd) {
+                    cardCustoProd.style.display = 'none';
+                }
+                const catOrdenadas=Object.entries(categorias).sort((a,b)=>b[1]-a[1]);
+                const maxCat=catOrdenadas[0]?.[1]||1;
+                document.getElementById('dashGastosCategorias').innerHTML=catOrdenadas.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum gasto no período.</p>':catOrdenadas.map(([cat,val])=>{const cor=CORES_CATEGORIA_GASTO[cat]||'var(--brown-warm)';return `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cor};margin-right:6px;"></span>${cat}</span><strong>R$ ${val.toFixed(2).replace('.',',')}</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:${cor};height:6px;border-radius:6px;width:${Math.round((val/maxCat)*100)}%;"></div></div></div>`;}).join('');
+                const mesesNomeG=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                const fatMensal={}; for(let i=0;i<12;i++) fatMensal[i]=0;
+                snapshot.forEach(child=>{
+                    const p=child.val(); if(!p.dataEntrega) return;
+                    let dataP;
+                    if(/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
+                    else if(/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('-');dataP=new Date(pts[0],pts[1]-1,pts[2]);}
+                    else return;
+                    if(dataP.getFullYear()!==ano) return;
+                    const st=p.statusPagamento||'';
+                    if(st==='entregue'||st==='Pago') fatMensal[dataP.getMonth()]+=limparValor(p.valorTotal);
+                    else if(st==='Pago Parcialmente'){const vp=limparValor(p.valorPago),vt=limparValor(p.valorTotal);fatMensal[dataP.getMonth()]+=vp>0?vp:vt;}
+                });
+                if(graficoFaturamento){graficoFaturamento.destroy();graficoFaturamento=null;}
+                const coresBarra=Object.values(fatMensal).map((_,i)=>(mes===null||i===mes)?'rgba(232,148,58,1)':'rgba(232,148,58,0.2)');
+                const ctx=document.getElementById('graficoFaturamento').getContext('2d');
+                graficoFaturamento=new Chart(ctx,{type:'bar',data:{labels:mesesNomeG,datasets:[{label:'Faturamento',data:Object.values(fatMensal),backgroundColor:coresBarra,borderColor:'rgba(232,148,58,1)',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+formatarBRL(ctx.parsed.y)}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>formatarBRL(v)}}}}});
+                document.getElementById('dashboard-resultado').style.display='block';
+                document.getElementById('btnExportarCSV').style.display='block';
+                document.getElementById('btnExportarPDF').style.display='block';
+                renderizarGraficoGastosCategoria(ano);
+                atualizarSaborMaisVendidoPublico();
+            });
+        });
+    });
+}
+
+
+function atualizarSaborMaisVendidoPublico() {
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtualDash = agora.getFullYear();
+    database.ref('pedidos').once('value', snapshot => {
+        const sabores = {};
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== anoAtualDash || dataP.getMonth() !== mesAtual) return;
+            (p.itens || []).forEach(item => {
+                const nome = item.sabor || item.nome;
+                if (!nome) return;
+                sabores[nome] = (sabores[nome] || 0) + (parseInt(item.quantidade) || 0);
+            });
+        });
+        const ordenado = Object.entries(sabores).sort((a,b) => b[1] - a[1]);
+        if (ordenado.length > 0) {
+            database.ref('estatisticas-publicas/saborMaisVendido').set(ordenado[0][0]);
+        }
+    });
+}
+
+
+function renderizarGraficoGastosCategoria(ano) {
+    database.ref('gastos').once('value', snapshot => {
+        const mesesNomeG = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const categoriasFixas = ['Ingredientes','Embalagens','Gás/Energia','Entrega','Outros'];
+        const cores = CORES_CATEGORIA_GASTO;
+        const dadosPorCategoria = {};
+        categoriasFixas.forEach(cat => { dadosPorCategoria[cat] = new Array(12).fill(0); });
+        snapshot.forEach(child => {
+            const g = child.val();
+            if (!g.data) return;
+            const pts = g.data.split('-');
+            if (parseInt(pts[0]) !== ano) return;
+            const mes = parseInt(pts[1]) - 1;
+            const cat = categoriasFixas.includes(g.categoria) ? g.categoria : 'Outros';
+            dadosPorCategoria[cat][mes] += (g.valor || 0);
+        });
+        const datasets = categoriasFixas.map(cat => ({
+            label: cat,
+            data: dadosPorCategoria[cat],
+            borderColor: cores[cat],
+            backgroundColor: cores[cat],
+            tension: 0.3,
+            fill: false
+        }));
+        if (graficoGastosCategoria) { graficoGastosCategoria.destroy(); graficoGastosCategoria = null; }
+        const canvas = document.getElementById('graficoGastosCategoria');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        graficoGastosCategoria = new Chart(ctx, {
+            type: 'line',
+            data: { labels: mesesNomeG, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                plugins: { legend: { position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatarBRL(ctx.parsed.y)}` } } },
+                scales: { y: { beginAtZero:true, ticks:{ callback: v => formatarBRL(v) } } }
+            }
+        });
+    });
+}
+
+
+function calcularAvaliacoes(ano, mes) {
+    const div = document.getElementById('dashAvaliacoes');
+    if (!div) return;
+    div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.85em;">Carregando...</p>';
+
+    database.ref('pedidos').once('value', snapshot => {
+        const avaliacoes = [];
+        snapshot.forEach(child => {
+            const p = child.val();
+            if (!p.avaliacao || !p.dataEntrega) return;
+            let dataP;
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+            else return;
+            if (dataP.getFullYear() !== ano) return;
+            if (mes !== null && dataP.getMonth() !== mes) return;
+            avaliacoes.push({ nome: p.nome || 'Cliente', dataEntrega: p.dataEntrega, key: child.key, ...p.avaliacao });
+        });
+
+        if (avaliacoes.length === 0) {
+            div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Nenhuma avaliação recebida neste período.</p>';
+            return;
+        }
+
+        const EMOJI_NOTA = { 1: '😞', 2: '😐', 3: '😊' };
+        const LABEL_NOTA = { 1: 'Não gostou', 2: 'Bom', 3: 'Adorou' };
+
+        const media = avaliacoes.reduce((s,a) => s + (a.nota||0), 0) / avaliacoes.length;
+        const distribuicao = {3:0,2:0,1:0};
+        avaliacoes.forEach(a => { if (distribuicao[a.nota] !== undefined) distribuicao[a.nota]++; });
+
+        avaliacoes.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+
+        const emojiMedia = media >= 2.6 ? '😊' : media >= 1.6 ? '😐' : '😞';
+        let html = `<div style="display:flex;align-items:center;gap:16px;padding:14px;background:#FEF3C7;border-radius:14px;margin-bottom:14px;">
+            <div style="text-align:center;">
+                <div style="font-size:2.2em;line-height:1;">${emojiMedia}</div>
+                <div style="font-size:0.7em;color:#92400E;margin-top:4px;font-weight:700;">${media.toFixed(1)}/3</div>
+            </div>
+            <div style="flex:1;">`;
+        [3,2,1].forEach(n => {
+            const qtd = distribuicao[n];
+            const pct = avaliacoes.length > 0 ? Math.round((qtd/avaliacoes.length)*100) : 0;
+            html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                <span style="font-size:0.9em;width:22px;">${EMOJI_NOTA[n]}</span>
+                <div style="flex:1;background:rgba(146,64,14,0.15);border-radius:6px;height:6px;"><div style="background:#92400E;height:6px;border-radius:6px;width:${pct}%;"></div></div>
+                <span style="font-size:0.7em;color:#92400E;width:18px;text-align:right;">${qtd}</span>
+            </div>`;
+        });
+        html += `</div></div>`;
+        html += `<p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:10px;">${avaliacoes.length} avaliação${avaliacoes.length>1?'ões':''} no período</p>`;
+
+        avaliacoes.forEach(a => {
+            const emoji = EMOJI_NOTA[a.nota] || '😐';
+            const label = LABEL_NOTA[a.nota] || '';
+            const dataFormatada = formatarDataComDia(a.dataEntrega).split(' (')[0];
+            html += `<div style="padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;" onclick="irParaPedidoEspecifico('${a.key}')" onmouseover="this.style.background='#F0E6D3'" onmouseout="this.style.background='var(--cream)'">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <strong style="font-size:0.86em;color:var(--brown-dark);">${escaparHTML(a.nome)} <span style="font-size:0.85em;color:var(--amber);">↗</span></strong>
+                    <span style="font-size:1em;" title="${label}">${emoji}</span>
+                </div>
+                <div style="font-size:0.72em;color:var(--brown-warm);margin-bottom:${a.comentario ? '4px' : '0'};">📅 ${dataFormatada}</div>
+                ${a.comentario ? `<div style="font-size:0.84em;color:var(--brown-dark);font-style:italic;">"${escaparHTML(a.comentario)}"</div>` : ''}
+            </div>`;
+        });
+
+        div.innerHTML = html;
+    });
+}
+
+
+
+function calcularLucratividadeSabores(saboresQtd, receitasMap, faturamentoTotal, totalBrigTotal) {
+    const div = document.getElementById('dashLucratividadeSabores');
+    if (!div) return;
+    const dados = [];
+
+    Object.entries(saboresQtd).forEach(([sabor, qtd]) => {
+        const receita = receitasMap[sabor];
+        if (!receita) return;
+        const custoPorUn = receita.custoPorUnidade || (receita.custoTotal / receita.rendimento);
+        const cat = CATEGORIA_SABOR[sabor] || 'trad';
+        const precoVendaUn = precoUnitarioPorFaixa(cat, qtd);
+        const lucroUn = precoVendaUn - custoPorUn;
+        const lucroTotalSabor = lucroUn * qtd;
+        const margemPct = precoVendaUn > 0 ? (lucroUn / precoVendaUn * 100) : 0;
+        dados.push({ sabor, qtd, custoPorUn, precoVendaUn, lucroUn, lucroTotalSabor, margemPct });
+    });
+
+    dados.sort((a,b) => b.lucroTotalSabor - a.lucroTotalSabor);
+    _dadosLucratividadeSabores = dados;
+    reaplicarFiltroMargemSabor();
+}
+
+
+function reaplicarFiltroMargemSabor() {
+    const div = document.getElementById('dashLucratividadeSabores');
+    if (!div) return;
+    const dados = _dadosLucratividadeSabores;
+
+    if (dados.length === 0) {
+        div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Cadastre receitas para ver a lucratividade por sabor.</p>';
+        return;
+    }
+
+    const campoFiltro = document.getElementById('filtroMargemSabor');
+    const limite = campoFiltro && campoFiltro.value !== '' ? parseFloat(campoFiltro.value) : null;
+    const dadosFiltrados = limite !== null ? dados.filter(d => d.margemPct < limite) : dados;
+
+    if (dadosFiltrados.length === 0) {
+        div.innerHTML = '<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum sabor com margem abaixo de ' + limite + '%.</p>';
+        return;
+    }
+
+    div.innerHTML = dadosFiltrados.map((d) => {
+        const idx = dados.indexOf(d);
+        const corMargem = d.margemPct >= 50 ? '#065F46' : d.margemPct >= 30 ? '#92400E' : '#DC2626';
+        const medalha = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);border-radius:12px;margin-bottom:8px;">
+            <div>
+                <strong>${medalha} ${escaparHTML(d.sabor)}</strong>
+                <div style="font-size:0.76em;color:var(--brown-warm);">
+                    Custo: R$ ${d.custoPorUn.toFixed(3).replace('.',',')}/un · Venda: R$ ${d.precoVendaUn.toFixed(2).replace('.',',')}/un · ${d.qtd} un vendidas
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-weight:700;color:${corMargem};">R$ ${d.lucroTotalSabor.toFixed(2).replace('.',',')}</div>
+                <div style="font-size:0.76em;color:${corMargem};">${d.margemPct.toFixed(0)}% margem</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+
+function exportarDashboardPDF() {
+    const mesVal = document.getElementById('dashMes').value;
+    const ano = document.getElementById('dashAno').value;
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const periodo = mesVal === 'geral' ? 'Ano ' + ano : meses[parseInt(mesVal)] + ' de ' + ano;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.setTextColor(43, 18, 6);
+    doc.text('Doces Flor — Relatório Financeiro', 14, y); y += 8;
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text('Período: ' + periodo, 14, y); y += 12;
+
+    const linhas = [
+        ['Faturamento', document.getElementById('dashFaturamento').textContent],
+        ['Ticket Médio', document.getElementById('dashTicket').textContent],
+        ['Gastos', document.getElementById('dashGastos').textContent],
+        ['Lucro Líquido', document.getElementById('dashLucro').textContent],
+        ['Pedidos Entregues', document.getElementById('dashEntregues').textContent],
+        ['Pedidos em Andamento', document.getElementById('dashAndamento').textContent],
+        ['Total Brigadeiros Produzidos', document.getElementById('dashTotalBrig').textContent],
+    ];
+
+    doc.setFontSize(12);
+    doc.setTextColor(43,18,6);
+    linhas.forEach(([label, valor]) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(label + ':', 14, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(String(valor), 90, y);
+        y += 8;
+    });
+
+    y += 6;
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Sabores Mais Vendidos', 14, y); y += 8;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    document.querySelectorAll('#dashSabores > div').forEach(div => {
+        const texto = div.querySelector('span')?.textContent + ' — ' + div.querySelector('strong')?.textContent;
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.text('• ' + texto, 16, y); y += 6;
+    });
+
+    doc.save(`relatorio-doces-flor-${periodo.replace(' ','-')}.pdf`);
+    toast('📄 PDF exportado!');
+}
+
+
+function exportarDashboardCSV() {
+    const mesVal=document.getElementById('dashMes').value;
+    const ano=parseInt(document.getElementById('dashAno').value);
+    const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const periodo=mesVal==='geral'?'Ano '+ano:meses[parseInt(mesVal)]+' '+ano;
+    database.ref('pedidos').once('value',snapshot=>{
+        const linhas=[['Nome','Telefone','Data Entrega','Status Pagamento','Valor Total','Valor Pago','Tipo Entrega','Observações']];
+        snapshot.forEach(child=>{
+            const p=child.val(); if(!p.dataEntrega) return;
+            let dataP;
+            if(/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('/');dataP=new Date(pts[2],pts[1]-1,pts[0]);}
+            else if(/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)){const pts=p.dataEntrega.split('-');dataP=new Date(pts[0],pts[1]-1,pts[2]);}
+            else return;
+            if(dataP.getFullYear()!==ano) return;
+            if(mesVal!=='geral'&&dataP.getMonth()!==parseInt(mesVal)) return;
+            linhas.push([p.nome||'',p.telefone||'',converterDataParaBR(p.dataEntrega),p.statusPagamento||'',typeof p.valorTotal==='number'?p.valorTotal.toFixed(2).replace('.',','):'',p.valorPago||'',p.tipoEntrega||'',(p.observacoes||'').replace(/\n/g,' ')]);
+        });
+        function sanitizarCel(cel){const str=String(cel).replace(/"/g,'""');if(/^[=+\-@]/.test(str))return '"\''+str+'"';return '"'+str+'"';}
+        const csv=linhas.map(row=>row.map(cel=>sanitizarCel(cel)).join(';')).join('\n');
+        const BOM='\uFEFF';
+        const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+        const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`doces-flor-${periodo.replace(' ','-')}.csv`; a.click(); URL.revokeObjectURL(url);
+        toast('📥 CSV exportado!');
+    });
+}
+
+// ====================== AUTOCOMPLETE ======================
