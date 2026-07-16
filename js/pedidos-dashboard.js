@@ -16,6 +16,28 @@ function mostrarAbaDash(aba, btn) {
     if (btn) btn.classList.add('active');
 }
 
+/* ── PÓDIO TOP 3 (usado em Sabores Mais Vendidos e Lucratividade) ── */
+function montarPodioHTML(itens) {
+    // itens: array em ordem de ranking [1º, 2º, 3º] com {nome, valor}
+    const posicoes = [
+        { classe: 'posicao-1', degrau: 'degrau-ouro',   medalha: '🥇' },
+        { classe: 'posicao-2', degrau: 'degrau-prata',  medalha: '🥈' },
+        { classe: 'posicao-3', degrau: 'degrau-bronze', medalha: '🥉' }
+    ];
+    let html = '<div class="dash-podio">';
+    itens.forEach((item, i) => {
+        if (!item) return;
+        const pos = posicoes[i];
+        html += `<div class="dash-podio-coluna ${pos.classe}">
+            <div class="dash-podio-nome">${escaparHTML(item.nome)}</div>
+            <div class="dash-podio-valor">${item.valor}</div>
+            <div class="dash-podio-degrau ${pos.degrau}"><span class="dash-podio-medalha">${pos.medalha}</span></div>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
 /* ── CONTADOR ANIMADO DO DASHBOARD ── */
 function animarNumeroDash(el, valorFinal, formatarFn) {
     if (!el) return;
@@ -123,7 +145,10 @@ async function carregarDashboard() {
         if (cardCustoMedioAntigo) cardCustoMedioAntigo.style.display = 'none';
         const saboresOrdenados=Object.entries(sabores).sort((a,b)=>b[1]-a[1]);
         const maxSabor=saboresOrdenados[0]?.[1]||1;
-        document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':saboresOrdenados.map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
+        const top3Sabores = saboresOrdenados.slice(0,3).map(([nome,qtd])=>({ nome, valor: qtd+' un.' }));
+        const podioSaboresHTML = saboresOrdenados.length>0 ? montarPodioHTML(top3Sabores) : '';
+        const listaSaboresHTML = saboresOrdenados.slice(3).map(([nome,qtd])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${nome}</span><strong>${qtd} un.</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${Math.round((qtd/maxSabor)*100)}%;"></div></div></div>`).join('');
+        document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':podioSaboresHTML+listaSaboresHTML;
         calcularLucratividadeSabores(sabores, receitasMap, faturamento, totalBrigadeiros);
         calcularAvaliacoes(ano, mes);
         const elDashPagamentos = document.getElementById('dashPagamentos');
@@ -467,7 +492,13 @@ function reaplicarFiltroMargemSabor() {
         return;
     }
 
-    div.innerHTML = dadosFiltrados.map((d) => {
+    const mostrarPodio = limite === null;
+    const podioHTML = mostrarPodio
+        ? montarPodioHTML(dados.slice(0,3).map(d => ({ nome: d.sabor, valor: 'R$ ' + d.lucroTotalSabor.toFixed(2).replace('.',',') })))
+        : '';
+    const listaBase = mostrarPodio ? dadosFiltrados.slice(3) : dadosFiltrados;
+
+    const listaHTML = listaBase.map((d) => {
         const idx = dados.indexOf(d);
         const corMargem = d.margemPct >= 50 ? '#065F46' : d.margemPct >= 30 ? '#92400E' : '#DC2626';
         const medalha = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
@@ -484,6 +515,8 @@ function reaplicarFiltroMargemSabor() {
             </div>
         </div>`;
     }).join('');
+
+    div.innerHTML = podioHTML + listaHTML;
 }
 
 
