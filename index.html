@@ -692,12 +692,6 @@
             <button class="dash-tab" onclick="mostrarAbaDash('clientes', this)">⭐ Clientes</button>
         </div>
 
-        <div class="form-card" data-dashtab="financeiro">
-            <p class="form-card-titulo">💸 Gastos no Período</p>
-            <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
-                <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
-            </div>
-        </div>
         <div class="form-card" data-dashtab="producao">
         <p class="form-card-titulo">📦 Pedidos</p>
             <div class="linha-dupla">
@@ -755,8 +749,14 @@
             <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
         </div>
         <div class="form-card" data-dashtab="financeiro">
+            <p class="form-card-titulo">💸 Gastos no Período</p>
+            <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
+                <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="financeiro">
         <p class="form-card-titulo">💸 Gastos por Categoria</p>
-            <div class="linha-dupla">
+            <div class="dash-gastos-cat-grid">
                 <div>
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Total do período</p>
                     <div id="dashGastosCategorias"></div>
@@ -766,10 +766,6 @@
                     <canvas id="graficoGastosCategoria" style="max-height:240px;"></canvas>
                 </div>
             </div>
-        </div>
-        <div class="form-card" data-dashtab="financeiro">
-        <p class="form-card-titulo">💳 Status de Pagamento</p>
-            <div id="dashPagamentos"></div>
         </div>
     </div>
 </section>
