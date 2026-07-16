@@ -659,39 +659,47 @@
         <button class="btn btn-marrom btn-bloco" id="btnExportarCSV" onclick="exportarDashboardCSV()" style="display:none;">📥 Exportar CSV</button>
         <button class="btn btn-vermelho btn-bloco" id="btnExportarPDF" onclick="exportarDashboardPDF()" style="display:none;">📄 Exportar PDF</button>
     </div>
-    <div id="dashboard-resultado" style="display:none;">
-        <div class="form-card">
-            <p class="form-card-titulo">💰 Resumo Financeiro</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Faturamento</p>
-                    <p id="dashFaturamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
-                    <p id="dashFaturamentoComparativo" style="font-size:0.72em;margin-top:4px;font-weight:600;"></p>
-                </div>
-                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Ticket Médio</p>
-                    <p id="dashTicket" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">R$ 0,00</p>
-                </div>
-                <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Gastos</p>
-                    <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
-                </div>
-                <div style="background:#D1FAE5;border-radius:16px;padding:16px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;">
-                    <p style="font-size:0.72em;color:#065F46;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;font-family:'Cormorant Garamond',serif;">Lucro Líquido</p>
-                    <p id="dashLucro" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#065F46;">R$ 0,00</p>
-                </div>
+    <div id="dashboard-resultado" style="display:none;" data-aba-ativa="financeiro">
+        <div class="dash-kpis">
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">💰</div>
+                <p class="dash-kpi-label">Faturamento</p>
+                <p id="dashFaturamento" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashFaturamentoComparativo" class="dash-kpi-extra"></p>
+            </div>
+            <div class="dash-kpi-selo kpi-verde">
+                <div class="dash-kpi-icone">📈</div>
+                <p class="dash-kpi-label">Lucro Líquido</p>
+                <p id="dashLucro" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">🎯</div>
+                <p class="dash-kpi-label">Ticket Médio</p>
+                <p id="dashTicket" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo kpi-amber" id="cardPendencias" style="display:none;">
+                <div class="dash-kpi-icone">⏳</div>
+                <p class="dash-kpi-label">A Receber</p>
+                <p id="dashPendenciasValor" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashPendenciasDetalhe" class="dash-kpi-extra"></p>
+                <div id="dashPendenciasLista" style="margin-top:10px;text-align:left;max-height:180px;overflow-y:auto;"></div>
             </div>
         </div>
-        <div class="form-card" id="cardPendencias" style="display:none;">
-            <p class="form-card-titulo">💰 Valor a Receber</p>
-            <div style="background:#FEF3C7;border-radius:14px;padding:16px;text-align:center;">
-                <p id="dashPendenciasValor" style="font-family:'DM Sans',sans-serif;font-size:1.8em;font-weight:700;color:#92400E;">R$ 0,00</p>
-                <p id="dashPendenciasDetalhe" style="font-size:0.78em;color:var(--brown-warm);margin-top:4px;"></p>
-            </div>
-            <div id="dashPendenciasLista" style="margin-top:12px;"></div>
+
+        <div class="dash-tabs">
+            <button class="dash-tab active" onclick="mostrarAbaDash('financeiro', this)">💰 Financeiro</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('producao', this)">🍫 Produção</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('clientes', this)">⭐ Clientes</button>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">📦 Pedidos</p>
+
+        <div class="form-card" data-dashtab="financeiro">
+            <p class="form-card-titulo">💸 Gastos no Período</p>
+            <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
+                <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">📦 Pedidos</p>
             <div class="linha-dupla">
                 <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('finalizados')">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
@@ -703,8 +711,8 @@
                 </div>
             </div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">🍫 Produção</p>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">🍫 Produção</p>
             <div style="display:flex;gap:12px;">
                 <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Brigadeiros</p>
@@ -716,12 +724,12 @@
                 </div>
             </div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
             <div id="dashSabores"></div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                 <label style="margin:0;text-transform:none;font-weight:500;font-size:0.8em;letter-spacing:0;">Mostrar apenas margem abaixo de</label>
                 <input type="number" id="filtroMargemSabor" placeholder="Ex: 30" min="0" max="100" style="margin-bottom:0;width:80px;" oninput="reaplicarFiltroMargemSabor()">
@@ -729,12 +737,12 @@
             </div>
             <div id="dashLucratividadeSabores"></div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
+        <div class="form-card" data-dashtab="clientes">
+        <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
             <div id="dashAvaliacoes"></div>
         </div>
-        <div class="form-card" id="cardCustoProdDash" style="display:none;"></div>
-        <div class="form-card" id="cardEventosDash" style="display:none;">
+        <div class="form-card" id="cardCustoProdDash" style="display:none;" data-dashtab="producao"></div>
+        <div class="form-card" id="cardEventosDash" style="display:none;" data-dashtab="financeiro">
             <p class="form-card-titulo">🔒 Eventos do Período</p>
             <div id="dashEventosLista"></div>
             <div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
@@ -742,12 +750,12 @@
                 <strong id="dashEventosTotal" style="color:var(--green);font-size:1.1em;">R$ 0,00</strong>
             </div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">📈 Faturamento por Período</p>
+        <div class="form-card" data-dashtab="financeiro">
+        <p class="form-card-titulo">📈 Faturamento por Período</p>
             <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💸 Gastos por Categoria</p>
+        <div class="form-card" data-dashtab="financeiro">
+        <p class="form-card-titulo">💸 Gastos por Categoria</p>
             <div class="linha-dupla">
                 <div>
                     <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Total do período</p>
@@ -759,8 +767,8 @@
                 </div>
             </div>
         </div>
-        <div class="form-card">
-            <p class="form-card-titulo">💳 Status de Pagamento</p>
+        <div class="form-card" data-dashtab="financeiro">
+        <p class="form-card-titulo">💳 Status de Pagamento</p>
             <div id="dashPagamentos"></div>
         </div>
     </div>
