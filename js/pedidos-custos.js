@@ -1238,7 +1238,7 @@ function carregarReceitasLista() {
             const custoPorUn = r.custoPorUnidade || (r.custoTotal / r.rendimento);
             const card = document.createElement('div');
             card.className = 'receita-card';
-            const ingsHTML = (r.ingredientes || []).map(ing => {
+            const ingsHTML = [...(r.ingredientes || [])].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(ing => {
                 const custo = (ing.preco / ing.qtdEmbalagem) * ing.qtdReceita;
                 const qtdExibida = ing.nomeEmbalagem
                     ? `${ing.qtdEmbReceita} ${ing.nomeEmbalagem}${ing.qtdEmbReceita === 1 ? '' : 's'}`
