@@ -7,6 +7,7 @@ let graficoFaturamento = null;
 let graficoGastosCategoria = null;
 let graficoHistoricoPreco = null;
 let _dadosLucratividadeSabores = [];
+const CORES_CATEGORIA_GASTO = { 'Ingredientes':'#E8943A', 'Embalagens':'#5C2A0E', 'Gás/Energia':'#DC2626', 'Entrega':'#5b8def', 'Outros':'#8B4513' };
 
 /* ── CONTADOR ANIMADO DO DASHBOARD ── */
 function animarNumeroDash(el, valorFinal, formatarFn) {
@@ -219,18 +220,9 @@ async function carregarDashboard() {
                     listaEventos.innerHTML = eventosLista.map(e => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><span>🔒 ${escaparHTML(e.nome)}</span></div><strong style="color:var(--amber);">R$ ${e.total.toFixed(2).replace('.', ',')}</strong></div>`).join('');
                     totalEventosEl.textContent = 'R$ ' + totalEventos.toFixed(2).replace('.', ',');
                 } else { cardEventos.style.display = 'none'; }
-                // card custo de produção no dashboard
-                let cardCustoProd = document.getElementById('cardCustoProdDash');
-                if (!cardCustoProd) {
-                    cardCustoProd = document.createElement('div');
-                    cardCustoProd.className = 'form-card';
-                    cardCustoProd.id = 'cardCustoProdDash';
-                    document.getElementById('dashboard-resultado').insertBefore(
-                        cardCustoProd,
-                        document.getElementById('cardEventosDash')
-                    );
-                }
-                if (custoProducaoEstimado > 0) {
+                // card custo de produção no dashboard (posição fixa no HTML, só preenche/mostra aqui)
+                const cardCustoProd = document.getElementById('cardCustoProdDash');
+                if (custoProducaoEstimado > 0 && cardCustoProd) {
                     const margemBruta = faturamentoTotal > 0
                         ? ((faturamentoTotal - custoProducaoEstimado) / faturamentoTotal * 100).toFixed(1)
                         : null;
@@ -250,12 +242,12 @@ async function carregarDashboard() {
                                 <p style="font-size:0.72em;color:#065F46;margin-top:2px;">lucro estimado: ${formatarBRL(faturamentoTotal - custoProducaoEstimado)}</p>
                             </div>` : ''}
                         </div>`;
-                } else {
+                } else if (cardCustoProd) {
                     cardCustoProd.style.display = 'none';
                 }
                 const catOrdenadas=Object.entries(categorias).sort((a,b)=>b[1]-a[1]);
                 const maxCat=catOrdenadas[0]?.[1]||1;
-                document.getElementById('dashGastosCategorias').innerHTML=catOrdenadas.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum gasto no período.</p>':catOrdenadas.map(([cat,val])=>`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${cat}</span><strong>R$ ${val.toFixed(2).replace('.',',')}</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--brown-warm);height:6px;border-radius:6px;width:${Math.round((val/maxCat)*100)}%;"></div></div></div>`).join('');
+                document.getElementById('dashGastosCategorias').innerHTML=catOrdenadas.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum gasto no período.</p>':catOrdenadas.map(([cat,val])=>{const cor=CORES_CATEGORIA_GASTO[cat]||'var(--brown-warm)';return `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cor};margin-right:6px;"></span>${cat}</span><strong>R$ ${val.toFixed(2).replace('.',',')}</strong></div><div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:${cor};height:6px;border-radius:6px;width:${Math.round((val/maxCat)*100)}%;"></div></div></div>`;}).join('');
                 const mesesNomeG=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
                 const fatMensal={}; for(let i=0;i<12;i++) fatMensal[i]=0;
                 snapshot.forEach(child=>{
@@ -316,7 +308,7 @@ function renderizarGraficoGastosCategoria(ano) {
     database.ref('gastos').once('value', snapshot => {
         const mesesNomeG = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
         const categoriasFixas = ['Ingredientes','Embalagens','Gás/Energia','Entrega','Outros'];
-        const cores = { 'Ingredientes':'#E8943A', 'Embalagens':'#5C2A0E', 'Gás/Energia':'#DC2626', 'Entrega':'#5b8def', 'Outros':'#8B4513' };
+        const cores = CORES_CATEGORIA_GASTO;
         const dadosPorCategoria = {};
         categoriasFixas.forEach(cat => { dadosPorCategoria[cat] = new Array(12).fill(0); });
         snapshot.forEach(child => {
