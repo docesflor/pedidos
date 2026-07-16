@@ -758,8 +758,10 @@ function toggleMenuMais(menuId, evento) {
 }
 
 function fecharMenuMais(menuId) {
-    const menu = document.getElementById(menuId);
-    if (menu) menu.style.display = 'none';
+    // Usa querySelectorAll em vez de getElementById: se a lista foi re-renderizada
+    // enquanto o menu estava aberto, pode existir um elemento duplicado (órfão,
+    // ainda visível) com o mesmo id — isso garante que todos são escondidos.
+    document.querySelectorAll('.menu-mais').forEach(m => m.style.display = 'none');
     const overlay = document.getElementById('overlayMenuMais');
     if (overlay) overlay.remove();
 }
