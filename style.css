@@ -310,6 +310,36 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 .gasto-categoria { display: inline-block; font-size: 0.72em; font-weight: 600; padding: 3px 12px; border-radius: 50px; background: var(--brown-dark); color: var(--amber-light); margin-bottom: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
 
 /* ═══════════════════════════════════════════
+   DASHBOARD — KPIs (selos) e Abas Internas
+═══════════════════════════════════════════ */
+.dash-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.dash-kpi-selo { background: var(--white); border-radius: 20px; padding: 18px 14px; text-align: center; border: 1px solid var(--cream-dark); box-shadow: 0 4px 14px var(--shadow); display: flex; flex-direction: column; justify-content: center; }
+.dash-kpi-selo.kpi-verde { background: #D1FAE5; border-color: #86EFAC; }
+.dash-kpi-selo.kpi-amber { background: #FEF3C7; border-color: #FCD34D; }
+.dash-kpi-icone { font-size: 1.3em; margin-bottom: 6px; }
+.dash-kpi-label { font-size: 0.72em; color: var(--brown-warm); text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Cormorant Garamond', serif; margin-bottom: 4px; }
+.dash-kpi-valor { font-family: 'DM Sans', sans-serif; font-size: 1.5em; font-weight: 700; color: var(--brown-dark); line-height: 1.1; margin: 0; }
+.dash-kpi-extra { font-size: 0.7em; margin-top: 4px; font-weight: 600; color: var(--brown-warm); }
+
+.dash-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.dash-tab { padding: 8px 20px; border: 2px solid var(--cream-dark); border-radius: 50px; background: var(--white); color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.dash-tab.active { background: var(--surface-brand); color: var(--amber-light); border-color: var(--surface-brand); }
+
+#dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="producao"],
+#dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="clientes"],
+#dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="financeiro"],
+#dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="clientes"],
+#dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="financeiro"],
+#dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="producao"] {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+    .dash-kpi-valor { font-size: 1.2em; }
+}
+
+/* ═══════════════════════════════════════════
    MODAL
 ═══════════════════════════════════════════ */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(43,18,6,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
