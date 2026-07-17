@@ -7,7 +7,7 @@ let caracteristicaEscrita = null;
 async function conectarImpressora() {
     try {
         const dispositivo = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'KA-1445' }],
+            acceptAllDevices: true,
             optionalServices: [
                 KA1445_SERVICE_UUID,
                 '0000fee7-0000-1000-8000-00805f9b34fb',
