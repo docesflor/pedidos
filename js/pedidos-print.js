@@ -7,7 +7,7 @@ let caracteristicaEscrita = null;
 async function conectarImpressora() {
     try {
         const dispositivo = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
+            filters: [{ namePrefix: 'KA-1445' }],
             optionalServices: [
                 KA1445_SERVICE_UUID,
                 '0000fee7-0000-1000-8000-00805f9b34fb',
@@ -37,11 +37,11 @@ async function conectarImpressora() {
 
 // Envia bytes em pedaços pequenos (BLE tem limite de pacote — ~180 bytes é seguro)
 async function enviarParaImpressora(bytes) {
-    const TAMANHO_PACOTE = 180;
+    const TAMANHO_PACOTE = 20;
     for (let i = 0; i < bytes.length; i += TAMANHO_PACOTE) {
         const pedaco = bytes.slice(i, i + TAMANHO_PACOTE);
-        await caracteristicaEscrita.writeValueWithoutResponse(pedaco);
-        await new Promise(r => setTimeout(r, 30)); // pequena pausa entre pacotes
+        await caracteristicaEscrita.writeValue(pedaco);
+        await new Promise(r => setTimeout(r, 40)); // pequena pausa entre pacotes
     }
 }
 
