@@ -7,8 +7,14 @@ let caracteristicaEscrita = null;
 async function conectarImpressora() {
     try {
         const dispositivo = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [KA1445_SERVICE_UUID] }],
-            optionalServices: [KA1445_SERVICE_UUID]
+            filters: [{ namePrefix: 'KA-1445' }],
+            optionalServices: [
+                KA1445_SERVICE_UUID,
+                '0000fee7-0000-1000-8000-00805f9b34fb',
+                '0000ff00-0000-1000-8000-00805f9b34fb',
+                'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+                '000018f0-0000-1000-8000-00805f9b34fb'
+            ]
         });
         const server = await dispositivo.gatt.connect();
         const service = await server.getPrimaryService(KA1445_SERVICE_UUID);
