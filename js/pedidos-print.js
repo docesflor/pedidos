@@ -6,14 +6,8 @@ let caracteristicaEscrita = null;
 
 async function conectarImpressora() {
     try {
-        // Se sobrou conexão de tentativa anterior, fecha antes de tentar de novo
-        if (dispositivoImpressora && dispositivoImpressora.gatt.connected) {
-            dispositivoImpressora.gatt.disconnect();
-            await new Promise(r => setTimeout(r, 300));
-        }
-
         const dispositivo = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'KA-1445' }],
+            acceptAllDevices: true,
             optionalServices: [
                 KA1445_SERVICE_UUID,
                 '0000fee7-0000-1000-8000-00805f9b34fb',
@@ -22,22 +16,7 @@ async function conectarImpressora() {
                 '000018f0-0000-1000-8000-00805f9b34fb'
             ]
         });
-
-        // Tenta conectar até 3 vezes — BLE clone costuma falhar na primeira tentativa
-        let server = null;
-        let ultimoErro = null;
-        for (let tentativa = 1; tentativa <= 3; tentativa++) {
-            try {
-                server = await dispositivo.gatt.connect();
-                break;
-            } catch (errTentativa) {
-                ultimoErro = errTentativa;
-                console.warn(`Tentativa ${tentativa} falhou:`, errTentativa.message);
-                await new Promise(r => setTimeout(r, 500));
-            }
-        }
-        if (!server) throw ultimoErro;
-
+        const server = await dispositivo.gatt.connect();
         const service = await server.getPrimaryService(KA1445_SERVICE_UUID);
         caracteristicaEscrita = await service.getCharacteristic(KA1445_WRITE_CHAR_UUID);
         dispositivoImpressora = dispositivo;
@@ -51,18 +30,18 @@ async function conectarImpressora() {
         return true;
     } catch (err) {
         console.error('Erro ao conectar impressora:', err);
-        toast('Erro ao conectar: ' + (err.message || err), 'erro');
+        toast('Não foi possível conectar à impressora.', 'erro');
         return false;
     }
 }
 
 // Envia bytes em pedaços pequenos (BLE tem limite de pacote — ~180 bytes é seguro)
 async function enviarParaImpressora(bytes) {
-    const TAMANHO_PACOTE = 20;
+    const TAMANHO_PACOTE = 180;
     for (let i = 0; i < bytes.length; i += TAMANHO_PACOTE) {
         const pedaco = bytes.slice(i, i + TAMANHO_PACOTE);
-        await caracteristicaEscrita.writeValue(pedaco);
-        await new Promise(r => setTimeout(r, 40)); // pequena pausa entre pacotes
+        await caracteristicaEscrita.writeValueWithoutResponse(pedaco);
+        await new Promise(r => setTimeout(r, 30)); // pequena pausa entre pacotes
     }
 }
 
@@ -72,16 +51,15 @@ function montarComandoESCPOS(p, dataBr, horario) {
     const partes = [];
 
     partes.push(new Uint8Array([0x1B, 0x40])); // reset
-    partes.push(new Uint8Array([0x1B, 0x4D, 0x01])); // fonte B (condensada) — vale pro recibo inteiro
     partes.push(new Uint8Array([0x1B, 0x61, 0x01])); // centralizar
-    partes.push(new Uint8Array([0x1B, 0x21, 0x30])); // fonte grande (título)
+    partes.push(new Uint8Array([0x1B, 0x21, 0x30])); // fonte grande
     partes.push(enc.encode('DOCES FLOR\n'));
     partes.push(new Uint8Array([0x1B, 0x21, 0x00])); // fonte normal
     partes.push(enc.encode('--------------------------------\n'));
     partes.push(new Uint8Array([0x1B, 0x61, 0x00])); // esquerda
 
     partes.push(enc.encode(`Cliente: ${p.nome || '---'}\n`));
-    partes.push(enc.encode(`${dataBr}${horario ? ' as ' + horario + 'h' : ''}\n`));
+    partes.push(enc.encode(`Data: ${dataBr}${horario ? ' as ' + horario + 'h' : ''}\n`));
     if (p.tipoEntrega === 'entrega' && p.endereco) {
         partes.push(enc.encode(`${p.endereco.logradouro}, ${p.endereco.numero}\n${p.endereco.bairro}\n`));
     } else {
@@ -127,7 +105,7 @@ async function imprimirComanda(key) {
             toast('🖨️ Comanda impressa!', 'sucesso');
         } catch (err) {
             console.error(err);
-            toast('Erro: ' + (err.message || err), 'erro');
+            toast('Erro ao imprimir.', 'erro');
         }
     });
 }
