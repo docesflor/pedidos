@@ -106,7 +106,7 @@ async function imprimirComanda(key) {
             toast('🖨️ Comanda impressa!', 'sucesso');
         } catch (err) {
             console.error(err);
-            toast('Erro ao imprimir.', 'erro');
+            toast('Erro: ' + (err.message || err), 'erro');
         }
     });
 }
