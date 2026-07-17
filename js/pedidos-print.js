@@ -6,6 +6,12 @@ let caracteristicaEscrita = null;
 
 async function conectarImpressora() {
     try {
+        // Se sobrou conexão de tentativa anterior, fecha antes de tentar de novo
+        if (dispositivoImpressora && dispositivoImpressora.gatt.connected) {
+            dispositivoImpressora.gatt.disconnect();
+            await new Promise(r => setTimeout(r, 300));
+        }
+
         const dispositivo = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: 'KA-1445' }],
             optionalServices: [
@@ -16,7 +22,22 @@ async function conectarImpressora() {
                 '000018f0-0000-1000-8000-00805f9b34fb'
             ]
         });
-        const server = await dispositivo.gatt.connect();
+
+        // Tenta conectar até 3 vezes — BLE clone costuma falhar na primeira tentativa
+        let server = null;
+        let ultimoErro = null;
+        for (let tentativa = 1; tentativa <= 3; tentativa++) {
+            try {
+                server = await dispositivo.gatt.connect();
+                break;
+            } catch (errTentativa) {
+                ultimoErro = errTentativa;
+                console.warn(`Tentativa ${tentativa} falhou:`, errTentativa.message);
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }
+        if (!server) throw ultimoErro;
+
         const service = await server.getPrimaryService(KA1445_SERVICE_UUID);
         caracteristicaEscrita = await service.getCharacteristic(KA1445_WRITE_CHAR_UUID);
         dispositivoImpressora = dispositivo;
@@ -30,7 +51,7 @@ async function conectarImpressora() {
         return true;
     } catch (err) {
         console.error('Erro ao conectar impressora:', err);
-        toast('Não foi possível conectar à impressora.', 'erro');
+        toast('Erro ao conectar: ' + (err.message || err), 'erro');
         return false;
     }
 }
