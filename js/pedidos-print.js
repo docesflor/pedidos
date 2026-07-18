@@ -51,7 +51,6 @@ function montarComandoESCPOS(p, dataBr, horario) {
     const partes = [];
 
     partes.push(new Uint8Array([0x1B, 0x40])); // reset
-    partes.push(new Uint8Array([0x1B, 0x4D, 0x01])); // fonte condensada
     partes.push(new Uint8Array([0x1B, 0x61, 0x01])); // centralizar
     partes.push(new Uint8Array([0x1B, 0x21, 0x30])); // fonte grandes
     partes.push(enc.encode('DOCES FLOR\n'));
