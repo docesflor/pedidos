@@ -41,7 +41,7 @@ async function enviarParaImpressora(bytes) {
     for (let i = 0; i < bytes.length; i += TAMANHO_PACOTE) {
         const pedaco = bytes.slice(i, i + TAMANHO_PACOTE);
         await caracteristicaEscrita.writeValueWithoutResponse(pedaco);
-        await new Promise(r => setTimeout(r, 30)); // pequena pausa entre pacotes
+        await new Promise(r => setTimeout(r, 120)); // pausa maior entre pacotes
     }
 }
 
