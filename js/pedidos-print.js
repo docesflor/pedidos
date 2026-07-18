@@ -51,16 +51,15 @@ function montarComandoESCPOS(p, dataBr, horario) {
     const partes = [];
 
     partes.push(new Uint8Array([0x1B, 0x40])); // reset
-    partes.push(new Uint8Array([0x1B, 0x4D, 0x01])); // fonte B (condensada) — vale pro recibo inteiro
     partes.push(new Uint8Array([0x1B, 0x61, 0x01])); // centralizar
-    partes.push(new Uint8Array([0x1B, 0x21, 0x30])); // fonte grande (título)
+    partes.push(new Uint8Array([0x1B, 0x21, 0x30])); // fonte grandes
     partes.push(enc.encode('DOCES FLOR\n'));
     partes.push(new Uint8Array([0x1B, 0x21, 0x00])); // fonte normal
     partes.push(enc.encode('--------------------------------\n'));
     partes.push(new Uint8Array([0x1B, 0x61, 0x00])); // esquerda
 
     partes.push(enc.encode(`Cliente: ${p.nome || '---'}\n`));
-    partes.push(enc.encode(`${dataBr}${horario ? ' as ' + horario + 'h' : ''}\n`));
+    partes.push(enc.encode(`Data: ${dataBr}${horario ? ' as ' + horario + 'h' : ''}\n`));
     if (p.tipoEntrega === 'entrega' && p.endereco) {
         partes.push(enc.encode(`${p.endereco.logradouro}, ${p.endereco.numero}\n${p.endereco.bairro}\n`));
     } else {
