@@ -67,9 +67,31 @@ function montarComandoESCPOS(p, dataBr, horario) {
     }
     partes.push(enc.encode('--------------------------------\n'));
 
-    (p.itens || []).forEach(item => {
-        partes.push(enc.encode(`${item.quantidade}x ${removerAcentos(item.sabor || item.nome)}\n`));
-    });
+    const itensP = p.itens || [];
+    const primeiroItem = itensP[0] || {};
+    const todosIguaisImp = itensP.length > 1 && itensP.every(i =>
+        i.formato === primeiroItem.formato &&
+        i.tipoForma === primeiroItem.tipoForma &&
+        i.cor === primeiroItem.cor
+    );
+
+    if (itensP.length === 1) {
+        const i = primeiroItem;
+        partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
+        partes.push(enc.encode(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}\n`));
+    } else if (todosIguaisImp) {
+        itensP.forEach(i => {
+            partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
+        });
+        partes.push(enc.encode('\n'));
+        partes.push(enc.encode(`Brigadeiro: ${removerAcentos(primeiroItem.formato || '')}\n`));
+        partes.push(enc.encode(`Forma: ${removerAcentos((primeiroItem.tipoForma||'') + '/' + (primeiroItem.cor||''))}\n`));
+    } else {
+        itensP.forEach(i => {
+            partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
+            partes.push(enc.encode(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}\n`));
+        });
+    }
 
     partes.push(enc.encode('--------------------------------\n'));
     const total = typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00';
