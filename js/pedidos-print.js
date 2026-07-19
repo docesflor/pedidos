@@ -45,6 +45,123 @@ async function enviarParaImpressora(bytes) {
     }
 }
 
+// ═══════════════════════════════════════════
+// IMPRESSÃO EM IMAGEM (fonte do site via html2canvas)
+// ═══════════════════════════════════════════
+const LARGURA_IMPRESSORA_PX = 384; // 58mm a 203dpi
+
+async function gerarCanvasComanda(p, dataBr, horario) {
+    const container = document.createElement('div');
+    container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMPRESSORA_PX}px;background:#fff;font-family:'DM Sans',Arial,sans-serif;color:#000;padding:10px;box-sizing:border-box;`;
+
+    const itensP = p.itens || [];
+    const primeiroItem = itensP[0] || {};
+    const todosIguaisImp = itensP.length > 1 && itensP.every(i =>
+        i.formato === primeiroItem.formato && i.tipoForma === primeiroItem.tipoForma && i.cor === primeiroItem.cor
+    );
+
+    let itensHTML = '';
+    if (itensP.length === 1) {
+        const i = primeiroItem;
+        itensHTML = `<div style="font-size:15px;">${i.quantidade}x ${i.sabor || i.nome}</div>
+            <div style="font-size:12px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
+    } else if (todosIguaisImp) {
+        itensP.forEach(i => { itensHTML += `<div style="font-size:15px;">${i.quantidade}x ${i.sabor || i.nome}</div>`; });
+        itensHTML += `<div style="margin-top:6px;font-size:12px;color:#333;">Brigadeiro: ${primeiroItem.formato||''}<br>Forma: ${primeiroItem.tipoForma||''}/${primeiroItem.cor||''}</div>`;
+    } else {
+        itensP.forEach(i => {
+            itensHTML += `<div style="font-size:15px;">${i.quantidade}x ${i.sabor || i.nome}</div>
+                <div style="font-size:12px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
+        });
+    }
+
+    const enderecoHTML = (p.tipoEntrega === 'entrega' && p.endereco)
+        ? `${p.endereco.logradouro}, ${p.endereco.numero}<br>${p.endereco.bairro}`
+        : 'Retirada no local';
+
+    const total = typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00';
+
+    container.innerHTML = `
+        <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-weight:700;font-size:28px;color:#2B1206;margin-bottom:6px;">Doces Flor</div>
+        <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+        <div style="font-size:14px;">Cliente: ${p.nome || '---'}</div>
+        <div style="font-size:14px;">${dataBr}${horario ? ' às ' + horario + 'h' : ''}</div>
+        <div style="font-size:14px;">${enderecoHTML}</div>
+        <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+        ${itensHTML}
+        <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+        <div style="font-size:17px;font-weight:700;">TOTAL: R$ ${total}</div>
+        <div style="font-size:14px;">Pagamento: ${p.statusPagamento || ''}</div>
+        ${p.observacoes ? `<div style="font-size:13px;margin-top:4px;">Obs: ${p.observacoes}</div>` : ''}
+    `;
+
+    document.body.appendChild(container);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const canvas = await html2canvas(container, { scale: 1, backgroundColor: '#ffffff', width: LARGURA_IMPRESSORA_PX });
+    container.remove();
+    return canvas;
+}
+
+function canvasParaESCPOSRaster(canvas) {
+    const ctx = canvas.getContext('2d');
+    const largura = canvas.width;
+    const altura = canvas.height;
+    const imgData = ctx.getImageData(0, 0, largura, altura).data;
+
+    const bytesPorLinha = Math.ceil(largura / 8);
+    const bitmap = new Uint8Array(bytesPorLinha * altura);
+
+    for (let y = 0; y < altura; y++) {
+        for (let x = 0; x < largura; x++) {
+            const idx = (y * largura + x) * 4;
+            const cinza = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
+            const alfa = imgData[idx+3];
+            const preto = alfa > 128 && cinza < 180; // limiar de "escuro"
+            if (preto) {
+                const byteIdx = y * bytesPorLinha + (x >> 3);
+                bitmap[byteIdx] |= (0x80 >> (x % 8));
+            }
+        }
+    }
+
+    const xL = bytesPorLinha & 0xFF, xH = (bytesPorLinha >> 8) & 0xFF;
+    const yL = altura & 0xFF, yH = (altura >> 8) & 0xFF;
+    const header = new Uint8Array([0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]); // GS v 0
+
+    const resultado = new Uint8Array(header.length + bitmap.length);
+    resultado.set(header, 0);
+    resultado.set(bitmap, header.length);
+    return resultado;
+}
+
+async function imprimirComandaImagem(key) {
+    if (!caracteristicaEscrita) {
+        const ok = await conectarImpressora();
+        if (!ok) return;
+    }
+    database.ref('pedidos/' + key).once('value', async snapshot => {
+        const p = snapshot.val();
+        if (!p) { toast('Pedido não encontrado.', 'erro'); return; }
+        const dataBr = formatarDataComDia(p.dataEntrega || p.data || '');
+        const horario = (p.hora || '').trim();
+        toast('⏳ Gerando comanda...', 'aviso');
+        try {
+            const canvas = await gerarCanvasComanda(p, dataBr, horario);
+            const bytes = canvasParaESCPOSRaster(canvas);
+            await enviarParaImpressora(new Uint8Array([0x1B, 0x40])); // reset
+            await enviarParaImpressora(bytes);
+            await enviarParaImpressora(new TextEncoder().encode('\n\n\n'));
+            toast('🖨️ Comanda impressa!', 'sucesso');
+        } catch (err) {
+            console.error(err);
+            toast('Erro ao imprimir.', 'erro');
+        }
+    });
+}
+// ═══════════════════════════════════════════
+// FIM — IMPRESSÃO EM IMAGEM
+// ═══════════════════════════════════════════
+
 // Quebra um texto em várias linhas sem cortar palavras no meio
 function quebrarLinha(texto, largura = 32) {
     const palavras = texto.split(' ');
