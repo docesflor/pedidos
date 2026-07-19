@@ -312,7 +312,7 @@ function criarCard(pedido, key, finalizado) {
     const botoesHTML = finalizado
     ? `${avaliacaoBtnHTML}
             <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-            <button class="btn btn-amarelo"  onclick="imprimirComanda('${key}')">🖨️ Imprimir</button>
+            <button class="btn btn-amarelo"  onclick="imprimirComandaImagem('${key}')">🖨️ Imprimir</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<div class="botoes-principais">
                 <button class="btn btn-finalizar-card" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
@@ -320,7 +320,7 @@ function criarCard(pedido, key, finalizado) {
                 <button class="btn-mais" onclick="toggleMenuMais('menuMais-${key}', event)" aria-label="Mais opções">⋯</button>
             </div>
             <div class="menu-mais" id="menuMais-${key}" style="display:none;">
-                <button onclick="imprimirComanda('${key}');fecharMenuMais('menuMais-${key}')">🖨️ Imprimir Comanda</button>
+                <button onclick="imprimirComandaImagem('${key}');fecharMenuMais('menuMais-${key}')">🖨️ Imprimir Comanda</button>
                 <button onclick="editarPedido('${key}');fecharMenuMais('menuMais-${key}')">✏️ Editar</button>
                 <button onclick="gerarCobrancaPix('${key}');fecharMenuMais('menuMais-${key}')">💸 Pix</button>
                 <button onclick="abrirTemplates('${key}');fecharMenuMais('menuMais-${key}')">📋 Templates</button>
