@@ -45,6 +45,33 @@ async function enviarParaImpressora(bytes) {
     }
 }
 
+// Quebra um texto em várias linhas sem cortar palavras no meio
+function quebrarLinha(texto, largura = 32) {
+    const palavras = texto.split(' ');
+    const linhas = [];
+    let linhaAtual = '';
+
+    palavras.forEach(palavra => {
+        // se a palavra sozinha for maior que a largura, força corte nela mesma
+        if (palavra.length > largura) {
+            if (linhaAtual) { linhas.push(linhaAtual); linhaAtual = ''; }
+            for (let i = 0; i < palavra.length; i += largura) {
+                linhas.push(palavra.slice(i, i + largura));
+            }
+            return;
+        }
+        const tentativa = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
+        if (tentativa.length > largura) {
+            linhas.push(linhaAtual);
+            linhaAtual = palavra;
+        } else {
+            linhaAtual = tentativa;
+        }
+    });
+    if (linhaAtual) linhas.push(linhaAtual);
+    return linhas.join('\n') + '\n';
+}
+
 // Monta os comandos ESC/POS a partir do pedido
 function montarComandoESCPOS(p, dataBr, horario) {
     const enc = new TextEncoder();
@@ -58,10 +85,11 @@ function montarComandoESCPOS(p, dataBr, horario) {
     partes.push(enc.encode('--------------------------------\n'));
     partes.push(new Uint8Array([0x1B, 0x61, 0x00])); // esquerda
 
-    partes.push(enc.encode(`Cliente: ${p.nome || '---'}\n`));
+    partes.push(enc.encode(quebrarLinha(`Cliente: ${p.nome || '---'}`)));
     partes.push(enc.encode(`${dataBr}${horario ? ' às ' + horario + 'h' : ''}\n`));
     if (p.tipoEntrega === 'entrega' && p.endereco) {
-        partes.push(enc.encode(`${p.endereco.logradouro}, ${p.endereco.numero}\n${p.endereco.bairro}\n`));
+        partes.push(enc.encode(quebrarLinha(`${p.endereco.logradouro}, ${p.endereco.numero}`)));
+        partes.push(enc.encode(quebrarLinha(p.endereco.bairro)));
     } else {
         partes.push(enc.encode('Retirada no local\n'));
     }
@@ -77,19 +105,19 @@ function montarComandoESCPOS(p, dataBr, horario) {
 
     if (itensP.length === 1) {
         const i = primeiroItem;
-        partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
-        partes.push(enc.encode(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}\n`));
+        partes.push(enc.encode(quebrarLinha(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}`)));
+        partes.push(enc.encode(quebrarLinha(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}`)));
     } else if (todosIguaisImp) {
         itensP.forEach(i => {
-            partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
+            partes.push(enc.encode(quebrarLinha(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}`)));
         });
         partes.push(enc.encode('\n'));
-        partes.push(enc.encode(`Brigadeiro: ${removerAcentos(primeiroItem.formato || '')}\n`));
-        partes.push(enc.encode(`Forma: ${removerAcentos((primeiroItem.tipoForma||'') + '/' + (primeiroItem.cor||''))}\n`));
+        partes.push(enc.encode(quebrarLinha(`Brigadeiro: ${removerAcentos(primeiroItem.formato || '')}`)));
+        partes.push(enc.encode(quebrarLinha(`Forma: ${removerAcentos((primeiroItem.tipoForma||'') + '/' + (primeiroItem.cor||''))}`)));
     } else {
         itensP.forEach(i => {
-            partes.push(enc.encode(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}\n`));
-            partes.push(enc.encode(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}\n`));
+            partes.push(enc.encode(quebrarLinha(`${i.quantidade}x ${removerAcentos(i.sabor || i.nome)}`)));
+            partes.push(enc.encode(quebrarLinha(`B: ${removerAcentos(i.formato || '')} | F: ${removerAcentos((i.tipoForma||'') + '/' + (i.cor||''))}`)));
         });
     }
 
@@ -99,7 +127,7 @@ function montarComandoESCPOS(p, dataBr, horario) {
     partes.push(enc.encode(`TOTAL: R$ ${total}\n`));
     partes.push(new Uint8Array([0x1B, 0x21, 0x00]));
     partes.push(enc.encode(`Pagamento: ${p.statusPagamento || ''}\n`));
-    if (p.observacoes) partes.push(enc.encode(`Obs: ${p.observacoes}\n`));
+    if (p.observacoes) partes.push(enc.encode(quebrarLinha(`Obs: ${p.observacoes}`)));
     partes.push(enc.encode('\n\n\n'));
 
     // concatena tudo em um único Uint8Array
