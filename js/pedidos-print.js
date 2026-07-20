@@ -63,15 +63,15 @@ async function gerarCanvasComanda(p, dataBr, horario) {
     let itensHTML = '';
     if (itensP.length === 1) {
         const i = primeiroItem;
-        itensHTML = `<div style="font-size:22px;">${i.quantidade}x ${i.sabor || i.nome}</div>
-            <div style="font-size:17px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
+        itensHTML = `<div style="font-size:32px;font-weight:700;">${i.quantidade}x ${i.sabor || i.nome}</div>
+            <div style="font-size:22px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
     } else if (todosIguaisImp) {
-        itensP.forEach(i => { itensHTML += `<div style="font-size:22px;">${i.quantidade}x ${i.sabor || i.nome}</div>`; });
-        itensHTML += `<div style="margin-top:8px;font-size:17px;color:#333;">Brigadeiro: ${primeiroItem.formato||''}<br>Forma: ${primeiroItem.tipoForma||''}/${primeiroItem.cor||''}</div>`;
+        itensP.forEach(i => { itensHTML += `<div style="font-size:32px;font-weight:700;">${i.quantidade}x ${i.sabor || i.nome}</div>`; });
+        itensHTML += `<div style="margin-top:10px;font-size:22px;color:#333;">Brigadeiro: ${primeiroItem.formato||''}<br>Forma: ${primeiroItem.tipoForma||''}/${primeiroItem.cor||''}</div>`;
     } else {
         itensP.forEach(i => {
-            itensHTML += `<div style="font-size:22px;">${i.quantidade}x ${i.sabor || i.nome}</div>
-                <div style="font-size:17px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
+            itensHTML += `<div style="font-size:32px;font-weight:700;">${i.quantidade}x ${i.sabor || i.nome}</div>
+                <div style="font-size:22px;color:#333;">B: ${i.formato||''} | F: ${i.tipoForma||''}/${i.cor||''}</div>`;
         });
     }
 
@@ -82,17 +82,17 @@ async function gerarCanvasComanda(p, dataBr, horario) {
     const total = typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00';
 
     container.innerHTML = `
-        <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-weight:700;font-size:38px;color:#2B1206;margin-bottom:8px;">Doces Flor</div>
-        <div style="border-top:1px dashed #000;margin:8px 0;"></div>
-        <div style="font-size:19px;">Cliente: ${p.nome || '---'}</div>
-        <div style="font-size:19px;">${dataBr}${horario ? ' às ' + horario + 'h' : ''}</div>
-        <div style="font-size:19px;">${enderecoHTML}</div>
-        <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+        <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-weight:700;font-size:48px;color:#2B1206;margin-bottom:10px;">Doces Flor</div>
+        <div style="border-top:2px dashed #000;margin:10px 0;"></div>
+        <div style="font-size:24px;">Cliente: ${p.nome || '---'}</div>
+        <div style="font-size:24px;">${dataBr}${horario ? ' às ' + horario + 'h' : ''}</div>
+        <div style="font-size:24px;">${enderecoHTML}</div>
+        <div style="border-top:2px dashed #000;margin:10px 0;"></div>
         ${itensHTML}
-        <div style="border-top:1px dashed #000;margin:8px 0;"></div>
-        <div style="font-size:24px;font-weight:700;">TOTAL: R$ ${total}</div>
-        <div style="font-size:19px;">Pagamento: ${p.statusPagamento || ''}</div>
-        ${p.observacoes ? `<div style="font-size:18px;margin-top:6px;">Obs: ${p.observacoes}</div>` : ''}
+        <div style="border-top:2px dashed #000;margin:10px 0;"></div>
+        <div style="font-size:32px;font-weight:700;">TOTAL: R$ ${total}</div>
+        <div style="font-size:24px;">Pagamento: ${p.statusPagamento || ''}</div>
+        ${p.observacoes ? `<div style="font-size:22px;margin-top:8px;">Obs: ${p.observacoes}</div>` : ''}
     `;
 
     document.body.appendChild(container);
