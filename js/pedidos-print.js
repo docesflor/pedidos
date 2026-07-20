@@ -49,10 +49,12 @@ async function enviarParaImpressora(bytes) {
 // IMPRESSÃO EM IMAGEM (fonte do site via html2canvas)
 // ═══════════════════════════════════════════
 const LARGURA_IMPRESSORA_PX = 384; // 58mm a 203dpi
+const LOGO_URL = 'https://cdn.jsdelivr.net/gh/docesflor/shared@main/icone_termica.png';
 
 async function gerarCanvasComanda(p, dataBr, horario) {
     const container = document.createElement('div');
-    container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMPRESSORA_PX}px;background:#fff;font-family:'DM Sans',Arial,sans-serif;color:#000;padding:10px;box-sizing:border-box;`;
+    const OFFSET_ESQUERDA_PX = 6; // ajuste este valor até centralizar (teste com +2 em +2)
+container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMPRESSORA_PX}px;background:#fff;font-family:'DM Sans',Arial,sans-serif;color:#000;padding:10px calc(10px - ${OFFSET_ESQUERDA_PX}px) 10px calc(10px + ${OFFSET_ESQUERDA_PX}px);box-sizing:border-box;`;
 
     const itensP = p.itens || [];
     const primeiroItem = itensP[0] || {};
@@ -82,7 +84,7 @@ async function gerarCanvasComanda(p, dataBr, horario) {
     const total = typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00';
 
     container.innerHTML = `
-        <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-weight:700;font-size:48px;color:#2B1206;margin-bottom:10px;">Doces Flor</div>
+        <div style="text-align:center;margin-bottom:10px;"><img src="${LOGO_URL}" crossorigin="anonymous" style="width:180px;height:auto;display:inline-block;"></div>
         <div style="border-top:2px dashed #000;margin:10px 0;"></div>
         <div style="font-size:24px;">Cliente: ${p.nome || '---'}</div>
         <div style="font-size:24px;">${dataBr}${horario ? ' às ' + horario + 'h' : ''}</div>
@@ -97,7 +99,11 @@ async function gerarCanvasComanda(p, dataBr, horario) {
 
     document.body.appendChild(container);
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
-    const canvas = await html2canvas(container, { scale: 1, backgroundColor: '#ffffff', width: LARGURA_IMPRESSORA_PX });
+    const imgLogo = container.querySelector('img');
+    if (imgLogo && !imgLogo.complete) {
+        await new Promise(resolve => { imgLogo.onload = resolve; imgLogo.onerror = resolve; });
+    }
+    const canvas = await html2canvas(container, { scale: 1, backgroundColor: '#ffffff', width: LARGURA_IMPRESSORA_PX, useCORS: true });
     container.remove();
     return canvas;
 }
