@@ -7,7 +7,16 @@ let graficoFaturamento = null;
 let graficoGastosCategoria = null;
 let graficoHistoricoPreco = null;
 let _dadosLucratividadeSabores = [];
-const CORES_CATEGORIA_GASTO = { 'Ingredientes':'#E8943A', 'Embalagens':'#5C2A0E', 'Gás/Energia':'#DC2626', 'Entrega':'#5b8def', 'Outros':'#8B4513' };
+const CORES_CATEGORIA_GASTO = { 'Ingrediente':'#E8943A', 'Embalagem':'#5C2A0E', 'Materiais':'#5b8def', 'Outros':'#8B4513' };
+
+// Trata categorias antigas ("Ingredientes", "Embalagens", "Gás/Energia", "Entrega")
+// como equivalentes às novas 4 categorias, pra não perder gastos já cadastrados.
+function normalizarCategoriaGasto(cat) {
+    if (cat === 'Ingredientes' || cat === 'Ingrediente') return 'Ingrediente';
+    if (cat === 'Embalagens' || cat === 'Embalagem') return 'Embalagem';
+    if (cat === 'Materiais') return 'Materiais';
+    return 'Outros'; // inclui "Gás/Energia", "Entrega" antigas e "Outros"
+}
 
 function mostrarAbaDash(aba, btn) {
     const resultado = document.getElementById('dashboard-resultado');
@@ -179,7 +188,7 @@ if (elDashPagamentos) elDashPagamentos.innerHTML=Object.entries(pagamentos).leng
                 if(dataG.getFullYear()!==ano) return;
                 if(mes!==null&&dataG.getMonth()!==mes) return;
                 totalGastos+=g.valor||0;
-                const cat=g.categoria||'Outros';categorias[cat]=(categorias[cat]||0)+(g.valor||0);
+                const cat=normalizarCategoriaGasto(g.categoria);categorias[cat]=(categorias[cat]||0)+(g.valor||0);
             });
             database.ref('eventos').once('value', snapEventos => {
                 let totalEventos = 0;
@@ -340,7 +349,7 @@ function atualizarSaborMaisVendidoPublico() {
 function renderizarGraficoGastosCategoria(ano) {
     database.ref('gastos').once('value', snapshot => {
         const mesesNomeG = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        const categoriasFixas = ['Ingredientes','Embalagens','Gás/Energia','Entrega','Outros'];
+        const categoriasFixas = ['Ingrediente','Embalagem','Materiais','Outros'];
         const cores = CORES_CATEGORIA_GASTO;
         const dadosPorCategoria = {};
         categoriasFixas.forEach(cat => { dadosPorCategoria[cat] = new Array(12).fill(0); });
@@ -350,7 +359,7 @@ function renderizarGraficoGastosCategoria(ano) {
             const pts = g.data.split('-');
             if (parseInt(pts[0]) !== ano) return;
             const mes = parseInt(pts[1]) - 1;
-            const cat = categoriasFixas.includes(g.categoria) ? g.categoria : 'Outros';
+            const cat = normalizarCategoriaGasto(g.categoria);
             dadosPorCategoria[cat][mes] += (g.valor || 0);
         });
         const datasets = categoriasFixas.map(cat => ({
