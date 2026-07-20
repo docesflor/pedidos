@@ -53,8 +53,8 @@ const LOGO_URL = 'https://cdn.jsdelivr.net/gh/docesflor/shared@main/icone_termic
 
 async function gerarCanvasComanda(p, dataBr, horario) {
     const container = document.createElement('div');
-    const OFFSET_ESQUERDA_PX = 6; // ajuste este valor até centralizar (teste com +2 em +2)
-container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMPRESSORA_PX}px;background:#fff;font-family:'DM Sans',Arial,sans-serif;color:#000;padding:10px calc(10px - ${OFFSET_ESQUERDA_PX}px) 10px calc(10px + ${OFFSET_ESQUERDA_PX}px);box-sizing:border-box;`;
+    const OFFSET_ESQUERDA_PX = 30; // ajuste este valor até centralizar (teste com +6 em +6) — quanto maior, mais o conteúdo vai pra ESQUERDA
+container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMPRESSORA_PX}px;background:#fff;font-family:'DM Sans',Arial,sans-serif;color:#000;padding:10px 10px 10px calc(10px - ${OFFSET_ESQUERDA_PX}px);box-sizing:border-box;`;
 
     const itensP = p.itens || [];
     const primeiroItem = itensP[0] || {};
@@ -114,18 +114,38 @@ function canvasParaESCPOSRaster(canvas) {
     const altura = canvas.height;
     const imgData = ctx.getImageData(0, 0, largura, altura).data;
 
-    const bytesPorLinha = Math.ceil(largura / 8);
-    const bitmap = new Uint8Array(bytesPorLinha * altura);
-
+    // buffer de cinza em float pra permitir dithering (evita cortar seco os detalhes finos da logo)
+    const cinzas = new Float32Array(largura * altura);
     for (let y = 0; y < altura; y++) {
         for (let x = 0; x < largura; x++) {
             const idx = (y * largura + x) * 4;
-            const cinza = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
             const alfa = imgData[idx+3];
-            const preto = alfa > 128 && cinza < 180; // limiar de "escuro"
+            const cinza = imgData[idx] * 0.299 + imgData[idx+1] * 0.587 + imgData[idx+2] * 0.114;
+            cinzas[y * largura + x] = alfa > 128 ? cinza : 255; // transparente conta como branco
+        }
+    }
+
+    const bytesPorLinha = Math.ceil(largura / 8);
+    const bitmap = new Uint8Array(bytesPorLinha * altura);
+
+    // dithering Floyd–Steinberg: difunde o erro de arredondamento pros vizinhos
+    for (let y = 0; y < altura; y++) {
+        for (let x = 0; x < largura; x++) {
+            const i = y * largura + x;
+            const antigo = cinzas[i];
+            const preto = antigo < 128;
+            const erro = antigo - (preto ? 0 : 255);
+
             if (preto) {
                 const byteIdx = y * bytesPorLinha + (x >> 3);
                 bitmap[byteIdx] |= (0x80 >> (x % 8));
+            }
+
+            if (x + 1 < largura) cinzas[i + 1] += erro * 7 / 16;
+            if (y + 1 < altura) {
+                if (x > 0) cinzas[i + largura - 1] += erro * 3 / 16;
+                cinzas[i + largura] += erro * 5 / 16;
+                if (x + 1 < largura) cinzas[i + largura + 1] += erro * 1 / 16;
             }
         }
     }
