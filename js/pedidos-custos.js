@@ -122,16 +122,20 @@ function salvarOuRepor() {
 }
 
 function atualizarDescricaoGasto() {
-  const categoria = document.getElementById('gastoCategoria').value;
-  const select    = document.getElementById('gastoDescricao');
-  const opcoes = (DADOS_PEDIDOS && DADOS_PEDIDOS.gastos && DADOS_PEDIDOS.gastos[categoria])
-      || (window.CATALOGO_DOCES_FLOR && window.CATALOGO_DOCES_FLOR.gastos && window.CATALOGO_DOCES_FLOR.gastos[categoria])
-      || [];
-    select.innerHTML = '<option value="">Selecione uma opção</option>';
-    [...opcoes].sort((a,b) => a.localeCompare(b,'pt-BR')).forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item; opt.textContent = item;
-        select.appendChild(opt);
+    const datalist = document.getElementById('listaDescricoesGasto');
+    datalist.innerHTML = '';
+
+    database.ref('gastos').once('value', snapshot => {
+        const descricoesUnicas = new Set();
+        snapshot.forEach(child => {
+            const g = child.val();
+            if (g.descricao) descricoesUnicas.add(g.descricao);
+        });
+        [...descricoesUnicas].sort((a,b) => a.localeCompare(b,'pt-BR')).forEach(desc => {
+            const opt = document.createElement('option');
+            opt.value = desc;
+            datalist.appendChild(opt);
+        });
     });
 }
 
@@ -153,7 +157,7 @@ function salvarGasto() {
         toast('✅ Gasto salvo!');
         document.getElementById('gastoData').value='';
         document.getElementById('gastoCategoria').value='';
-        document.getElementById('gastoDescricao').innerHTML='<option value="">Selecione uma opção</option>';
+        document.getElementById('gastoDescricao').value='';
         document.getElementById('gastoQuantidade').value='';
         document.getElementById('gastoValor').value='';
         btn.textContent='💾 Salvar Gasto'; btn.disabled=false; carregarGastos();
@@ -249,6 +253,7 @@ function mostrarAbaGastos(aba, btn) {
 
     if (aba === 'gastos') {
         document.getElementById('aba-gastos').style.display = 'block';
+        atualizarDescricaoGasto();
     } else if (aba === 'insumos') {
         document.getElementById('aba-insumos').style.display = 'block';
         carregarInsumos();
