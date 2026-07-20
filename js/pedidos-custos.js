@@ -184,12 +184,51 @@ function carregarGastos() {
         gastos.forEach(g=>{total+=g.valor||0;lista.appendChild(criarCardGasto(g));});
         document.getElementById('gastoTotalPeriodo').textContent='R$ '+total.toFixed(2).replace('.',',');
         resumo.style.display='block';
+        renderizarFiltroCategoriaGasto();
+        filtrarGastosPorCategoria('todos');
     });
+}
+
+function renderizarFiltroCategoriaGasto() {
+    const resumo = document.getElementById('gastoResumo');
+    if (document.getElementById('filtroCategoriaGasto')) return; // já existe, não duplica
+    const wrapper = document.createElement('div');
+    wrapper.id = 'filtroCategoriaGasto';
+    wrapper.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px;';
+    wrapper.innerHTML = `
+        <button class="chip-filtro active" data-cat="todos" onclick="filtrarGastosPorCategoria('todos', this)">Todos</button>
+        <button class="chip-filtro" data-cat="Ingrediente" onclick="filtrarGastosPorCategoria('Ingrediente', this)">🧴 Ingredientes</button>
+        <button class="chip-filtro" data-cat="Embalagem" onclick="filtrarGastosPorCategoria('Embalagem', this)">📦 Embalagens</button>
+        <button class="chip-filtro" data-cat="Materiais" onclick="filtrarGastosPorCategoria('Materiais', this)">🧰 Materiais</button>
+        <button class="chip-filtro" data-cat="Outros" onclick="filtrarGastosPorCategoria('Outros', this)">📋 Outros</button>
+    `;
+    resumo.appendChild(wrapper);
+}
+
+function filtrarGastosPorCategoria(categoria, btn) {
+    if (btn) {
+        document.querySelectorAll('#filtroCategoriaGasto .chip-filtro').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    let totalFiltrado = 0;
+    document.querySelectorAll('#lista-gastos .gasto-item').forEach(card => {
+        const bateCategoria = categoria === 'todos' || normalizarCategoriaGasto(card.dataset.categoria) === categoria;
+        if (bateCategoria) {
+            card.style.display = '';
+            const valorTexto = card.querySelector('p:last-child')?.textContent || '';
+            const match = valorTexto.match(/R\$\s?([\d.,]+)/);
+            if (match) totalFiltrado += parseFloat(match[1].replace(/\./g,'').replace(',','.')) || 0;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    document.getElementById('gastoTotalPeriodo').textContent = 'R$ ' + totalFiltrado.toFixed(2).replace('.', ',');
 }
 
 
 function criarCardGasto(g) {
     const div=document.createElement('div'); div.className='gasto-item';
+    div.dataset.categoria = g.categoria || 'Outros';
     const dataFormatada=g.data?g.data.split('-').reverse().join('/'):'N/A';
     const valorFormatado='R$ '+(g.valor||0).toFixed(2).replace('.',',');
     const info=document.createElement('div'); info.className='gasto-info';
@@ -197,10 +236,54 @@ function criarCardGasto(g) {
     const desc=document.createElement('p'); const descStrong=document.createElement('strong'); descStrong.textContent=g.descricao||'Sem descrição'; desc.appendChild(descStrong);
     const det=document.createElement('p'); det.textContent=`📅 ${dataFormatada} | Qtd: ${g.quantidade||1} | ${valorFormatado}`;
     info.appendChild(cat); info.appendChild(desc); info.appendChild(det);
+    const botoesWrap=document.createElement('div'); botoesWrap.style.cssText='display:flex;gap:6px;flex-shrink:0;';
+    const btnEditar=document.createElement('button'); btnEditar.className='btn-remove'; btnEditar.style.cssText='background:var(--amber);'; btnEditar.textContent='Editar'; btnEditar.onclick=()=>abrirEdicaoGasto(g.key);
     const btnExcluir=document.createElement('button'); btnExcluir.className='btn-remove'; btnExcluir.textContent='Excluir'; btnExcluir.onclick=()=>excluirGasto(g.key);
-    div.appendChild(info); div.appendChild(btnExcluir); return div;
+    botoesWrap.appendChild(btnEditar); botoesWrap.appendChild(btnExcluir);
+    div.appendChild(info); div.appendChild(botoesWrap); return div;
 }
 
+
+let _gastoEditandoKey = null;
+
+function abrirEdicaoGasto(key) {
+    database.ref('gastos/' + key).once('value', snap => {
+        const g = snap.val();
+        if (!g) { toast('❌ Gasto não encontrado.', 'erro'); return; }
+        _gastoEditandoKey = key;
+        document.getElementById('editGastoData').value = g.data || '';
+        document.getElementById('editGastoCategoria').value = g.categoria || 'Outros';
+        document.getElementById('editGastoDescricao').value = g.descricao || '';
+        document.getElementById('editGastoQuantidade').value = g.quantidade || 1;
+        document.getElementById('editGastoValor').value = 'R$ ' + (g.valor || 0).toFixed(2).replace('.', ',');
+        document.getElementById('modalEditarGasto').style.display = 'flex';
+    });
+}
+
+function fecharEdicaoGasto() {
+    document.getElementById('modalEditarGasto').style.display = 'none';
+    _gastoEditandoKey = null;
+}
+
+function salvarEdicaoGasto() {
+    if (!_gastoEditandoKey) return;
+    const data = document.getElementById('editGastoData').value;
+    const categoria = document.getElementById('editGastoCategoria').value;
+    const descricao = document.getElementById('editGastoDescricao').value.trim();
+    const quantidade = parseInt(document.getElementById('editGastoQuantidade').value) || 1;
+    const valor = parseFloat(document.getElementById('editGastoValor').value.replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
+
+    if (!data)      { toast('Informe a data.', 'erro'); return; }
+    if (!descricao)  { toast('Informe a descrição.', 'erro'); return; }
+    if (valor <= 0)  { toast('Informe um valor válido.', 'erro'); return; }
+
+    database.ref('gastos/' + _gastoEditandoKey).update({ data, categoria, descricao, quantidade, valor })
+        .then(() => {
+            toast('✅ Gasto atualizado!');
+            fecharEdicaoGasto();
+            carregarGastos();
+        }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+}
 
 function excluirGasto(key) {
     database.ref('gastos/' + key).once('value', snapGasto => {
