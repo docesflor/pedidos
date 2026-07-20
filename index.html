@@ -427,16 +427,16 @@
                 <label for="gastoCategoria">Categoria</label>
                 <select id="gastoCategoria" onchange="atualizarDescricaoGasto()">
                     <option value="">Selecione</option>
-                    <option value="Ingredientes">🧴 Ingredientes</option>
-                    <option value="Embalagens">📦 Embalagens</option>
-                    <option value="Gás/Energia">🔥 Gás/Energia</option>
-                    <option value="Entrega">🚗 Entrega</option>
+                    <option value="Ingrediente">🧴 Ingrediente</option>
+                    <option value="Embalagem">📦 Embalagem</option>
+                    <option value="Materiais">🧰 Materiais</option>
                     <option value="Outros">📋 Outros</option>
                 </select>
             </div>
         </div>
         <label for="gastoDescricao">Descrição</label>
-        <select id="gastoDescricao"><option value="">Selecione uma opção</option></select>
+        <input type="text" id="gastoDescricao" placeholder="Ex: Caixa de 4 unidades" list="listaDescricoesGasto" autocomplete="off">
+        <datalist id="listaDescricoesGasto"></datalist>
         <div class="linha-dupla">
             <div><label for="gastoQuantidade">Quantidade</label><input type="number" id="gastoQuantidade" placeholder="Ex: 2" min="1" step="1"></div>
             <div><label for="gastoValor">Valor Total (R$)</label><input type="text" id="gastoValor" placeholder="R$ 0,00"></div>
