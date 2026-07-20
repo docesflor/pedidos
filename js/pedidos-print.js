@@ -84,7 +84,7 @@ container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMP
     const total = typeof p.valorTotal === 'number' ? p.valorTotal.toFixed(2).replace('.', ',') : '0,00';
 
     container.innerHTML = `
-        <div style="text-align:center;margin-bottom:10px;"><img src="${LOGO_URL}" crossorigin="anonymous" style="width:180px;height:auto;display:inline-block;"></div>
+        <div style="text-align:center;margin-bottom:10px;"><img src="${LOGO_URL}" crossorigin="anonymous" style="width:230px;height:auto;display:inline-block;"></div>
         <div style="border-top:2px dashed #000;margin:10px 0;"></div>
         <div style="font-size:24px;">Cliente: ${p.nome || '---'}</div>
         <div style="font-size:24px;">${dataBr}${horario ? ' às ' + horario + 'h' : ''}</div>
