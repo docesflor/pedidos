@@ -50,6 +50,7 @@ async function enviarParaImpressora(bytes) {
 // ═══════════════════════════════════════════
 const LARGURA_IMPRESSORA_PX = 384; // 58mm a 203dpi
 const LOGO_URL = 'https://cdn.jsdelivr.net/gh/docesflor/shared@main/icone_termica.png';
+const QR_LINKS_URL = 'https://docesflor.github.io/shared/qrcode_links.png';
 
 async function gerarCanvasComanda(p, dataBr, horario) {
     const container = document.createElement('div');
@@ -95,14 +96,20 @@ container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMP
         <div style="font-size:32px;font-weight:700;">TOTAL: R$ ${total}</div>
         <div style="font-size:24px;">Pagamento: ${p.statusPagamento || ''}</div>
         ${p.observacoes ? `<div style="font-size:22px;margin-top:8px;">Obs: ${p.observacoes}</div>` : ''}
+        <div style="border-top:2px dashed #000;margin:12px 0 8px;"></div>
+        <div style="text-align:center;">
+            <img src="${QR_LINKS_URL}" crossorigin="anonymous" style="width:130px;height:130px;display:inline-block;">
+            <div style="font-size:18px;margin-top:4px;">📱 Instagram · WhatsApp · Avaliação</div>
+        </div>
     `;
 
     document.body.appendChild(container);
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
-    const imgLogo = container.querySelector('img');
-    if (imgLogo && !imgLogo.complete) {
-        await new Promise(resolve => { imgLogo.onload = resolve; imgLogo.onerror = resolve; });
-    }
+    const imagensContainer = container.querySelectorAll('img');
+    await Promise.all(Array.from(imagensContainer).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+    }));
     const canvas = await html2canvas(container, { scale: 1, backgroundColor: '#ffffff', width: LARGURA_IMPRESSORA_PX, useCORS: true });
     container.remove();
     return canvas;
@@ -271,6 +278,11 @@ function montarComandoESCPOS(p, dataBr, horario) {
     partes.push(new Uint8Array([0x1B, 0x21, 0x00]));
     partes.push(enc.encode(`Pagamento: ${p.statusPagamento || ''}\n`));
     if (p.observacoes) partes.push(enc.encode(quebrarLinha(`Obs: ${p.observacoes}`)));
+    partes.push(enc.encode('--------------------------------\n'));
+    partes.push(new Uint8Array([0x1B, 0x61, 0x01])); // centralizar
+    partes.push(enc.encode(quebrarLinha('Instagram/WhatsApp/Avaliacao:')));
+    partes.push(enc.encode(quebrarLinha('docesflor.github.io/links')));
+    partes.push(new Uint8Array([0x1B, 0x61, 0x00])); // esquerda
     partes.push(enc.encode('\n\n\n'));
 
     // concatena tudo em um único Uint8Array
