@@ -160,6 +160,7 @@ async function carregarDashboard() {
         document.getElementById('dashSabores').innerHTML=saboresOrdenados.length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':podioSaboresHTML+listaSaboresHTML;
         calcularLucratividadeSabores(sabores, receitasMap, faturamento, totalBrigadeiros);
         calcularAvaliacoes(ano, mes);
+        carregarEstatisticasLinks();
         const elDashPagamentos = document.getElementById('dashPagamentos');
 if (elDashPagamentos) elDashPagamentos.innerHTML=Object.entries(pagamentos).length===0?'<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum dado.</p>':Object.entries(pagamentos).map(([sk,qtd])=>{const nomes={'entregue':'Entregue','A pagar':'A pagar','Pago Parcialmente':'Pago Parcialmente','Pago':'Pago'};return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.88em;"><span>${nomes[sk]||sk}</span><strong>${qtd} pedido${qtd>1?'s':''}</strong></div>`;}).join('');
         let custoProducaoEstimado = 0;
@@ -458,6 +459,53 @@ function calcularAvaliacoes(ano, mes) {
 }
 
 
+
+function carregarEstatisticasLinks() {
+    const div = document.getElementById('dashEstatisticasLinks');
+    if (!div) return;
+    database.ref('estatisticas-links').once('value').then(snap => {
+        const dados = snap.val() || {};
+        const visualizacoes = dados['_visualizacoes_pagina'] || 0;
+        const cliques = Object.entries(dados).filter(([nome]) => nome !== '_visualizacoes_pagina');
+        const totalCliques = cliques.reduce((s, [, v]) => s + (v || 0), 0);
+        const taxaClique = visualizacoes > 0 ? ((totalCliques / visualizacoes) * 100).toFixed(1) : '0';
+        const nomesAmigaveis = { cardapio: '🍫 Cardápio', galeria: '📸 Galeria de Pedidos', whatsapp: '💬 WhatsApp', instagram: '📷 Instagram', facebook: '📘 Facebook', google: '⭐ Avaliar no Google' };
+        const ordenado = cliques.sort((a, b) => b[1] - a[1]);
+        const maxClique = ordenado[0]?.[1] || 1;
+
+        let html = `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:110px;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Visualizações</p>
+                <p style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">${visualizacoes}</p>
+            </div>
+            <div style="flex:1;min-width:110px;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Cliques Totais</p>
+                <p style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">${totalCliques}</p>
+            </div>
+            <div style="flex:1;min-width:110px;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Taxa de Clique</p>
+                <p style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">${taxaClique}%</p>
+            </div>
+        </div>`;
+
+        if (ordenado.length === 0) {
+            html += '<p style="color:var(--brown-warm);font-size:0.88em;">Nenhum clique registrado ainda.</p>';
+        } else {
+            html += ordenado.map(([nome, qtd]) => {
+                const label = nomesAmigaveis[nome] || nome;
+                const pct = Math.round((qtd / maxClique) * 100);
+                return `<div style="margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:3px;"><span>${label}</span><strong>${qtd} clique${qtd > 1 ? 's' : ''}</strong></div>
+                    <div style="background:var(--cream-dark);border-radius:6px;height:6px;"><div style="background:var(--amber);height:6px;border-radius:6px;width:${pct}%;"></div></div>
+                </div>`;
+            }).join('');
+        }
+        div.innerHTML = html;
+    }).catch(err => {
+        div.innerHTML = '<p style="color:var(--red);font-size:0.85em;">Erro ao carregar estatísticas.</p>';
+        console.error('Erro ao carregar estatísticas de links:', err);
+    });
+}
 
 function calcularLucratividadeSabores(saboresQtd, receitasMap, faturamentoTotal, totalBrigTotal) {
     const div = document.getElementById('dashLucratividadeSabores');
