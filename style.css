@@ -353,10 +353,16 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 
 #dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="producao"],
 #dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="clientes"],
+#dashboard-resultado[data-aba-ativa="financeiro"] [data-dashtab="links"],
 #dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="financeiro"],
 #dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="clientes"],
+#dashboard-resultado[data-aba-ativa="producao"] [data-dashtab="links"],
 #dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="financeiro"],
-#dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="producao"] {
+#dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="producao"],
+#dashboard-resultado[data-aba-ativa="clientes"] [data-dashtab="links"],
+#dashboard-resultado[data-aba-ativa="links"] [data-dashtab="financeiro"],
+#dashboard-resultado[data-aba-ativa="links"] [data-dashtab="producao"],
+#dashboard-resultado[data-aba-ativa="links"] [data-dashtab="clientes"] {
     display: none !important;
 }
 
