@@ -690,6 +690,7 @@
             <button class="dash-tab active" onclick="mostrarAbaDash('financeiro', this)">💰 Financeiro</button>
             <button class="dash-tab" onclick="mostrarAbaDash('producao', this)">🍫 Produção</button>
             <button class="dash-tab" onclick="mostrarAbaDash('clientes', this)">⭐ Clientes</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('links', this)">🔗 Links</button>
         </div>
 
         <div class="form-card" data-dashtab="producao">
@@ -734,6 +735,10 @@
         <div class="form-card" data-dashtab="clientes">
         <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
             <div id="dashAvaliacoes"></div>
+        </div>
+        <div class="form-card" data-dashtab="links">
+        <p class="form-card-titulo">🔗 Página de Links</p>
+            <div id="dashEstatisticasLinks"><p style="color:var(--brown-warm);font-size:0.88em;">Carregando...</p></div>
         </div>
         <div class="form-card" id="cardCustoProdDash" style="display:none;" data-dashtab="producao"></div>
         <div class="form-card" id="cardEventosDash" style="display:none;" data-dashtab="financeiro">
