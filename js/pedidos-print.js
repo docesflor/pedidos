@@ -99,7 +99,7 @@ container.style.cssText = `position:fixed;top:-9999px;left:0;width:${LARGURA_IMP
         <div style="border-top:2px dashed #000;margin:12px 0 8px;"></div>
         <div style="text-align:center;">
             <img src="${QR_LINKS_URL}" crossorigin="anonymous" style="width:130px;height:130px;display:inline-block;">
-            <div style="font-size:18px;margin-top:4px;">📱 Instagram · WhatsApp · Avaliação</div>
+            <div style="font-size:18px;margin-top:4px;">Instagram · WhatsApp · Avaliação</div>
         </div>
     `;
 
@@ -281,7 +281,7 @@ function montarComandoESCPOS(p, dataBr, horario) {
     partes.push(enc.encode('--------------------------------\n'));
     partes.push(new Uint8Array([0x1B, 0x61, 0x01])); // centralizar
     partes.push(enc.encode(quebrarLinha('Instagram/WhatsApp/Avaliacao:')));
-    partes.push(enc.encode(quebrarLinha('docesflor.github.io/links')));
+    partes.push(enc.encode(quebrarLinha('docesflor.github.io/shared')));
     partes.push(new Uint8Array([0x1B, 0x61, 0x00])); // esquerda
     partes.push(enc.encode('\n\n\n'));
 
