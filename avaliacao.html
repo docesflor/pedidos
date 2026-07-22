@@ -335,6 +335,7 @@ function mostrarTelaSucesso() {
             <p class="sucesso-texto">Sua avaliação foi enviada com sucesso.<br>Esperamos te ver novamente em breve! 🌸</p>
             <button class="btn-google destaque" onclick="irParaGoogle()">⭐ Avaliar também no Google</button>
             <p class="google-skip" id="googleSkip" onclick="fecharConvite()">Agora não, obrigado</p>`;
+        tentarAbrirGoogleAutomatico();
     }
     caixa.style.animation = 'none';
     void caixa.offsetWidth; // força reflow pra reiniciar a animação
@@ -349,6 +350,19 @@ function irParaGoogle() {
     }
     window.open(LINK_AVALIACAO_GOOGLE, '_blank', 'noopener');
     fecharConvite();
+}
+
+// Tenta abrir o Google automaticamente assim que a tela de sucesso aparece
+// (nota 2 ou 3). Se o navegador bloquear a abertura automática, o botão
+// "⭐ Avaliar também no Google" continua na tela como alternativa manual.
+function tentarAbrirGoogleAutomatico() {
+    const novaAba = window.open(LINK_AVALIACAO_GOOGLE, '_blank', 'noopener');
+    if (pedidoKey) {
+        database.ref('pedidos/' + pedidoKey).update({
+            tentativaAberturaGoogleAutomatica: Date.now(),
+            aberturaGoogleBloqueada: !novaAba
+        }).catch(err => console.error('Erro ao registrar tentativa automática:', err));
+    }
 }
 
 function fecharConvite() {
