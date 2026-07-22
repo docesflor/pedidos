@@ -633,7 +633,7 @@ function editarPedido(key) {
         setVal('valorPago', data.valorPago);
         if (data.tipoEntrega === 'entrega' && data.endereco) {
             document.getElementById('enderecoFields').style.display = 'block';
-            ['cep','endereco','bairro','cidade','numero'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
+            ['cep','endereco','bairro','cidade','numero','pontoReferencia'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
             setVal('cep', data.endereco.cep); setVal('endereco', data.endereco.logradouro);
             setVal('numero', data.endereco.numero); setVal('bairro', data.endereco.bairro);
             setVal('cidade', data.endereco.cidade); setVal('pontoReferencia', data.endereco.complemento);
