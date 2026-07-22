@@ -14,6 +14,8 @@ function limparFormulario() {
     itens = [];
     document.getElementById('itensList').innerHTML = '';
     document.getElementById('contadorCategorias').style.display = 'none';
+    const custoEstimadoCard = document.getElementById('custo-pedido-estimado');
+    if (custoEstimadoCard) custoEstimadoCard.style.display = 'none';
     document.getElementById('quantidade').value = '';
     const qtdCustom = document.getElementById('quantidadeCustomizada');
     if (qtdCustom) { qtdCustom.value = ''; qtdCustom.style.display = 'none'; }
