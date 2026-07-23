@@ -154,6 +154,8 @@ body {
 ═══════════════════════════════════════════ */
 .secao { display: none; max-width: 680px; margin: 0 auto; padding: 30px 20px 60px; }
 .secao.active { display: block; }
+.sub-secao-cupcake { display: none; }
+.sub-secao-cupcake.active { display: block; }
 .secao-titulo { font-family: 'Cormorant Garamond', serif; color: var(--brown-dark); font-size: 2rem; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--cream-dark); letter-spacing: 0.02em; display: flex; flex-direction: column; gap: 4px; }
 .secao-titulo .ornament-line { display: flex; align-items: center; gap: 10px; margin: 4px 0 2px; max-width: 200px; }
 .secao-titulo .ornament-line::before, .secao-titulo .ornament-line::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--amber)); }
@@ -267,7 +269,7 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 /* ═══════════════════════════════════════════
    CALENDÁRIO
 ═══════════════════════════════════════════ */
-#calendario-wrapper, #calendario-wrapper-finalizados { display: none; background: var(--white); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 18px var(--shadow); border: 1px solid var(--cream-dark); }
+#calendario-wrapper, #calendario-wrapper-finalizados, #calendario-wrapper-cupcake, #calendario-wrapper-finalizados-cupcake { display: none; background: var(--white); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 18px var(--shadow); border: 1px solid var(--cream-dark); }
 .calendario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .calendario-header h3 { font-family: 'Cormorant Garamond', serif; color: var(--brown-dark); font-size: 1.2em; font-weight: 700; }
 .btn-mes { background: var(--cream); border: 1.5px solid var(--cream-dark); padding: 7px 14px; border-radius: 50px; cursor: pointer; font-weight: 600; color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.82em; transition: all 0.2s; }
