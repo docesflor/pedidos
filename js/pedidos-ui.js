@@ -163,13 +163,14 @@ function _navegarPara(secao, btn) {
         const agora = new Date();
         document.getElementById('dashMes').value = agora.getMonth();
         document.getElementById('dashAno').value = agora.getFullYear();
+        carregarDashboard();
     }
     setTimeout(aplicarPermissoesPapel, 300);
 }
 
 
 function _syncGavetaBtns(secao) {
-    ['criar','andamento','finalizados','dashboard','gastos','eventos'].forEach(s => {
+    ['criar','andamento','finalizados','dashboard','gastos','eventos','cupcake'].forEach(s => {
         const b = document.getElementById('gbtn' + s.charAt(0).toUpperCase() + s.slice(1));
         if (b) b.classList.toggle('active', s === secao);
     });
