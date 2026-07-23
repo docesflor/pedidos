@@ -38,6 +38,48 @@
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* 📊 Dashboard brigadeiro: KPIs em grade 2x2 + abas alinhadas e maiores */
+.dash-kpis {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+/* Reordena visualmente sem mexer no HTML: Faturamento + A Receber em cima, Lucro + Ticket embaixo */
+.dash-kpis > .dash-kpi-selo:nth-child(1) { order: 1; } /* Faturamento */
+.dash-kpis > .dash-kpi-selo:nth-child(2) { order: 3; } /* Lucro Líquido */
+.dash-kpis > .dash-kpi-selo:nth-child(3) { order: 4; } /* Ticket Médio */
+.dash-kpis > .dash-kpi-selo:nth-child(4) { order: 2; } /* A Receber */
+
+.dash-tabs {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+.dash-tabs .dash-tab {
+  flex: 1;
+  text-align: center;
+  padding: 14px 10px;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
+/* 🧁 Dashboard cupcake: 3 cards — Faturamento/Ticket empilhados à esquerda,
+   A Receber à direita ocupando a mesma altura total (sem espaço em branco) */
+.kpis-cupcake {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+/* Sem pendência: Faturamento e Ticket lado a lado */
+.kpis-cupcake:not(.kpis-cupcake--pendente) > *:nth-child(1) { grid-column: 1; grid-row: 1; }
+.kpis-cupcake:not(.kpis-cupcake--pendente) > *:nth-child(2) { grid-column: 2; grid-row: 1; }
+/* Com pendência: Faturamento em cima / Ticket embaixo à esquerda, A Receber ocupa as duas linhas à direita */
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(1) { grid-column: 1; grid-row: 1; }
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(2) { grid-column: 1; grid-row: 2; }
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(3) { grid-column: 2; grid-row: 1 / 3; }
 </style>
 </head>
 </head>
@@ -87,6 +129,7 @@
                 <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
             </div>
             <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
+            <button class="menu-btn" onclick="irPara('cupcake', this)">🧁 Cupcake</button>
         </div>
     </div>
 </nav>
@@ -109,6 +152,7 @@
         <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
         <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
         <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
+        <button class="gaveta-btn" id="gbtnCupcake" onclick="irParaGaveta('cupcake')">🧁 Cupcake</button>
         <hr class="gaveta-separador">
         <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
     </nav>
@@ -802,6 +846,196 @@
     <div id="lista-eventos"><p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p></div>
 </section>
 
+<!-- ═══ CUPCAKE ═══ -->
+<section id="secao-cupcake" class="secao">
+    <h2 class="secao-titulo">
+        🧁 Cupcake
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Pedidos de cupcake, separados do brigadeiro</span>
+    </h2>
+
+    <div class="menu-tabs-inner" style="margin-bottom:18px;">
+        <button class="menu-btn active" onclick="irParaCupcake('cupcakeCriar', this)">➕ Novo Pedido</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeAndamento', this)">📦 Andamento</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeFinalizados', this)">✅ Finalizados</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeDashboard', this)">📊 Dashboard</button>
+    </div>
+
+    <div id="secao-cupcakeCriar" class="sub-secao-cupcake active">
+        <div class="form-card">
+            <p class="form-card-titulo">👤 Dados do Cliente</p>
+            <label for="nomeCupcake">Nome</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="nomeCupcake" placeholder="Nome do cliente" autocomplete="off">
+                <div class="autocomplete-lista" id="autocompleteListaCupcake" style="display:none;"></div>
+            </div>
+            <label for="telefoneCupcake">Telefone</label>
+            <input type="text" id="telefoneCupcake" placeholder="(47) 99999-9999">
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">📅 Entrega / Retirada</p>
+            <div class="linha-dupla">
+                <div><label for="dataEntregaCupcake">Data</label><input type="date" id="dataEntregaCupcake"></div>
+                <div><label for="horarioEntregaCupcake">Horário</label><input type="time" id="horarioEntregaCupcake"></div>
+            </div>
+            <label for="tipoEntregaCupcake">Tipo</label>
+            <select id="tipoEntregaCupcake" onchange="toggleEnderecoCupcake()">
+                <option value="retirada" selected>Retirada</option>
+                <option value="entrega">Entrega</option>
+            </select>
+            <div id="enderecoFieldsCupcake" style="display:none;">
+                <hr class="divisor">
+                <label for="cepCupcake">CEP</label>
+                <input type="text" id="cepCupcake" placeholder="00000-000">
+                <div class="linha-dupla">
+                    <div><label for="enderecoCupcake">Endereço</label><input type="text" id="enderecoCupcake"></div>
+                    <div class="estreito"><label for="numeroCupcake">Nº</label><input type="text" id="numeroCupcake"></div>
+                </div>
+                <label for="pontoReferenciaCupcake">Complemento</label>
+                <input type="text" id="pontoReferenciaCupcake">
+                <label for="bairroCupcake">Bairro</label>
+                <input type="text" id="bairroCupcake">
+                <label for="cidadeCupcake">Cidade</label>
+                <input type="text" id="cidadeCupcake">
+            </div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">🧁 Itens do Pedido</p>
+            <label for="descricaoItemCupcake">Sabor / Descrição</label>
+            <input type="text" id="descricaoItemCupcake" placeholder="Ex: Cupcake Ninho com Nutella">
+            <div class="linha-dupla">
+                <div>
+                    <label for="quantidadeItemCupcake">Quantidade</label>
+                    <input type="number" id="quantidadeItemCupcake" placeholder="Ex: 12" min="1">
+                </div>
+                <div>
+                    <label for="valorUnidadeItemCupcake">Valor Unidade</label>
+                    <input type="text" id="valorUnidadeItemCupcake" placeholder="R$ 0,00" inputmode="decimal">
+                </div>
+            </div>
+            <button class="btn btn-laranja btn-bloco" onclick="adicionarItemCupcake()">+ Adicionar Item</button>
+            <div id="itensListCupcake"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💰 Valores</p>
+            <label for="valorTotalCupcake">Valor Total</label>
+            <input type="text" id="valorTotalCupcake" placeholder="R$ 0,00">
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💳 Pagamento</p>
+            <label for="observacoesCupcake">Observações</label>
+            <textarea id="observacoesCupcake" placeholder="Alguma observação especial?"></textarea>
+            <label for="statusPagamentoCupcake">Status do Pagamento</label>
+            <select id="statusPagamentoCupcake">
+                <option value="A pagar">A pagar</option>
+                <option value="Pago Parcialmente">Pago Parcialmente</option>
+                <option value="Pago">Pago</option>
+            </select>
+        </div>
+        <button class="btn btn-verde btn-bloco" id="btnEnviarCupcake" onclick="salvarPedidoCupcake()">💾 Salvar Pedido</button>
+    </div>
+    <div id="secao-cupcakeAndamento" class="sub-secao-cupcake">
+        <div style="margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--brown-dark);">
+            Pedidos ativos <span id="tituloAndamentoContagemCupcake" style="font-size:0.85em;font-weight:600;color:var(--brown-warm);"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button class="btn btn-amarelo" style="flex:1;" onclick="toggleResumoProdCupcake()">🧁 Produção Semanal</button>
+            <button class="btn btn-marrom" style="flex:1;" onclick="toggleCalendarioCupcake()">📅 Calendário</button>
+        </div>
+        <div id="resumoProducaoCupcake" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
+            <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🧁 Total a Produzir na Semana</p>
+            <div id="resumoProducaoConteudoCupcake"></div>
+        </div>
+        <div id="calendario-wrapper-cupcake"><div id="calendario-container-cupcake"></div></div>
+        <div id="lista-andamento-cupcake"><p style="color:var(--brown-warm);">Carregando...</p></div>
+    </div>
+    <div id="secao-cupcakeFinalizados" class="sub-secao-cupcake">
+        <div style="margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--brown-dark);">
+            Histórico <span id="tituloFinalizadosContagemCupcake" style="font-size:0.85em;font-weight:600;color:var(--brown-warm);"></span>
+        </div>
+        <div style="margin-bottom:14px;">
+            <button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizadosCupcake()">📅 Calendário</button>
+        </div>
+        <div id="calendario-wrapper-finalizados-cupcake"><div id="calendario-container-finalizados-cupcake"></div></div>
+        <div id="lista-finalizados-cupcake"><p style="color:var(--brown-warm);">Carregando...</p></div>
+    </div>
+    <div id="secao-cupcakeDashboard" class="sub-secao-cupcake">
+        <div class="form-card">
+            <p class="form-card-titulo">📅 Período</p>
+            <div class="linha-dupla">
+                <div>
+                    <label>Mês</label>
+                    <select id="dashMesCupcake" onchange="carregarDashboardCupcake()">
+                        <option value="geral">Geral (ano todo)</option>
+                        <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                        <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                        <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                        <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Ano</label>
+                    <select id="dashAnoCupcake" onchange="carregarDashboardCupcake()"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-kpis kpis-cupcake" id="dashKpisCupcake">
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">💰</div>
+                <p class="dash-kpi-label">Faturamento</p>
+                <p id="dashFaturamentoCupcake" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashFaturamentoComparativoCupcake" class="dash-kpi-extra"></p>
+            </div>
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">🎯</div>
+                <p class="dash-kpi-label">Ticket Médio</p>
+                <p id="dashTicketCupcake" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo kpi-amber" id="cardPendenciasCupcake" style="display:none;">
+                <div class="dash-kpi-icone">⏳</div>
+                <p class="dash-kpi-label">A Receber</p>
+                <p id="dashPendenciasValorCupcake" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashPendenciasDetalheCupcake" class="dash-kpi-extra"></p>
+                <div id="dashPendenciasListaCupcake" style="margin-top:10px;text-align:left;max-height:180px;overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">📦 Pedidos</p>
+            <div class="linha-dupla">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
+                    <p id="dashEntreguesCupcake" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
+                </div>
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
+                    <p id="dashAndamentoCupcake" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">🧁 Produção</p>
+            <div style="display:flex;gap:12px;">
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Cupcakes</p>
+                    <p id="dashTotalCupcakes" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
+                </div>
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
+                    <p id="dashMediaCupcakes" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">📈 Faturamento por Período</p>
+            <canvas id="graficoFaturamentoCupcake" style="max-height:280px;"></canvas>
+        </div>
+    </div>
+</section>
+
 <!-- ═══ MODAL ═══ -->
 <div id="modalConfirmacao" class="modal-overlay" style="display:none;">
     <div class="modal-box">
@@ -924,6 +1158,7 @@ window.scrollTo(0, 0);
 <script src="js/pedidos-whatsapp.js"></script>
 <script src="js/pedidos-print.js"></script>
 <script src="js/pedidos-ui.js"></script>
+<script src="js/pedidos-cupcake.js"></script>
 
 <script>
 (function() {
