@@ -139,7 +139,7 @@ async function carregarDashboard() {
             const st=p.statusPagamento||'', vPago=limparValor(p.valorPago);
             const dataFormatada = formatarDataComDia(p.dataEntrega);
             const statusLabel=st==='Pago Parcialmente'?`<span style="color:var(--amber);font-size:0.75em;font-weight:700;">Parcial</span>`:`<span style="color:var(--red);font-size:0.75em;font-weight:700;">A pagar</span>`;
-            htmlPendentes+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><strong>${escaparHTML(p.nome||'N/A')}</strong><span style="color:var(--brown-warm);font-size:0.82em;margin-left:6px;">📅 ${dataFormatada}</span><br>${statusLabel}${st==='Pago Parcialmente'&&vPago>0?`<span style="color:var(--brown-warm);font-size:0.75em;">(pago R$ ${vPago.toFixed(2).replace('.',',')})</span>`:''}</div><strong style="color:var(--amber);white-space:nowrap;margin-left:8px;">R$ ${vPend.toFixed(2).replace('.',',')}</strong></div>`;
+            htmlPendentes+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--cream-dark);font-size:0.85em;"><div><strong>${escaparHTML(p.nome||'N/A')}</strong><br><span style="color:var(--brown-warm);font-size:0.82em;">📅 ${dataFormatada}</span><br>${statusLabel}${st==='Pago Parcialmente'&&vPago>0?`<span style="color:var(--brown-warm);font-size:0.75em;">(pago R$ ${vPago.toFixed(2).replace('.',',')})</span>`:''}</div><strong style="color:var(--amber);white-space:nowrap;margin-left:8px;">R$ ${vPend.toFixed(2).replace('.',',')}</strong></div>`;
         });
         if(qtdPendente>0){document.getElementById('cardPendencias').style.display='block';document.getElementById('dashPendenciasValor').textContent='R$ '+totalPendente.toFixed(2).replace('.',',');document.getElementById('dashPendenciasDetalhe').textContent=`${qtdPendente} pedido${qtdPendente>1?'s':''} com pagamento pendente`;document.getElementById('dashPendenciasLista').innerHTML=htmlPendentes;}
         else document.getElementById('cardPendencias').style.display='none';
@@ -251,7 +251,7 @@ if (elDashPagamentos) elDashPagamentos.innerHTML=Object.entries(pagamentos).leng
                     elProjecao.style.color = 'var(--brown-warm)';
                     elProjecao.style.display = 'block';
                     elProjecao.innerHTML = '📈 Projeção: <strong style="color:var(--brown-dark);">' + formatarBRL(totalComProjecao) + '</strong>'
-                        + ' <span style="font-size:0.85em;opacity:0.8;">(+' + formatarBRL(projecao) + ' em aberto)</span>';
+                        + '<br><span style="font-size:0.85em;opacity:0.8;">(+' + formatarBRL(projecao) + ' em aberto)</span>';
                 } else {
                     elProjecao.style.display = 'none';
                 }
