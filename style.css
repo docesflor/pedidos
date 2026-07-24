@@ -99,6 +99,9 @@ body {
 .menu-btn { padding: 7px 9px; border: none; border-radius: 50px; background: transparent; color: rgba(245,181,99,0.7); font-family: 'DM Sans', sans-serif; font-size: 0.78em; font-weight: 500; cursor: pointer; transition: all 0.3s; white-space: nowrap; letter-spacing: 0.02em; }
 .menu-btn:hover { background: rgba(232,148,58,0.2); color: var(--amber-light); }
 .menu-btn.active { background: var(--surface-brand); color: var(--amber-light); box-shadow: 0 3px 10px rgba(0,0,0,0.3); font-weight: 600; }
+.menu-tabs-cupcake { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.menu-tabs-cupcake .menu-btn { white-space: normal; text-align: center; padding: 10px 6px; background: var(--cream); border: 1px solid var(--cream-dark); }
+.menu-tabs-cupcake .menu-btn.active { background: var(--surface-brand); border-color: transparent; }
 .btn-sair-topo { padding: 5px 14px; border: 1.5px solid rgba(245,181,99,0.35); border-radius: 50px; background: transparent; color: rgba(245,181,99,0.8); font-family: 'DM Sans', sans-serif; font-size: 0.78em; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .btn-sair-topo:hover { background: rgba(232,148,58,0.2); border-color: var(--amber); color: var(--amber-light); }
 
