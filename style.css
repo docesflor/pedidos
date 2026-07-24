@@ -309,7 +309,32 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
 ═══════════════════════════════════════════ */
 #enderecoFields   { display: none; }
 #valorPagoContainer { display: none; }
-#corCustomizada   { display: none; margin-top: -10px; margin-bottom: 14px; }
+/* ═══════════════════════════════════════════
+   COR DA FORMINHA — tabela de cores + custom
+═══════════════════════════════════════════ */
+.cor-forminha-wrapper { position: relative; }
+.cor-forminha-campo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.cor-forminha-campo input { cursor: pointer; flex: 1; }
+.cor-forminha-dot { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--cream-dark); flex-shrink: 0; background: #eee; }
+.cor-mais-btn { background: none; border: none; color: var(--amber); font-family: 'DM Sans', sans-serif; font-size: 0.82em; font-weight: 600; cursor: pointer; padding: 0; margin: -10px 0 14px; display: block; }
+.cor-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 0 0 14px; padding: 12px; background: var(--cream); border-radius: 14px; border: 1px solid var(--cream-dark); }
+.cor-swatch { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform 0.15s; }
+.cor-swatch:hover { transform: scale(1.12); }
+.cor-swatch.selected { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.cor-custom-painel { margin: 0 0 14px; padding: 14px; border-radius: 14px; background: var(--cream); border: 1px dashed var(--cream-dark); }
+.cor-custom-linha { display: flex; gap: 10px; align-items: center; }
+.cor-custom-preview { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--cream-dark); background: var(--white); flex-shrink: 0; }
+.cor-custom-linha input { margin-bottom: 0; }
+.cor-custom-ok { margin-top: 10px; background: var(--amber); color: var(--white); border: none; padding: 8px 16px; border-radius: 50px; font-size: 0.82em; font-weight: 600; cursor: pointer; }
+.cor-custom-ok:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════
+   SABOR — botões de categoria + chips
+═══════════════════════════════════════════ */
+.sabor-categorias { display: flex; gap: 8px; margin-bottom: 12px; }
+.sabor-cat-btn { flex: 1; padding: 10px 6px; border: 2px solid var(--cream-dark); border-radius: 50px; background: var(--white); color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.82em; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.sabor-cat-btn.active { background: var(--surface-brand); color: var(--amber-light); border-color: var(--surface-brand); }
+#saborListaChips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 #quantidadeCustomizada { display: none; margin-top: -10px; margin-bottom: 14px; }
 .divisor { border: none; border-top: 1px dashed var(--cream-dark); margin: 16px 0; }
 
