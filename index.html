@@ -233,90 +233,46 @@
                 <div id="infoFrutas" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
             </div>
         </div>
-        <label for="sabor">Sabor</label>
-        <select id="sabor">
-            <option value="">Selecione o sabor</option>
-            <optgroup label="Tradicionais">
-            <option value="Amendoim">Amendoim</option>
-            <option value="Beijinho">Beijinho</option>
-            <option value="Brigadeiro">Brigadeiro</option>
-            <option value="Café">Café</option>
-            <option value="Chocotone">Chocotone</option>
-            <option value="Dois Amores">Dois Amores</option>
-            <option value="Leite Ninho">Leite Ninho</option>
-            <option value="Moranguinho (Nesquik)">Moranguinho (Nesquik)</option>
-            <option value="Morango Ninho">Morango Ninho</option>
-            <option value="Prestígio">Prestígio</option>
-            <option value="Quebra Queixo">Quebra Queixo</option>
-            <option value="Sensação">Sensação</option>
-            <option value="Tapioca">Tapioca</option>
-            </optgroup>
-            <optgroup label="Gourmet">
-            <option value="Banoffee">Banoffee</option>
-            <option value="Black Cacau">Black Cacau</option>
-            <option value="Canjica">Canjica</option>
-            <option value="Chocolate Gourmet">Chocolate Gourmet</option>
-            <option value="Churros">Churros</option>
-            <option value="Confete">Confete</option>
-            <option value="Doritos">Doritos</option>
-            <option value="Ferrero Rocher">Ferrero Rocher</option>
-            <option value="Floresta Negra">Floresta Negra</option>
-            <option value="Guacamole">Guacamole</option>
-            <option value="Leite Ninho com Nutella">Leite Ninho com Nutella</option>
-            <option value="Menta">Menta</option>
-            <option value="Negresco">Negresco</option>
-            <option value="Nutella">Nutella</option>
-            <option value="Ovomaltine">Ovomaltine</option>
-            </optgroup>
-            <optgroup label="Frutas">
-                <option value="Amora">Amora</option>
-                <option value="Banana">Banana</option>
-                <option value="Cereja">Cereja</option>
-                <option value="Frutas Vermelhas">Frutas Vermelhas</option>
-                <option value="Limão">Limão</option>
-                <option value="Maracujá">Maracujá</option>
-                <option value="Milho">Milho</option>
-                <option value="Uva">Uva</option>
-            </optgroup>
-        </select>
+        <label>Sabor</label>
+        <div class="sabor-categorias">
+            <button type="button" class="sabor-cat-btn" data-cat="trad" onclick="selecionarCategoriaSabor('trad', this)">🍫 Tradicionais</button>
+            <button type="button" class="sabor-cat-btn" data-cat="gourmet" onclick="selecionarCategoriaSabor('gourmet', this)">✨ Gourmet</button>
+            <button type="button" class="sabor-cat-btn" data-cat="frutas" onclick="selecionarCategoriaSabor('frutas', this)">🍓 Frutas</button>
+        </div>
+        <div id="saborListaChips"></div>
+        <input type="hidden" id="sabor">
         <div class="linha-dupla">
             <div>
                 <label for="formato">Formato</label>
-                <select id="formato">
-                    <option value="">Selecione</option>
-                    <option value="Redondo">Redondo</option>
-                    <option value="Flor">Flor</option>
-                    <option value="Coração">Coração</option>
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="formato" placeholder="Digite ou selecione" autocomplete="off">
+                    <div class="autocomplete-lista" id="formatoLista" style="display:none;"></div>
+                </div>
             </div>
             <div>
                 <label for="tipoForma">Forminha</label>
-                <select id="tipoForma">
-                    <option value="">Selecione</option>
-                    <option value="Redonda">Redonda</option>
-                    <option value="Quadrada">Quadrada</option>
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="tipoForma" placeholder="Digite ou selecione" autocomplete="off">
+                    <div class="autocomplete-lista" id="tipoFormaLista" style="display:none;"></div>
+                </div>
             </div>
         </div>
         <label for="cor">Cor da Forminha</label>
-        <select id="cor">
-            <option value="">Selecione a cor</option>
-            <option value="Branca">Branca</option>
-            <option value="Preta">Preta</option>
-            <option value="Vermelha">Vermelha</option>
-            <option value="Rosa">Rosa</option>
-            <option value="Azul">Azul</option>
-            <option value="Verde">Verde</option>
-            <option value="Amarela">Amarela</option>
-            <option value="Roxa">Roxa</option>
-            <option value="Laranja">Laranja</option>
-            <option value="Marrom">Marrom</option>
-            <option value="Cinza">Cinza</option>
-            <option value="Dourada">Dourada</option>
-            <option value="Prateada">Prateada</option>
-            <option value="Outra">Outra (especificar)</option>
-        </select>
-        <input type="text" id="corCustomizada" placeholder="Especifique a cor" style="display:none;">
+        <div class="cor-forminha-wrapper">
+            <div class="cor-forminha-campo" onclick="toggleGradeCores()">
+                <span class="cor-forminha-dot" id="corForminhaDot"></span>
+                <input type="text" id="cor" placeholder="Selecione a cor" readonly>
+            </div>
+            <div class="cor-grade" id="corGrade" style="display:none;"></div>
+            <button type="button" class="cor-mais-btn" onclick="abrirPainelCorCustom(event)">+ Mais cores</button>
+            <div class="cor-custom-painel" id="corCustomPainel" style="display:none;">
+                <div class="cor-custom-linha">
+                    <div class="cor-custom-preview" id="corCustomPreview"></div>
+                    <input type="text" id="corCustomInput" placeholder="Ex: coral, lilás, #8A2BE2" autocomplete="off">
+                </div>
+                <button type="button" class="cor-custom-ok" id="corCustomOk" disabled onclick="confirmarCorCustom()">Usar esta cor</button>
+            </div>
+        </div>
         <label for="quantidade">Quantidade</label>
         <select id="quantidade" onchange="toggleQuantidadeCustomizada(this)">
             <option value="">Selecione</option>
@@ -1151,6 +1107,8 @@ window.scrollTo(0, 0);
 </script>
 <script src="js/pedidos-auth.js"></script>
 <script src="js/pedidos-precos.js"></script>
+<script src="js/pedidos-cores-formatos.js"></script>
+<script src="js/pedidos-sabor-categorias.js"></script>
 <script src="js/pedidos-crud.js"></script>
 <script src="js/pedidos-dashboard.js"></script>
 <script src="js/pedidos-custos.js"></script>
