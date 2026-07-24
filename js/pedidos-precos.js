@@ -69,8 +69,7 @@ function adicionarItem() {
     const sabor     = document.getElementById('sabor').value;
     const formato   = document.getElementById('formato').value;
     const tipoForma = document.getElementById('tipoForma').value;
-    let   cor       = document.getElementById('cor').value;
-    if (cor === 'Outra') cor = document.getElementById('corCustomizada').value;
+    const cor       = document.getElementById('cor').value;
     const selQtd = document.getElementById('quantidade');
     const quantidade = selQtd.value === 'outro'
         ? parseInt(document.getElementById('quantidadeCustomizada').value)
@@ -86,13 +85,10 @@ function adicionarItem() {
     renderizarItens();
     atualizarValorBrigadeiros();
     document.getElementById('sabor').value = '';
-    document.getElementById('formato').value = '';
-    document.getElementById('tipoForma').value = '';
-    document.getElementById('cor').value = '';
+    renderizarChipsSabor();
     document.getElementById('quantidade').value = '';
     document.getElementById('quantidadeCustomizada').style.display = 'none';
     document.getElementById('quantidadeCustomizada').value = '';
-    document.getElementById('corCustomizada').style.display = 'none';
     const btn = document.getElementById('btnAdicionarItem');
     btn.textContent = '✓ Item adicionado!';
     btn.style.background = 'var(--green)';
@@ -215,17 +211,14 @@ function editarItemCarrinho(id) {
     const item = itens.find(i => i.id === id);
     if (!item) return;
     document.getElementById('sabor').value = item.sabor || '';
+    sincronizarCategoriaSaborPeloValor(item.sabor || '');
     document.getElementById('formato').value = item.formato || '';
     document.getElementById('tipoForma').value = item.tipoForma || '';
-    const selCor = document.getElementById('cor');
-    if (['Branca','Preta','Vermelha','Rosa','Azul','Verde','Amarela','Roxa','Laranja','Marrom','Cinza','Dourada','Prateada'].includes(item.cor)) {
-        selCor.value = item.cor;
-        document.getElementById('corCustomizada').style.display = 'none';
-    } else {
-        selCor.value = 'Outra';
-        document.getElementById('corCustomizada').style.display = 'block';
-        document.getElementById('corCustomizada').value = item.cor || '';
-    }
+    document.getElementById('cor').value = item.cor || '';
+    const hexResolvido = resolverCorParaPreview(item.cor);
+    corSelecionadaHex = hexResolvido || '';
+    atualizarDotCor(hexResolvido);
+    document.querySelectorAll('#corGrade .cor-swatch').forEach(el => el.classList.toggle('selected', el.dataset.nome === item.cor));
     const opcoes25 = [25,33,34,50,75,100,125,150,200];
     const selQtd = document.getElementById('quantidade');
     if (opcoes25.includes(item.quantidade)) {
