@@ -6,6 +6,14 @@
 function limparFormulario() {
     document.getElementById('nome').value = '';
     document.getElementById('telefone').value = '';
+    document.getElementById('sabor').value = '';
+    categoriaSaborAtual = null;
+    document.querySelectorAll('.sabor-cat-btn').forEach(b => b.classList.remove('active'));
+    renderizarChipsSabor();
+    document.getElementById('formato').value = '';
+    document.getElementById('tipoForma').value = '';
+    document.getElementById('cor').value = '';
+    atualizarDotCor('');
     document.getElementById('dataEntrega').value = '';
     document.getElementById('horarioEntrega').value = '';
     document.getElementById('tipoEntrega').value = 'retirada';
@@ -619,6 +627,14 @@ function mostrarToastDesfazer(mensagem, onDesfazer, onConfirmar) {
 function editarPedido(key) {
     database.ref('pedidos/' + key).once('value', snapshot => {
         const data = snapshot.val(); if (!data) { toast('Pedido não encontrado.', 'erro'); return; }
+        document.getElementById('sabor').value = '';
+        categoriaSaborAtual = null;
+        document.querySelectorAll('.sabor-cat-btn').forEach(b => b.classList.remove('active'));
+        renderizarChipsSabor();
+        document.getElementById('formato').value = '';
+        document.getElementById('tipoForma').value = '';
+        document.getElementById('cor').value = '';
+        atualizarDotCor('');
         document.querySelectorAll('.secao').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('secao-criar').classList.add('active');
