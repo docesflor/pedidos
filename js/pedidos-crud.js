@@ -14,8 +14,6 @@ function limparFormulario() {
     itens = [];
     document.getElementById('itensList').innerHTML = '';
     document.getElementById('contadorCategorias').style.display = 'none';
-    const custoEstimadoCard = document.getElementById('custo-pedido-estimado');
-    if (custoEstimadoCard) custoEstimadoCard.style.display = 'none';
     document.getElementById('quantidade').value = '';
     const qtdCustom = document.getElementById('quantidadeCustomizada');
     if (qtdCustom) { qtdCustom.value = ''; qtdCustom.style.display = 'none'; }
@@ -313,8 +311,6 @@ function criarCard(pedido, key, finalizado) {
         : `<button class="btn btn-verde ${pedido.avaliacaoEnviada ? 'btn-avaliacao-enviada' : ''}" onclick="enviarAvaliacaoWhatsApp('${key}')">⭐ Avaliação</button>`;
     const botoesHTML = finalizado
     ? `${avaliacaoBtnHTML}
-            <button class="btn btn-cinza"    onclick="imprimirComprovante('${key}')">🧾 Comprov.</button>
-            <button class="btn btn-amarelo"  onclick="imprimirComandaImagem('${key}')">🖨️ Imprimir</button>
             <button class="btn btn-vermelho" onclick="excluirPedido('${key}')">🗑️ Excluir</button>`
          : `<div class="botoes-principais">
                 <button class="btn btn-finalizar-card" onclick="finalizarPedido('${key}')">✓ Finalizar</button>
