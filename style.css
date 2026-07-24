@@ -273,6 +273,14 @@ input[readonly] { background: var(--cream-dark); cursor: not-allowed; font-weigh
    CALENDÁRIO
 ═══════════════════════════════════════════ */
 #calendario-wrapper, #calendario-wrapper-finalizados, #calendario-wrapper-cupcake, #calendario-wrapper-finalizados-cupcake { display: none; background: var(--white); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 18px var(--shadow); border: 1px solid var(--cream-dark); }
+
+/* Calendário (brigadeiro + cupcake) — versão mais compacta (dias menos quadrados, fontes menores) */
+#calendario-wrapper, #calendario-wrapper-finalizados, #calendario-wrapper-cupcake, #calendario-wrapper-finalizados-cupcake { padding: 14px; }
+#calendario-container .dia, #calendario-container-finalizados .dia, #calendario-container-cupcake .dia, #calendario-container-finalizados-cupcake .dia { aspect-ratio: 1 / 0.7; border-radius: 8px; }
+#calendario-container .dia-numero, #calendario-container-finalizados .dia-numero, #calendario-container-cupcake .dia-numero, #calendario-container-finalizados-cupcake .dia-numero { font-size: 0.78em; }
+#calendario-container .dia-semana, #calendario-container-finalizados .dia-semana, #calendario-container-cupcake .dia-semana, #calendario-container-finalizados-cupcake .dia-semana { font-size: 0.62em; padding: 3px 0; }
+#calendario-container .calendario-grid, #calendario-container-finalizados .calendario-grid, #calendario-container-cupcake .calendario-grid, #calendario-container-finalizados-cupcake .calendario-grid { gap: 3px; }
+#calendario-container .calendario-header h3, #calendario-container-finalizados .calendario-header h3, #calendario-container-cupcake .calendario-header h3, #calendario-container-finalizados-cupcake .calendario-header h3 { font-size: 1em; }
 .calendario-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .calendario-header h3 { font-family: 'Cormorant Garamond', serif; color: var(--brown-dark); font-size: 1.2em; font-weight: 700; }
 .btn-mes { background: var(--cream); border: 1.5px solid var(--cream-dark); padding: 7px 14px; border-radius: 50px; cursor: pointer; font-weight: 600; color: var(--brown-warm); font-family: 'DM Sans', sans-serif; font-size: 0.82em; transition: all 0.2s; }
