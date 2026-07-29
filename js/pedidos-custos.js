@@ -497,91 +497,140 @@ async function calcularConsumoMedioSemanal(diasHistorico = 60) {
     return consumoSemanal;
 }
 
+const HORIZONTE_ALERTA_DIAS = 30; // pedidos com entrega além disso não contam pro alerta de "ACABANDO"
+
+async function calcularReservadoNoHorizonte(dias) {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
+
+    const [snapPedidos, snapReceitas] = await Promise.all([
+        database.ref('pedidos').once('value'),
+        database.ref('receitas').once('value')
+    ]);
+    const receitasMap = {};
+    snapReceitas.forEach(child => { receitasMap[child.val().sabor] = child.val(); });
+
+    const reservadoNoHorizonte = {};
+    snapPedidos.forEach(child => {
+        const p = child.val();
+        if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
+        let dataP;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('/'); dataP = new Date(pts[2],pts[1]-1,pts[0]); }
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(p.dataEntrega)) { const pts = p.dataEntrega.split('-'); dataP = new Date(pts[0],pts[1]-1,pts[2]); }
+        else return;
+        if (dataP > limite) return; // fora do horizonte — não conta pro alerta
+        (p.itens || []).forEach(item => {
+            const receita = receitasMap[item.sabor];
+            if (!receita || !receita.ingredientes) return;
+            const fator = (item.quantidade || 0) / receita.rendimento;
+            receita.ingredientes.forEach(ing => {
+                const consumo = (ing.qtdReceita || 0) * fator;
+                reservadoNoHorizonte[ing.insumoKey] = (reservadoNoHorizonte[ing.insumoKey] || 0) + consumo;
+            });
+        });
+    });
+    return reservadoNoHorizonte;
+}
+
 async function carregarInsumos() {
     const lista = document.getElementById('lista-insumos');
     lista.innerHTML = '<p style="color:var(--brown-warm);">Carregando...</p>';
-    database.ref('insumos').once('value', snapshot => {
-        const insumos = [];
-        snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
-        insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-        popularSelectCompraInsumo(insumos);
-        popularDatalistInsumos(insumos);
-        if (insumos.length === 0) {
-            lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
-            return;
+
+    const [snapshot, reservadoNoHorizonte] = await Promise.all([
+        database.ref('insumos').once('value'),
+        calcularReservadoNoHorizonte(HORIZONTE_ALERTA_DIAS)
+    ]);
+
+    const insumos = [];
+    snapshot.forEach(child => { const i = child.val(); i.key = child.key; insumos.push(i); });
+    insumos.sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    popularSelectCompraInsumo(insumos);
+    popularDatalistInsumos(insumos);
+    if (insumos.length === 0) {
+        lista.innerHTML = '<p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p>';
+        return;
+    }
+    lista.innerHTML = '';
+    insumos.forEach(i => {
+        const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(2).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
+        const estoqueAtual          = i.estoqueAtual || 0;
+        const estoqueReservadoTotal = i.estoqueReservado || 0;
+        // Reservado dentro do horizonte não pode passar do total salvo (defensivo, caso haja alguma divergência de fundo)
+        const reservadoHorizonte    = Math.min(reservadoNoHorizonte[i.key] || 0, estoqueReservadoTotal);
+        const reservadoAlemHorizonte = Math.max(0, estoqueReservadoTotal - reservadoHorizonte);
+        const disponivel            = estoqueAtual - reservadoHorizonte;
+        const estoqueMinimo         = i.estoqueMinimo || 0;
+        const alerta = estoqueMinimo > 0 && disponivel <= estoqueMinimo;
+        const temEmbalagem = !!i.nomeEmbalagem;
+
+        let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
+        if (temEmbalagem) {
+            const embalagens           = estoqueAtual / i.qtdEmbalagem;
+            const embalagensReservado  = reservadoHorizonte / i.qtdEmbalagem;
+            const embalagensDisponivel = disponivel / i.qtdEmbalagem;
+            const embalagensAlem       = reservadoAlemHorizonte / i.qtdEmbalagem;
+            const embalagensMin = i.estoqueMinimo ? (i.estoqueMinimo / i.qtdEmbalagem) : 0;
+            const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
+            estoqueLinha = `${fmt(embalagens)} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
+            if (reservadoHorizonte > 0) {
+                estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmt(embalagensReservado)} reservada${embalagensReservado === 1 ? '' : 's'} nos próximos ${HORIZONTE_ALERTA_DIAS} dias · disponível: ${fmt(embalagensDisponivel)})</span>`;
+            }
+            if (embalagensAlem > 0.01) {
+                estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);opacity:0.65;">· +${fmt(embalagensAlem)} p/ depois dos ${HORIZONTE_ALERTA_DIAS} dias</span>`;
+            }
+            estoqueMinimoTexto = embalagensMin > 0 ? ` (mín: ${embalagensMin} ${i.nomeEmbalagem}s)` : '';
+            placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
+        } else {
+            const labelUn = i.unidade !== 'un' ? i.unidade : ' un';
+            const fmtPeso = (v) => i.unidade === 'g' ? formatarPesoAmigavel(v) : `${v}${labelUn}`;
+            estoqueLinha = fmtPeso(estoqueAtual);
+            if (reservadoHorizonte > 0) {
+                estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmtPeso(reservadoHorizonte)} reservado nos próximos ${HORIZONTE_ALERTA_DIAS} dias · disponível: ${fmtPeso(disponivel)})</span>`;
+            }
+            if (reservadoAlemHorizonte > 0.01) {
+                estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);opacity:0.65;">· +${fmtPeso(reservadoAlemHorizonte)} p/ depois dos ${HORIZONTE_ALERTA_DIAS} dias</span>`;
+            }
+            estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${fmtPeso(estoqueMinimo)})` : '';
+            placeholderEntrada = 'Qtd a adicionar';
         }
-        lista.innerHTML = '';
-        insumos.forEach(i => {
-            const precoPorUnidade = 'R$ ' + (i.preco / i.qtdEmbalagem).toFixed(2).replace('.', ',') + '/' + (i.unidade === 'un' ? 'un' : i.unidade);
-            const estoqueAtual     = i.estoqueAtual || 0;
-            const estoqueReservado = i.estoqueReservado || 0;
-            const disponivel       = estoqueAtual - estoqueReservado;
-            const estoqueMinimo    = i.estoqueMinimo || 0;
-            const alerta = estoqueMinimo > 0 && disponivel <= estoqueMinimo;
-            const temEmbalagem = !!i.nomeEmbalagem;
 
-            let estoqueLinha, estoqueMinimoTexto, placeholderEntrada;
-            if (temEmbalagem) {
-                const embalagens          = estoqueAtual / i.qtdEmbalagem;
-                const embalagensReservado = estoqueReservado / i.qtdEmbalagem;
-                const embalagensDisponivel = disponivel / i.qtdEmbalagem;
-                const embalagensMin = i.estoqueMinimo ? (i.estoqueMinimo / i.qtdEmbalagem) : 0;
-                const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
-                estoqueLinha = `${fmt(embalagens)} ${i.nomeEmbalagem}${embalagens === 1 ? '' : 's'}`;
-                if (estoqueReservado > 0) {
-                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmt(embalagensReservado)} reservada${embalagensReservado === 1 ? '' : 's'} em pedidos · disponível: ${fmt(embalagensDisponivel)})</span>`;
-                }
-                estoqueMinimoTexto = embalagensMin > 0 ? ` (mín: ${embalagensMin} ${i.nomeEmbalagem}s)` : '';
-                placeholderEntrada = `${i.nomeEmbalagem}s a adicionar`;
-            } else {
-                const labelUn = i.unidade !== 'un' ? i.unidade : ' un';
-                const fmtPeso = (v) => i.unidade === 'g' ? formatarPesoAmigavel(v) : `${v}${labelUn}`;
-                estoqueLinha = fmtPeso(estoqueAtual);
-                if (estoqueReservado > 0) {
-                    estoqueLinha += ` <span style="font-weight:500;color:var(--brown-warm);">(${fmtPeso(estoqueReservado)} reservado em pedidos · disponível: ${fmtPeso(disponivel)})</span>`;
-                }
-                estoqueMinimoTexto = estoqueMinimo > 0 ? ` (mín: ${fmtPeso(estoqueMinimo)})` : '';
-                placeholderEntrada = 'Qtd a adicionar';
-            }
+        let sugestaoHTML = '';
+        if (alerta) {
+            sugestaoHTML = `<div class="insumo-sugestao">💡 Veja quanto comprar na aba <strong>🔮 Previsão</strong></div>`;
+        }
 
-            let sugestaoHTML = '';
-            if (alerta) {
-                sugestaoHTML = `<div class="insumo-sugestao">💡 Veja quanto comprar na aba <strong>🔮 Previsão</strong></div>`;
-            }
-
-            const div = document.createElement('div');
-            div.className = 'insumo-card';
-            div.style.flexDirection = 'column';
-            div.style.alignItems = 'stretch';
-            div.style.position = 'relative';
-            if (alerta) div.style.border = '2px solid #DC2626';
-            div.innerHTML = `
-                <div class="insumo-info">
-                    <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
-                    <div class="insumo-detalhe">
-                        R$ ${i.preco.toFixed(2).replace('.',',')} 
-                        ${i.unidade !== 'un' ? '/ ' + (i.unidade === 'g' && i.qtdEmbalagem >= 1000 ? formatarPesoAmigavel(i.qtdEmbalagem) : i.qtdEmbalagem + i.unidade) : '/un'}
-                    </div>
-                    <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
-                        📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
-                    </div>
-                    ${sugestaoHTML}
+        const div = document.createElement('div');
+        div.className = 'insumo-card';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'stretch';
+        div.style.position = 'relative';
+        if (alerta) div.style.border = '2px solid #DC2626';
+        div.innerHTML = `
+            <div class="insumo-info">
+                <div class="insumo-nome">${escaparHTML(i.nome)} ${alerta ? '<span style="background:#FEE2E2;color:#DC2626;border-radius:50px;padding:2px 10px;font-size:0.7em;font-weight:700;margin-left:6px;">⚠️ ACABANDO</span>' : ''}</div>
+                <div class="insumo-detalhe">
+                    R$ ${i.preco.toFixed(2).replace('.',',')} 
+                    ${i.unidade !== 'un' ? '/ ' + (i.unidade === 'g' && i.qtdEmbalagem >= 1000 ? formatarPesoAmigavel(i.qtdEmbalagem) : i.qtdEmbalagem + i.unidade) : '/un'}
                 </div>
-                <div style="display:flex;gap:6px;margin-top:10px;width:100%;">
-                    <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;min-width:0;font-size:0.85em;padding:8px 12px;">
-                    <button class="btn btn-finalizar-card" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;flex-shrink:0;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
-                    <button class="btn-mais" style="flex-shrink:0;" onclick="toggleMenuMais('menuMaisInsumo-${i.key}', event)" aria-label="Mais opções">⋯</button>
+                <div class="insumo-detalhe" style="margin-top:4px;font-weight:700;color:${alerta ? '#DC2626' : 'var(--brown-dark)'};">
+                    📦 Estoque: ${estoqueLinha}${estoqueMinimoTexto}
                 </div>
-                <div class="menu-mais" id="menuMaisInsumo-${i.key}" style="display:none;">
-                    <button onclick="abrirEdicaoInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">✏️ Editar</button>
-                    <button onclick="verHistoricoPreco('${i.key}','${escaparHTML(i.nome).replace(/'/g,"\\'")}');fecharMenuMais('menuMaisInsumo-${i.key}')">📈 Histórico de preço</button>
-                    <hr>
-                    <button class="menu-mais-excluir" onclick="excluirInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">🗑️ Excluir</button>
-                </div>`;
-            lista.appendChild(div);
-        });
-        filtrarInsumosPorNome();
+                ${sugestaoHTML}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px;width:100%;">
+                <input type="number" id="entrada-${i.key}" placeholder="${placeholderEntrada}" style="margin-bottom:0;flex:1;min-width:0;font-size:0.85em;padding:8px 12px;">
+                <button class="btn btn-finalizar-card" style="padding:8px 14px;font-size:0.8em;white-space:nowrap;flex-shrink:0;" onclick="darEntradaEstoque('${i.key}')">➕ Entrada</button>
+                <button class="btn-mais" style="flex-shrink:0;" onclick="toggleMenuMais('menuMaisInsumo-${i.key}', event)" aria-label="Mais opções">⋯</button>
+            </div>
+            <div class="menu-mais" id="menuMaisInsumo-${i.key}" style="display:none;">
+                <button onclick="abrirEdicaoInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">✏️ Editar</button>
+                <button onclick="verHistoricoPreco('${i.key}','${escaparHTML(i.nome).replace(/'/g,"\\'")}');fecharMenuMais('menuMaisInsumo-${i.key}')">📈 Histórico de preço</button>
+                <hr>
+                <button class="menu-mais-excluir" onclick="excluirInsumo('${i.key}');fecharMenuMais('menuMaisInsumo-${i.key}')">🗑️ Excluir</button>
+            </div>`;
+        lista.appendChild(div);
     });
+    filtrarInsumosPorNome();
 }
 
 
@@ -1023,11 +1072,12 @@ async function calcularPrevisaoCompra(dias, btn) {
     const insumosMap = {};
     snapInsumos.forEach(child => { insumosMap[child.key] = { ...child.val(), key: child.key }; });
 
-    // Consumo somado só dos pedidos cuja entrega cai dentro da janela escolhida
-    // (inclui atrasados, já que são ainda mais urgentes). Também guarda a data
-    // mais próxima de cada insumo, pra exibir o "risco a partir de...".
-    const consumoNoPeriodo = {};
-    const primeiraDataAfetada = {};
+    // Em vez de só somar tudo e comparar no final, guarda cada "evento de consumo"
+    // (data + quantidade) por insumo, na ordem em que os pedidos vão entregando.
+    // Isso permite achar o dia EXATO em que o consumo acumulado ultrapassa o
+    // estoque atual — em vez de rotular o risco com a data do pedido mais
+    // próximo (que pode nem ser o causador da falta).
+    const eventosPorInsumo = {};
     snapPedidos.forEach(child => {
         const p = child.val();
         if (p.statusPagamento === 'entregue' || !p.dataEntrega) return;
@@ -1041,22 +1091,34 @@ async function calcularPrevisaoCompra(dias, btn) {
             if (!receita || !receita.ingredientes) return;
             const fator = (item.quantidade || 0) / receita.rendimento;
             receita.ingredientes.forEach(ing => {
-                consumoNoPeriodo[ing.insumoKey] = (consumoNoPeriodo[ing.insumoKey] || 0) + (ing.qtdReceita * fator);
-                if (!primeiraDataAfetada[ing.insumoKey] || dataP < primeiraDataAfetada[ing.insumoKey]) {
-                    primeiraDataAfetada[ing.insumoKey] = dataP;
-                }
+                const consumo = ing.qtdReceita * fator;
+                if (!eventosPorInsumo[ing.insumoKey]) eventosPorInsumo[ing.insumoKey] = [];
+                eventosPorInsumo[ing.insumoKey].push({ data: dataP, consumo });
             });
         });
     });
 
-    // Quantidade a comprar = consumo dos pedidos dentro da janela escolhida, menos o estoque físico atual.
+    // Quantidade a comprar = consumo total dos pedidos dentro da janela, menos o estoque físico atual.
+    // Data de risco = o dia em que o consumo acumulado (em ordem cronológica) ultrapassa esse estoque.
     const itensComprar = [];
 
     Object.values(insumosMap).forEach(insumo => {
-        const estoqueAtual = insumo.estoqueAtual || 0;
-        const necessario    = Math.max(0, (consumoNoPeriodo[insumo.key] || 0) - estoqueAtual);
+        const eventos = eventosPorInsumo[insumo.key];
+        if (!eventos || eventos.length === 0) return;
+
+        eventos.sort((a, b) => a.data - b.data);
+
+        const estoqueAtual   = insumo.estoqueAtual || 0;
+        const totalNoPeriodo = eventos.reduce((s, e) => s + e.consumo, 0);
+        const necessario     = Math.max(0, totalNoPeriodo - estoqueAtual);
 
         if (necessario <= 0) return;
+
+        let acumulado = 0, dataRisco = null;
+        for (const ev of eventos) {
+            acumulado += ev.consumo;
+            if (acumulado > estoqueAtual) { dataRisco = ev.data; break; }
+        }
 
         const qtdEmbalagem = insumo.qtdEmbalagem || 1;
         const embalagensNecessario = insumo.unidade === 'un' ? Math.ceil(necessario) : Math.ceil(necessario / qtdEmbalagem);
@@ -1066,7 +1128,7 @@ async function calcularPrevisaoCompra(dias, btn) {
             nomeEmbalagem: insumo.nomeEmbalagem || '', qtdEmbalagem, preco: insumo.preco,
             necessario, embalagensNecessario,
             custoNecessario: (insumo.preco / qtdEmbalagem) * necessario,
-            dataRisco: primeiraDataAfetada[insumo.key] || null
+            dataRisco
         });
     });
 
