@@ -4,6 +4,7 @@
 ═══════════════════════════════════════════ */
 
 let filtroEventosAtual = 'todos';
+let filtroPagamentoAtual = 'todos';
 
 function eventoEstaFinalizado(e) {
     return e.status === 'finalizado';
@@ -39,6 +40,13 @@ function finalizarEvento(key) {
     });
 }
 
+function reabrirEvento(key) {
+    showConfirmModal('🔓 Reabrir este evento? Ele voltará para "Em andamento" e as datas ficarão bloqueadas novamente.', function() {
+        database.ref('eventos/' + key).update({ status: 'aberto', finalizadoEm: null })
+            .then(() => { toast('🔓 Evento reaberto!'); carregarEventos(); })
+            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+    });
+}
 
 function excluirEvento(key) {
     showConfirmModal('🔒 Excluir este bloqueio? As datas voltarão a estar disponíveis.', function() {
@@ -129,6 +137,14 @@ function filtrarEventos(filtro, btn) {
 }
 
 
+function filtrarPagamento(filtro, btn) {
+    filtroPagamentoAtual = filtro;
+    document.querySelectorAll('#filtros-pagamento .chip-filtro').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    carregarEventos();
+}
+
+
 function carregarEventos() {
     const lista = document.getElementById('lista-eventos');
     lista.innerHTML = gerarSkeleton(2);
@@ -174,45 +190,26 @@ function renderizarEventoCard(e, lista, hoje) {
     card.className = 'evento-card-completo' + (finalizado ? ' evento-finalizado' : '');
     card.id = 'evento-card-' + e.key;
     const vendas   = e.vendas   ? Object.values(e.vendas)   : [];
-    const produzido = e.produzido || 0;
-    const totalCaixas    = vendas.reduce((s,v) => s+(parseInt(v.caixas)||0), 0);
-    const totalAvulso    = vendas.reduce((s,v) => s+(parseInt(v.avulso)||0), 0);
-    const totalUnidades  = (totalCaixas*4)+totalAvulso;
-    const totalArrecadado= vendas.reduce((s,v) => s+(parseFloat(v.valor)||0), 0);
-    const caixasProduzidas = Math.floor(produzido/4);
-    const sobrandoCaixas   = Math.max(0, caixasProduzidas-totalCaixas);
-    const sobrandoUnidades = Math.max(0, produzido-totalUnidades);
+    const produtosArr = e.produtos ? Object.entries(e.produtos) : [];
+    // Soma por CAIXA/ITEM (não por brigadeiro individual dentro da caixa)
+    const produzido = produtosArr.reduce((s,[,p]) => s + (parseInt(p.produzido)||0), 0);
+    const totalUnidadesVendidas = produtosArr.reduce((s,[pkey]) => {
+        const vendidoDoProduto = vendas.filter(v => v.produtoKey === pkey)
+            .reduce((s2,v) => s2 + (parseInt(v.quantidade)||0), 0);
+        return s + vendidoDoProduto;
+    }, 0);
+    const totalBrigadeiros = produtosArr.reduce((s,[,p]) => s + (parseInt(p.produzido)||0)*(parseInt(p.unidades)||0), 0);
+    const totalArrecadado = vendas.reduce((s,v) => s+(parseFloat(v.valor)||0), 0);
+    const sobrandoUnidades = Math.max(0, produzido-totalUnidadesVendidas);
     const btnFinalizarMenu = (!finalizado && passado)
         ? `<button onclick="finalizarEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">✓ Finalizar evento</button>` : '';
-    const vendasRapidasHTML = finalizado ? '' : `
-        <div style="margin-top:2px;">
-            <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda Rápida</p>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',1,this)">+1 caixa<br><span style="font-size:0.85em;opacity:0.85;">R$ 10,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',2,this)">+2 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 20,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',3,this)">+3 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 30,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',5,this)">+5 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 50,00</span></button>
-                <button class="btn btn-laranja" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="lancarVendaRapida('${e.key}',10,this)">+10 caixas<br><span style="font-size:0.85em;opacity:0.85;">R$ 100,00</span></button>
-                <button class="btn btn-cinza" style="padding:10px 4px;font-size:0.8em;line-height:1.3;" onclick="toggleEspecificar('${e.key}')">✏️ Especificar<br><span style="font-size:0.85em;opacity:0.75;">outra qtd</span></button>
-            </div>
-            <div id="especificar-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;">
-                <label style="font-size:0.76em;">Quantidade de caixinhas</label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="number" id="venda-caixas-${e.key}" placeholder="Ex: 7" min="1" style="margin-bottom:0;flex:1;" oninput="calcularVenda('${e.key}')">
-                    <button class="btn btn-verde" style="padding:10px 16px;white-space:nowrap;" onclick="lancarVendaEspecifica('${e.key}')">✅ Confirmar</button>
-                </div>
-                <div style="font-size:0.8em;color:var(--green);margin-top:6px;font-weight:600;">💰 Total: <span id="preview-venda-${e.key}">R$ 0,00</span></div>
-            </div>
-        </div>`;
-    const editarProduzidoHTML = finalizado ? '' : `
-        <div id="editar-produzido-${e.key}" class="evento-editar-produzido" style="display:none;">
-            <label style="font-size:0.76em;">Total produzido (unidades)</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" id="produzido-${e.key}" value="${produzido}" placeholder="Ex: 200" min="0" style="margin-bottom:0;flex:1;">
-                <button class="btn btn-marrom" style="padding:10px 16px;white-space:nowrap;" onclick="salvarProduzido('${e.key}')">💾 Salvar</button>
-            </div>
-            <p style="font-size:0.76em;color:var(--brown-warm);margin-top:4px;">= ${caixasProduzidas} caixinhas de 4 un <span id="info-caixas-${e.key}"></span></p>
-        </div>`;
+    const btnReabrirMenu = finalizado
+        ? `<button onclick="reabrirEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">🔓 Reabrir evento</button>` : '';
+    const btnEditarMenu =
+        `<button onclick="abrirEdicaoEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">✏️ Editar evento</button>`;
+    const detalhamentoHTML = gerarDetalhamentoProdutosHTML(e);
+    const vendasRapidasHTML = gerarProdutosVendaHTML(e);
+    const editarProduzidoHTML = '';
     card.innerHTML = `
         <div class="evento-card-header">
             <div>
@@ -225,7 +222,9 @@ function renderizarEventoCard(e, lista, hoje) {
             <div style="position:relative;flex-shrink:0;">
                 <button class="btn-mais" onclick="toggleMenuMais('menuEvento-${e.key}', event)" aria-label="Mais opções">⋯</button>
                 <div class="menu-mais" id="menuEvento-${e.key}" style="display:none;">
+                    ${btnEditarMenu}
                     ${btnFinalizarMenu}
+                    ${btnReabrirMenu}
                     <button class="menu-mais-excluir" onclick="excluirEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">🗑️ Excluir evento</button>
                 </div>
             </div>
@@ -235,20 +234,22 @@ function renderizarEventoCard(e, lista, hoje) {
             <div class="evento-arrecadado-valor">R$ ${totalArrecadado.toFixed(2).replace('.',',')}</div>
         </div>
         <div class="evento-resumo-3grid">
-            <div class="evento-resumo-mini${finalizado?'':' editable'}" ${finalizado?'':`onclick="toggleEditarProduzido('${e.key}')"`}>
-                <div class="evento-resumo-mini-label">🍫 Produzido${finalizado?'':' ✏️'}</div>
-                <div class="evento-resumo-mini-valor">${caixasProduzidas} cxs</div>
+            <div class="evento-resumo-mini">
+                <div class="evento-resumo-mini-label">🍫 Produzido</div>
+                <div class="evento-resumo-mini-valor">${produzido} cx</div>
             </div>
             <div class="evento-resumo-mini">
                 <div class="evento-resumo-mini-label">📦 Vendido</div>
-                <div class="evento-resumo-mini-valor">${totalCaixas} cxs</div>
+                <div class="evento-resumo-mini-valor">${totalUnidadesVendidas} cx</div>
             </div>
             <div class="evento-resumo-mini">
                 <div class="evento-resumo-mini-label">📬 Sobrou</div>
-                <div class="evento-resumo-mini-valor">${sobrandoCaixas} cxs</div>
+                <div class="evento-resumo-mini-valor">${sobrandoUnidades} cx</div>
             </div>
         </div>
+        <p style="text-align:center;font-size:0.78em;color:var(--brown-warm);margin-top:-4px;margin-bottom:10px;">🍫 ${totalBrigadeiros} brigadeiros no total</p>
         ${editarProduzidoHTML}
+        ${detalhamentoHTML}
         ${vendasRapidasHTML}
         <button class="btn-toggle-historico" onclick="toggleHistorico('${e.key}')">📋 Histórico de vendas <span id="seta-historico-${e.key}">▾</span></button>
         <div id="historico-wrapper-${e.key}" style="display:none;">
@@ -257,31 +258,33 @@ function renderizarEventoCard(e, lista, hoje) {
             </div>
         </div>`;
     lista.appendChild(card);
-    if (!finalizado) {
-        const inputProd = document.getElementById('produzido-' + e.key);
-        if (inputProd) {
-            inputProd.addEventListener('input', function() {
-                const un = parseInt(this.value)||0;
-                const infoEl = document.getElementById('info-caixas-'+e.key);
-                if (infoEl) infoEl.textContent = un>0?` (${Math.floor(un/4)} caixinhas)`:'';
-            });
-        }
-    }
 }
 
 function renderizarHistoricoVendas(e) {
     const vendas = e.vendas ? Object.entries(e.vendas) : [];
     const finalizado = eventoEstaFinalizado(e);
-    if (vendas.length === 0) return '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>';
-    return vendas.map(([key,v]) => {
+    const filtradas = filtroPagamentoAtual === 'todos'
+        ? vendas
+        : vendas.filter(([_,v]) => (v.formaPagamento||'') === filtroPagamentoAtual);
+    if (filtradas.length === 0) return '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda encontrada.</p>';
+    const iconesPagamento = { dinheiro:'💵 Dinheiro', pix:'📱 Pix', credito:'💳 Crédito', debito:'💳 Débito' };
+    return filtradas.map(([key,v]) => {
         const hora = v.hora||'--:--';
-        const desc = [];
-        if (v.caixas>0) desc.push(`${v.caixas} caixa${v.caixas>1?'s':''}`);
-        if (v.avulso>0) desc.push(`${v.avulso} avulso`);
+        let desc;
+        if (v.produtoNome) {
+            desc = `${v.quantidade}x ${escaparHTML(v.produtoNome)}`;
+        } else {
+            const partes = [];
+            if (v.caixas>0) partes.push(`${v.caixas} caixa${v.caixas>1?'s':''}`);
+            if (v.avulso>0) partes.push(`${v.avulso} avulso`);
+            desc = partes.join(' + ') + ' (legado)';
+        }
+        const pagLabel = v.formaPagamento ? ' · ' + (iconesPagamento[v.formaPagamento]||v.formaPagamento) : '';
+        const gratuitoTag = v.gratuito ? ' <span style="color:var(--amber);font-weight:700;">🎁 grátis</span>' : '';
         const btnExcluir = finalizado?'':
             `<button class="btn-remove" style="padding:4px 10px;font-size:0.74em;" onclick="excluirVenda('${e.key}','${key}')">✕</button>`;
         return `<div class="venda-item">
-            <div><span style="font-weight:600;">${hora}</span><span style="color:var(--brown-warm);margin-left:6px;">${desc.join(' + ')}</span></div>
+            <div><span style="font-weight:600;">${hora}</span><span style="color:var(--brown-warm);margin-left:6px;">${desc}${pagLabel}</span>${gratuitoTag}</div>
             <div style="display:flex;align-items:center;gap:8px;"><strong style="color:var(--green);">R$ ${(v.valor||0).toFixed(2).replace('.',',')}</strong>${btnExcluir}</div>
         </div>`;
     }).join('');
@@ -306,13 +309,6 @@ function toggleHistorico(key, forcarAberto) {
 }
 
 
-function calcularVenda(key) {
-    const caixas = parseInt(document.getElementById('venda-caixas-'+key).value)||0;
-    const preview = document.getElementById('preview-venda-'+key);
-    if (preview) preview.textContent = 'R$ '+(caixas*10).toFixed(2).replace('.',',');
-}
-
-
 function salvarProduzido(key) {
     database.ref('eventos/'+key).once('value', snapshot => {
         const e = snapshot.val();
@@ -322,82 +318,280 @@ function salvarProduzido(key) {
     });
 }
 
-
-function lancarVenda(key) {
-    database.ref('eventos/'+key).once('value', snapshot => {
-        if (eventoEstaFinalizado(snapshot.val())) { toast('❌ Evento finalizado.','erro'); return; }
-        const caixasInput = document.getElementById('venda-caixas-'+key);
-        const avulsoInput = document.getElementById('venda-avulso-'+key);
-        const caixas = parseInt(caixasInput?.value)||0;
-        const avulso = parseInt(avulsoInput?.value)||0;
-        if (caixas===0 && avulso===0) { toast('❌ Informe ao menos 1 caixinha ou 1 unidade avulsa.','erro'); return; }
-        const valor = (caixas*10)+(avulso*2.50);
-        const agora = new Date();
-        const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
-        database.ref('eventos/'+key+'/vendas').push({ caixas, avulso, valor, hora, timestamp:Date.now() }).then(()=>{
-            toast('✅ Venda lançada!');
-            if (caixasInput) caixasInput.value = '';
-            if (avulsoInput) avulsoInput.value = '';
-            const preview = document.getElementById('preview-venda-'+key);
-            if (preview) preview.textContent = 'R$ 0,00';
-            carregarEventos();
-            setTimeout(()=>{ toggleHistorico(key, true); },400);
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
+function gerarDetalhamentoProdutosHTML(e) {
+    const produtos = e.produtos ? Object.entries(e.produtos) : [];
+    if (produtos.length === 0) return '';
+    const vendas = e.vendas ? Object.values(e.vendas) : [];
+    const linhas = produtos.map(([pkey, p]) => {
+        const produzidoP = parseInt(p.produzido) || 0;
+        const unidadesP = parseInt(p.unidades) || 0;
+        const vendidoP = vendas.filter(v => v.produtoKey === pkey)
+            .reduce((s,v) => s + (parseInt(v.quantidade)||0), 0);
+        const sobrouP = Math.max(0, produzidoP - vendidoP);
+        return `
+        <div style="background:var(--cream);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+            <div style="font-weight:700;color:var(--brown-dark);margin-bottom:6px;">${escaparHTML(p.nome)}</div>
+            <div style="font-size:0.78em;color:var(--brown-warm);display:flex;gap:12px;flex-wrap:wrap;">
+                <span>📦 Produzido: <strong>${produzidoP}</strong></span>
+                <span>🛒 Vendido: <strong>${vendidoP}</strong></span>
+                <span>📬 Sobrou: <strong>${sobrouP}</strong></span>
+                <span>🍫 <strong>${produzidoP*unidadesP}</strong> brigadeiros</span>
+            </div>
+        </div>`;
+    }).join('');
+    return `
+    <div style="margin-top:2px;">
+        <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">📋 Detalhamento por Item</p>
+        ${linhas}
+    </div>`;
 }
 
+// ====================== PRODUTOS DO EVENTO E VENDA POR PRODUTO ======================
 
-function lancarVendaRapida(key, caixas, btnClicado) {
-    database.ref('eventos/'+key).once('value', snapshot => {
-        if (eventoEstaFinalizado(snapshot.val())) { toast('Evento finalizado.','erro'); return; }
-        const valor = caixas*10;
-        const agora = new Date();
-        const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
-        database.ref('eventos/'+key+'/vendas').push({ caixas, avulso:0, valor, hora, timestamp:Date.now() }).then(()=>{
-            toast(`+${caixas} caixa${caixas>1?'s':''} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
-            dispararConfete(btnClicado);
-            if (btnClicado) pulseBotaoSucesso(btnClicado, '✓');
-            carregarEventos();
-            setTimeout(()=>{ toggleHistorico(key, true); },400);
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
+function gerarProdutosVendaHTML(e) {
+    if (eventoEstaFinalizado(e)) return '';
+    const produtos = e.produtos ? Object.entries(e.produtos) : [];
+    const linhasProdutos = produtos.map(([pkey, p]) => {
+        const preco = parseFloat(p.preco) || 0;
+        const produzidoP = parseInt(p.produzido) || 0;
+        const unidadesP = parseInt(p.unidades) || 0;
+        const vendidoP = (e.vendas ? Object.values(e.vendas) : [])
+            .filter(v => v.produtoKey === pkey)
+            .reduce((s,v) => s + (parseInt(v.quantidade)||0), 0);
+        const sobrouP = Math.max(0, produzidoP - vendidoP);
+        return `
+        <div class="produto-venda-linha" id="produtoLinha-${e.key}-${pkey}">
+            <div style="display:flex;gap:6px;align-items:stretch;">
+                <button type="button" class="btn btn-laranja btn-bloco" style="text-align:left;display:flex;justify-content:space-between;align-items:center;flex:1;margin-bottom:0;" onclick="toggleVendaProduto('${e.key}','${pkey}')">
+                    <span>${escaparHTML(p.nome)}</span>
+                    <span style="font-weight:700;">R$ ${preco.toFixed(2).replace('.',',')}</span>
+                </button>
+                <button type="button" class="btn btn-cinza" style="flex:0 0 auto;padding:0 12px;margin-bottom:0;" onclick="toggleEditarProdutoEvento('${e.key}','${pkey}')" aria-label="Editar produto">✏️</button>
+                <button type="button" class="btn btn-vermelho" style="flex:0 0 auto;padding:0 12px;margin-bottom:0;" onclick="excluirProdutoEvento('${e.key}','${pkey}')" aria-label="Excluir produto">🗑️</button>
+            </div>
+            <div style="font-size:0.74em;color:var(--brown-warm);margin:2px 4px 8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span>📦 Produzido: <strong>${produzidoP} un.</strong></span>
+                <span>🛒 Vendido: <strong>${vendidoP} un.</strong></span>
+                <span>📬 Sobrou: <strong>${sobrouP} un.</strong></span>
+                <span>🍫 Total: <strong>${produzidoP*unidadesP} brigadeiros</strong></span>
+            </div>
+            <div class="produto-edicao-painel" id="produtoEdicao-${e.key}-${pkey}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-bottom:10px;">
+                <label style="font-size:0.76em;">Nome do produto</label>
+                <input type="text" id="editProdutoNome-${e.key}-${pkey}" value="${escaparHTML(p.nome)}" style="margin-bottom:10px;">
+                <div class="linha-dupla">
+                    <div>
+                        <label style="font-size:0.76em;">Unidades por item</label>
+                        <input type="number" id="editProdutoUnidades-${e.key}-${pkey}" value="${unidadesP}" min="1">
+                    </div>
+                    <div>
+                        <label style="font-size:0.76em;">Preço (R$)</label>
+                        <input type="text" id="editProdutoPreco-${e.key}-${pkey}" value="${preco.toFixed(2).replace('.',',')}" oninput="this.value=maskMoeda(this.value)">
+                    </div>
+                </div>
+                <label style="font-size:0.76em;">Quantidade produzida</label>
+                <input type="number" id="editProdutoProduzido-${e.key}-${pkey}" value="${produzidoP}" min="0" style="margin-bottom:10px;">
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="btn btn-cinza" style="flex:1;margin-bottom:0;" onclick="toggleEditarProdutoEvento('${e.key}','${pkey}')">Cancelar</button>
+                    <button type="button" class="btn btn-verde" style="flex:1;margin-bottom:0;" onclick="salvarEdicaoProdutoEvento('${e.key}','${pkey}')">💾 Salvar</button>
+                </div>
+            </div>
+            <div class="produto-venda-painel" id="produtoPainel-${e.key}-${pkey}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:6px;margin-bottom:10px;">
+                <label style="font-size:0.76em;">Quantidade</label>
+                <input type="number" id="qtd-${e.key}-${pkey}" min="1" value="1" style="margin-bottom:10px;" oninput="atualizarPreviewVendaProduto('${e.key}','${pkey}')">
+                <label style="font-size:0.76em;">Forma de pagamento</label>
+                <select id="pagamento-${e.key}-${pkey}" style="margin-bottom:10px;">
+                    <option value="dinheiro">💵 Dinheiro</option>
+                    <option value="pix">📱 Pix</option>
+                    <option value="credito">💳 Crédito</option>
+                    <option value="debito">💳 Débito</option>
+                </select>
+                <button type="button" class="btn btn-cinza btn-bloco" id="btnGratuito-${e.key}-${pkey}" data-ativo="0" style="margin-bottom:10px;" onclick="alternarGratuitoVenda('${e.key}','${pkey}')">🎁 Marcar como gratuito</button>
+                <div style="font-size:0.85em;color:var(--green);font-weight:600;margin-bottom:10px;">💰 Total: <span id="previewValor-${e.key}-${pkey}">R$ ${preco.toFixed(2).replace('.',',')}</span></div>
+                <button type="button" class="btn btn-verde btn-bloco" onclick="confirmarVendaProduto('${e.key}','${pkey}')">✅ Confirmar Venda</button>
+            </div>
+        </div>`;
+    }).join('');
+
+    return `
+    <div style="margin-top:2px;">
+        <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda</p>
+        ${linhasProdutos || '<p style="color:var(--brown-warm);font-size:0.83em;">Nenhum produto cadastrado neste evento ainda.</p>'}
+        <div id="novoProdutoForm-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;margin-bottom:8px;">
+            <label style="font-size:0.76em;">Nome do produto</label>
+            <input type="text" id="novoProdutoNome-${e.key}" placeholder="Ex: Caixinha 16un" style="margin-bottom:10px;">
+            <div class="linha-dupla">
+                <div>
+                    <label style="font-size:0.76em;">Unidades por item</label>
+                    <input type="number" id="novoProdutoUnidades-${e.key}" placeholder="Ex: 16" min="1">
+                </div>
+                <div>
+                    <label style="font-size:0.76em;">Preço (R$)</label>
+                    <input type="text" id="novoProdutoPreco-${e.key}" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value)">
+                </div>
+            </div>
+            <label style="font-size:0.76em;">Quantidade produzida (caixas/itens)</label>
+            <input type="number" id="novoProdutoProduzido-${e.key}" placeholder="Ex: 237" min="0" style="margin-bottom:10px;">
+            <button type="button" class="btn btn-verde btn-bloco" onclick="salvarProdutoEvento('${e.key}')">💾 Salvar Produto</button>
+        </div>
+        <button type="button" class="btn btn-cinza btn-bloco" onclick="toggleNovoProdutoForm('${e.key}')">+ Adicionar Item</button>
+    </div>`;
 }
 
-
-function lancarVendaEspecifica(key) {
-    database.ref('eventos/'+key).once('value', snapshot => {
-        if (eventoEstaFinalizado(snapshot.val())) { toast('❌ Evento finalizado.','erro'); return; }
-        const caixas = parseInt(document.getElementById('venda-caixas-'+key).value)||0;
-        if (caixas<=0) { toast('❌ Informe a quantidade.','erro'); return; }
-        const valor = caixas*10;
-        const agora = new Date();
-        const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
-        database.ref('eventos/'+key+'/vendas').push({ caixas, avulso:0, valor, hora, timestamp:Date.now() }).then(()=>{
-            toast(`✅ +${caixas} caixas lançado!`);
-            document.getElementById('venda-caixas-'+key).value='';
-            document.getElementById('preview-venda-'+key).textContent='R$ 0,00';
-            document.getElementById('especificar-'+key).style.display='none';
-            carregarEventos();
-            setTimeout(()=>{ toggleHistorico(key, true); },400);
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
-}
-
-
-function toggleEspecificar(key) {
-    const div = document.getElementById('especificar-'+key);
+function toggleNovoProdutoForm(eventoKey) {
+    const div = document.getElementById('novoProdutoForm-'+eventoKey);
     if (!div) return;
-    const aberto = div.style.display==='block';
-    div.style.display = aberto?'none':'block';
-    if (!aberto) document.getElementById('venda-caixas-'+key).focus();
+    div.style.display = div.style.display === 'block' ? 'none' : 'block';
 }
 
+function salvarProdutoEvento(eventoKey) {
+    const nome = document.getElementById(`novoProdutoNome-${eventoKey}`).value.trim();
+    const unidades = parseInt(document.getElementById(`novoProdutoUnidades-${eventoKey}`).value) || 0;
+    const precoStr = document.getElementById(`novoProdutoPreco-${eventoKey}`).value;
+    const preco = parseFloat((precoStr||'0').replace(/[^\d,]/g,'').replace(',','.')) || 0;
+    const produzido = parseInt(document.getElementById(`novoProdutoProduzido-${eventoKey}`).value) || 0;
+    if (!nome)          { toast('❌ Informe o nome do produto.', 'erro'); return; }
+    if (unidades <= 0)  { toast('❌ Informe as unidades por item.', 'erro'); return; }
+    if (preco <= 0)     { toast('❌ Informe o preço.', 'erro'); return; }
+    database.ref('eventos/'+eventoKey+'/produtos').push({ nome, unidades, preco, produzido }).then(() => {
+        toast('✅ Produto adicionado!');
+        carregarEventos();
+    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
+}
+
+function toggleVendaProduto(eventoKey, produtoKey) {
+    document.querySelectorAll(`[id^="produtoPainel-${eventoKey}-"]`).forEach(painel => {
+        if (painel.id !== `produtoPainel-${eventoKey}-${produtoKey}`) painel.style.display = 'none';
+    });
+    const painel = document.getElementById(`produtoPainel-${eventoKey}-${produtoKey}`);
+    if (!painel) return;
+    const aberto = painel.style.display === 'block';
+    painel.style.display = aberto ? 'none' : 'block';
+    if (!aberto) atualizarPreviewVendaProduto(eventoKey, produtoKey);
+}
+
+function atualizarPreviewVendaProduto(eventoKey, produtoKey) {
+    database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).once('value', snap => {
+        const p = snap.val();
+        if (!p) return;
+        const qtdInput = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
+        const qtd = parseInt(qtdInput?.value) || 0;
+        const btnGratuito = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
+        const gratuito = btnGratuito && btnGratuito.dataset.ativo === '1';
+        const preview = document.getElementById(`previewValor-${eventoKey}-${produtoKey}`);
+        const valor = gratuito ? 0 : qtd * (parseFloat(p.preco)||0);
+        if (preview) preview.textContent = 'R$ ' + valor.toFixed(2).replace('.',',');
+    });
+}
+
+function alternarGratuitoVenda(eventoKey, produtoKey) {
+    const btn = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
+    if (!btn) return;
+    const ativo = btn.dataset.ativo === '1';
+    btn.dataset.ativo = ativo ? '0' : '1';
+    btn.classList.toggle('btn-verde', !ativo);
+    btn.classList.toggle('btn-cinza', ativo);
+    btn.textContent = ativo ? '🎁 Marcar como gratuito' : '✅ Gratuito ativado';
+    atualizarPreviewVendaProduto(eventoKey, produtoKey);
+}
+
+function confirmarVendaProduto(eventoKey, produtoKey) {
+    database.ref('eventos/'+eventoKey).once('value', snapshot => {
+        const e = snapshot.val();
+        if (eventoEstaFinalizado(e)) { toast('❌ Evento finalizado.', 'erro'); return; }
+        const p = e.produtos && e.produtos[produtoKey];
+        if (!p) { toast('❌ Produto não encontrado.', 'erro'); return; }
+        const qtd = parseInt(document.getElementById(`qtd-${eventoKey}-${produtoKey}`).value) || 0;
+        if (qtd <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
+        const formaPagamento = document.getElementById(`pagamento-${eventoKey}-${produtoKey}`).value;
+        const btnGratuito = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
+        const gratuito = btnGratuito && btnGratuito.dataset.ativo === '1';
+        const unidades = parseInt(p.unidades) || 1;
+        const preco = parseFloat(p.preco) || 0;
+        const valor = gratuito ? 0 : qtd * preco;
+        const agora = new Date();
+        const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
+        database.ref('eventos/'+eventoKey+'/vendas').push({
+            produtoKey, produtoNome: p.nome, quantidade: qtd,
+            unidadesTotal: qtd*unidades, valor, gratuito, formaPagamento,
+            hora, timestamp: Date.now()
+        }).then(() => {
+            toast(gratuito ? `🎁 ${qtd}x ${p.nome} registrado como gratuito!` : `✅ ${qtd}x ${p.nome} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
+            carregarEventos();
+            setTimeout(()=>{ toggleHistorico(eventoKey, true); },400);
+        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
+    });
+}
+
+function toggleEditarProdutoEvento(eventoKey, produtoKey) {
+    document.querySelectorAll(`[id^="produtoEdicao-${eventoKey}-"]`).forEach(painel => {
+        if (painel.id !== `produtoEdicao-${eventoKey}-${produtoKey}`) painel.style.display = 'none';
+    });
+    const painel = document.getElementById(`produtoEdicao-${eventoKey}-${produtoKey}`);
+    if (!painel) return;
+    painel.style.display = painel.style.display === 'block' ? 'none' : 'block';
+}
+
+function salvarEdicaoProdutoEvento(eventoKey, produtoKey) {
+    const nome = document.getElementById(`editProdutoNome-${eventoKey}-${produtoKey}`).value.trim();
+    const unidades = parseInt(document.getElementById(`editProdutoUnidades-${eventoKey}-${produtoKey}`).value) || 0;
+    const precoStr = document.getElementById(`editProdutoPreco-${eventoKey}-${produtoKey}`).value;
+    const preco = parseFloat((precoStr||'0').replace(/[^\d,]/g,'').replace(',','.')) || 0;
+    const produzido = parseInt(document.getElementById(`editProdutoProduzido-${eventoKey}-${produtoKey}`).value) || 0;
+    if (!nome)          { toast('❌ Informe o nome do produto.', 'erro'); return; }
+    if (unidades <= 0)  { toast('❌ Informe as unidades por item.', 'erro'); return; }
+    if (preco <= 0)     { toast('❌ Informe o preço.', 'erro'); return; }
+    database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).update({ nome, unidades, preco, produzido }).then(() => {
+        toast('✅ Produto atualizado!');
+        carregarEventos();
+    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
+}
+
+function excluirProdutoEvento(eventoKey, produtoKey) {
+    showConfirmModal('🗑️ Excluir este produto? As vendas já lançadas continuam no histórico.', function() {
+        database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).remove().then(() => {
+            toast('🗑️ Produto excluído.');
+            carregarEventos();
+        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
+    });
+}
+
+// ====================== EDITAR EVENTO ======================
+
+function abrirEdicaoEvento(key) {
+    database.ref('eventos/'+key).once('value', snapshot => {
+        const e = snapshot.val();
+        if (!e) return;
+        document.getElementById('editEventoKey').value = key;
+        document.getElementById('editEventoNome').value = e.nome || '';
+        document.getElementById('editEventoInicio').value = e.inicio || '';
+        document.getElementById('editEventoFim').value = e.fim || '';
+        document.getElementById('editEventoObs').value = e.obs || '';
+        document.getElementById('modalEditarEvento').style.display = 'flex';
+    });
+}
+
+function salvarEdicaoEvento() {
+    const key = document.getElementById('editEventoKey').value;
+    const nome = document.getElementById('editEventoNome').value.trim();
+    const inicio = document.getElementById('editEventoInicio').value;
+    const fim = document.getElementById('editEventoFim').value;
+    const obs = document.getElementById('editEventoObs').value.trim();
+    if (!nome)   { toast('❌ Informe o nome do evento.', 'erro'); return; }
+    if (!inicio) { toast('❌ Informe a data de início.', 'erro'); return; }
+    if (!fim)    { toast('❌ Informe a data de fim.', 'erro'); return; }
+    if (fim < inicio) { toast('❌ Data fim deve ser igual ou depois do início.', 'erro'); return; }
+    database.ref('eventos/'+key).update({ nome, inicio, fim, obs }).then(() => {
+        toast('✅ Evento atualizado!');
+        document.getElementById('modalEditarEvento').style.display = 'none';
+        carregarEventos();
+    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
+}
 
 function excluirVenda(eventoKey, vendaKey) {
     showConfirmModal('Excluir esta venda?', function() {
         database.ref('eventos/'+eventoKey+'/vendas/'+vendaKey).remove().then(()=>{
             toast('🗑️ Venda excluída.'); carregarEventos();
-            setTimeout(()=>{ toggleHistorico(key, true); },400);
+            setTimeout(()=>{ toggleHistorico(eventoKey, true); },400);
         }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
     });
 }
