@@ -12,18 +12,19 @@ function gerarPayloadPix(chave, nomeRecebedor, cidade, valor, txId) {
         const len = String(value.length).padStart(2, '0');
         return id + len + value;
     }
-    const valorFormatado = valor.toFixed(2);
+    const txIdLimpo = (txId || '***').replace(/[^A-Za-z0-9]/g, '').substring(0, 25) || '***';
+    const campoValor = valor > 0 ? tlv('54', valor.toFixed(2)) : '';
     const merchantAccount = tlv('00','BR.GOV.BCB.PIX') + tlv('01', chave);
     const payload =
         tlv('00','01') +
         tlv('26', merchantAccount) +
         tlv('52','0000') +
         tlv('53','986') +
-        tlv('54', valorFormatado) +
+        campoValor +
         tlv('58','BR') +
         tlv('59', nomeRecebedor.substring(0,25)) +
         tlv('60', cidade.substring(0,15)) +
-        tlv('62', tlv('05', txId.substring(0,25))) ;
+        tlv('62', tlv('05', txIdLimpo)) ;
     const semCRC = payload + '6304';
     const crc = crc16(semCRC);
     return semCRC + crc;
@@ -48,6 +49,7 @@ function gerarCobrancaPix(key) {
         const vTotal = typeof p.valorTotal === 'number' ? p.valorTotal : 0;
         const vPago  = parseFloat((p.valorPago||'').replace('R$','').replace(',','.').trim()) || 0;
         const vRestante = Math.max(0, vTotal - vPago);
+        if (vRestante <= 0) { toast('✅ Este pedido já está totalmente pago.', 'aviso'); return; }
 
         // ⚠️ TROQUE pelos seus dados reais de chave Pix:
         const CHAVE_PIX = '+5547992745896'; // chave tipo telefone PRECISA do +55 na frente
