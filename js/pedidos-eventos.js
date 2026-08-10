@@ -397,17 +397,23 @@ function gerarProdutosVendaHTML(e) {
             </div>
             <div class="produto-venda-painel" id="produtoPainel-${e.key}-${pkey}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:6px;margin-bottom:10px;">
                 <label style="font-size:0.76em;">Quantidade</label>
-                <input type="number" id="qtd-${e.key}-${pkey}" min="1" value="1" style="margin-bottom:10px;" oninput="atualizarPreviewVendaProduto('${e.key}','${pkey}')">
-                <label style="font-size:0.76em;">Forma de pagamento</label>
-                <select id="pagamento-${e.key}-${pkey}" style="margin-bottom:10px;">
-                    <option value="dinheiro">💵 Dinheiro</option>
-                    <option value="pix">📱 Pix</option>
-                    <option value="credito">💳 Crédito</option>
-                    <option value="debito">💳 Débito</option>
-                </select>
-                <button type="button" class="btn btn-cinza btn-bloco" id="btnGratuito-${e.key}-${pkey}" data-ativo="0" style="margin-bottom:10px;" onclick="alternarGratuitoVenda('${e.key}','${pkey}')">🎁 Marcar como gratuito</button>
-                <div style="font-size:0.85em;color:var(--green);font-weight:600;margin-bottom:10px;">💰 Total: <span id="previewValor-${e.key}-${pkey}">R$ ${preco.toFixed(2).replace('.',',')}</span></div>
-                <button type="button" class="btn btn-verde btn-bloco" onclick="confirmarVendaProduto('${e.key}','${pkey}')">✅ Confirmar Venda</button>
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                    <button type="button" class="btn btn-laranja btn-qtd-rapida" data-qtd="1" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','1',this)">+1</button>
+                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="2" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','2',this)">+2</button>
+                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="3" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','3',this)">+3</button>
+                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="4" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','4',this)">+4</button>
+                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="outro" style="flex:1.3;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="selecionarQtdRapida('${e.key}','${pkey}','outro',this)">Especificar</button>
+                </div>
+                <input type="number" id="qtd-${e.key}-${pkey}" min="1" value="1" style="display:none;margin-bottom:10px;" oninput="atualizarPreviewVendaProduto('${e.key}','${pkey}')">
+                <div style="font-size:0.85em;color:var(--green);font-weight:600;margin-bottom:12px;">💰 Total: <span id="previewValor-${e.key}-${pkey}">R$ ${preco.toFixed(2).replace('.',',')}</span></div>
+                <label style="font-size:0.76em;">Forma de pagamento (confirma a venda na hora)</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','dinheiro')">💵 Dinheiro</button>
+                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','pix')">📱 Pix</button>
+                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','credito')">💳 Crédito</button>
+                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','debito')">💳 Débito</button>
+                    <button type="button" class="btn btn-cinza" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','gratis')">🎁 Grátis</button>
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -466,7 +472,16 @@ function toggleVendaProduto(eventoKey, produtoKey) {
     if (!painel) return;
     const aberto = painel.style.display === 'block';
     painel.style.display = aberto ? 'none' : 'block';
-    if (!aberto) atualizarPreviewVendaProduto(eventoKey, produtoKey);
+    if (!aberto) {
+        const qtdInput = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
+        if (qtdInput) { qtdInput.value = 1; qtdInput.style.display = 'none'; }
+        painel.querySelectorAll('.btn-qtd-rapida').forEach(b => {
+            const ativo = b.dataset.qtd === '1';
+            b.classList.toggle('btn-laranja', ativo);
+            b.classList.toggle('btn-cinza', !ativo);
+        });
+        atualizarPreviewVendaProduto(eventoKey, produtoKey);
+    }
 }
 
 function atualizarPreviewVendaProduto(eventoKey, produtoKey) {
@@ -475,26 +490,33 @@ function atualizarPreviewVendaProduto(eventoKey, produtoKey) {
         if (!p) return;
         const qtdInput = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
         const qtd = parseInt(qtdInput?.value) || 0;
-        const btnGratuito = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
-        const gratuito = btnGratuito && btnGratuito.dataset.ativo === '1';
         const preview = document.getElementById(`previewValor-${eventoKey}-${produtoKey}`);
-        const valor = gratuito ? 0 : qtd * (parseFloat(p.preco)||0);
+        const valor = qtd * (parseFloat(p.preco)||0);
         if (preview) preview.textContent = 'R$ ' + valor.toFixed(2).replace('.',',');
     });
 }
 
-function alternarGratuitoVenda(eventoKey, produtoKey) {
-    const btn = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
-    if (!btn) return;
-    const ativo = btn.dataset.ativo === '1';
-    btn.dataset.ativo = ativo ? '0' : '1';
-    btn.classList.toggle('btn-verde', !ativo);
-    btn.classList.toggle('btn-cinza', ativo);
-    btn.textContent = ativo ? '🎁 Marcar como gratuito' : '✅ Gratuito ativado';
+function selecionarQtdRapida(eventoKey, produtoKey, valor, btn) {
+    const grupo = btn.parentElement;
+    grupo.querySelectorAll('.btn-qtd-rapida').forEach(b => {
+        b.classList.remove('btn-laranja');
+        b.classList.add('btn-cinza');
+    });
+    btn.classList.remove('btn-cinza');
+    btn.classList.add('btn-laranja');
+    const inputManual = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
+    if (valor === 'outro') {
+        inputManual.style.display = 'block';
+        inputManual.value = inputManual.value || 1;
+        inputManual.focus();
+    } else {
+        inputManual.style.display = 'none';
+        inputManual.value = valor;
+    }
     atualizarPreviewVendaProduto(eventoKey, produtoKey);
 }
 
-function confirmarVendaProduto(eventoKey, produtoKey) {
+function confirmarVendaProdutoRapida(eventoKey, produtoKey, forma) {
     database.ref('eventos/'+eventoKey).once('value', snapshot => {
         const e = snapshot.val();
         if (eventoEstaFinalizado(e)) { toast('❌ Evento finalizado.', 'erro'); return; }
@@ -502,9 +524,8 @@ function confirmarVendaProduto(eventoKey, produtoKey) {
         if (!p) { toast('❌ Produto não encontrado.', 'erro'); return; }
         const qtd = parseInt(document.getElementById(`qtd-${eventoKey}-${produtoKey}`).value) || 0;
         if (qtd <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
-        const formaPagamento = document.getElementById(`pagamento-${eventoKey}-${produtoKey}`).value;
-        const btnGratuito = document.getElementById(`btnGratuito-${eventoKey}-${produtoKey}`);
-        const gratuito = btnGratuito && btnGratuito.dataset.ativo === '1';
+        const gratuito = forma === 'gratis';
+        const formaPagamento = gratuito ? null : forma;
         const unidades = parseInt(p.unidades) || 1;
         const preco = parseFloat(p.preco) || 0;
         const valor = gratuito ? 0 : qtd * preco;
