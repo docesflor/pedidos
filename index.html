@@ -1,620 +1,1181 @@
-/* ═══════════════════════════════════════════
-   PEDIDOS — EVENTOS, BLOQUEIOS DE AGENDA E VENDAS
-   Depende de: shared/*, pedidos-auth.js, pedidos-precos.js, pedidos-crud.js
-═══════════════════════════════════════════ */
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doces Flor – Sistema de Pedidos</title>
+    <link rel="icon" type="image/png" href="https://docesflor.github.io/shared/icone.png">
+    <link rel="apple-touch-icon" href="https://docesflor.github.io/shared/icone.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://docesflor.github.io/shared/theme.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://docesflor.github.io/shared/firebase-config.js"></script>
+    <script src="https://docesflor.github.io/shared/sabores-precos.js"></script>
+    <script src="https://docesflor.github.io/shared/utils.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ✨ MELHORIAS VISUAIS */
+.menu-btn { position: relative; transition: color 0.25s ease; }
+.menu-btn::after {
+  content: ''; position: absolute; left: 50%; bottom: 0;
+  height: 3px; width: 0; background: var(--amber); border-radius: 2px;
+  transform: translateX(-50%); transition: width 0.3s ease;
+}
+.menu-btn.active::after { width: 55%; }
 
-let filtroEventosAtual = 'todos';
-let filtroPagamentoAtual = 'todos';
+.btn { transition: transform 0.12s ease, box-shadow 0.2s ease; }
+.btn:active { transform: scale(0.96); }
 
-function eventoEstaFinalizado(e) {
-    return e.status === 'finalizado';
+.secao.active { animation: secaoPedidosEntrar 0.4s ease both; }
+@keyframes secaoPedidosEntrar {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
+/* 📊 Dashboard brigadeiro: KPIs em grade 2x2 + abas alinhadas e maiores */
+.dash-kpis {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+/* Reordena visualmente sem mexer no HTML: Faturamento + A Receber em cima, Lucro + Ticket embaixo */
+.dash-kpis > .dash-kpi-selo:nth-child(1) { order: 1; } /* Faturamento */
+.dash-kpis > .dash-kpi-selo:nth-child(2) { order: 3; } /* Lucro Líquido */
+.dash-kpis > .dash-kpi-selo:nth-child(3) { order: 4; } /* Ticket Médio */
+.dash-kpis > .dash-kpi-selo:nth-child(4) { order: 2; } /* A Receber */
 
-function salvarEvento() {
-    const nome   = document.getElementById('eventoNome').value.trim();
-    const inicio = document.getElementById('eventoInicio').value;
-    const fim    = document.getElementById('eventoFim').value;
-    const obs    = document.getElementById('eventoObs').value.trim();
-    if (!nome)   { toast('❌ Informe o nome do evento.', 'erro'); return; }
-    if (!inicio) { toast('❌ Informe a data de início.', 'erro'); return; }
-    if (!fim)    { toast('❌ Informe a data de fim.', 'erro'); return; }
-    if (fim < inicio) { toast('❌ Data fim deve ser igual ou depois do início.', 'erro'); return; }
-    const evento = { nome, inicio, fim, obs, status: 'aberto', timestamp: Date.now() };
-    database.ref('eventos').push(evento).then(() => {
-        toast('✅ Evento salvo! Datas bloqueadas.');
-        document.getElementById('eventoNome').value  = '';
-        document.getElementById('eventoInicio').value = '';
-        document.getElementById('eventoFim').value    = '';
-        document.getElementById('eventoObs').value    = '';
-        carregarEventos();
-    }).catch(err => toast('❌ Erro: ' + err.message, 'erro'));
+.dash-tabs {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+.dash-tabs .dash-tab {
+  flex: 1;
+  text-align: center;
+  padding: 14px 10px;
+  font-size: 1em;
+  white-space: nowrap;
 }
 
-
-function finalizarEvento(key) {
-    showConfirmModal('✅ Finalizar este evento? As datas voltarão a ficar disponíveis.', function() {
-        database.ref('eventos/' + key).update({ status: 'finalizado', finalizadoEm: Date.now() })
-            .then(() => { toast('✅ Evento finalizado!'); carregarEventos(); })
-            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-    });
+/* 🧁 Dashboard cupcake: 3 cards — Faturamento/Ticket empilhados à esquerda,
+   A Receber à direita ocupando a mesma altura total (sem espaço em branco) */
+.kpis-cupcake {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
 }
+/* Sem pendência: Faturamento e Ticket lado a lado */
+.kpis-cupcake:not(.kpis-cupcake--pendente) > *:nth-child(1) { grid-column: 1; grid-row: 1; }
+.kpis-cupcake:not(.kpis-cupcake--pendente) > *:nth-child(2) { grid-column: 2; grid-row: 1; }
+/* Com pendência: Faturamento em cima / Ticket embaixo à esquerda, A Receber ocupa as duas linhas à direita */
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(1) { grid-column: 1; grid-row: 1; }
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(2) { grid-column: 1; grid-row: 2; }
+.kpis-cupcake.kpis-cupcake--pendente > *:nth-child(3) { grid-column: 2; grid-row: 1 / 3; }
+</style>
+</head>
+</head>
+<body>
 
-function reabrirEvento(key) {
-    showConfirmModal('🔓 Reabrir este evento? Ele voltará para "Em andamento" e as datas ficarão bloqueadas novamente.', function() {
-        database.ref('eventos/' + key).update({ status: 'aberto', finalizadoEm: null })
-            .then(() => { toast('🔓 Evento reaberto!'); carregarEventos(); })
-            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-    });
-}
+<!-- ═══ TELA DE LOGIN ═══ -->
+<div id="tela-login">
+    <div class="login-box">
+        <div class="login-logo-ring">
+            <img src="https://docesflor.github.io/shared/icone.png" alt="Doces Flor">
+        </div>
+        <div class="login-title">Doces <span>Flor</span></div>
+        <div class="login-sub">Sistema de Pedidos</div>
+        <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email">
+        <input type="password" id="loginSenha" placeholder="Senha">
+        <p id="loginErro"></p>
+        <button id="btnLogin" class="btn-login" onclick="fazerLogin()">Entrar</button>
+        <p class="login-esqueci">Esqueceu a senha? <a href="#" onclick="recuperarSenha()">Redefinir</a></p>
+    </div>
+</div>
 
-function excluirEvento(key) {
-    showConfirmModal('🔒 Excluir este bloqueio? As datas voltarão a estar disponíveis.', function() {
-        database.ref('eventos/' + key).remove()
-            .then(() => { toast('🗑️ Evento excluído.'); carregarEventos(); })
-            .catch(err => toast('❌ Erro: ' + err.message, 'erro'));
-    });
-}
+<!-- ═══ MENU FIXO ═══ -->
+<nav id="menu-fixo">
+    <div id="menu-hero">
+        <div id="menu-acoes">
+            <button class="btn-toggle-tema" onclick="alternarTema()" aria-label="Alternar modo escuro">🌙</button>
+            <button class="btn-sair-topo" onclick="fazerLogout()">🚪 Sair</button>
+            <button class="hamburger" id="btnHamburger" onclick="toggleGaveta()" aria-label="Menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <img src="https://docesflor.github.io/shared/icone.png" id="logo-topo" alt="Doces Flor">
+        <div id="menu-brand">
+            <span id="menu-brand-nome">Doces <span>Flor</span></span>
+            <span id="menu-brand-sub">Sistema de Pedidos</span>
+        </div>
+    </div>
+    <div class="menu-botoes">
+        <div class="menu-tabs-inner">
+            <button class="menu-btn active" onclick="irPara('criar', this)">➕ Novo Pedido</button>
+            <div class="menu-btn-wrapper">
+                <button class="menu-btn" id="btnAndamento" onclick="irPara('andamento', this)">📦 Andamento</button>
+            </div>
+            <button class="menu-btn" onclick="irPara('finalizados', this)">✅ Finalizados</button>
+            <button class="menu-btn" onclick="irPara('dashboard', this)">📊 Dashboard</button>
+            <div class="menu-btn-wrapper">
+                <button class="menu-btn" onclick="irPara('gastos', this)">🧮 Custos</button>
+            </div>
+            <button class="menu-btn" onclick="irPara('eventos', this)">🔒 Eventos</button>
+            <button class="menu-btn" onclick="irPara('cupcake', this)">🧁 Cupcake</button>
+        </div>
+    </div>
+</nav>
 
+<!-- ═══ GAVETA ═══ -->
+<div class="gaveta-overlay" id="gavetaOverlay" onclick="fecharGaveta()"></div>
+<div class="gaveta" id="gaveta">
+    <div class="gaveta-header">
+        <img src="https://docesflor.github.io/shared/icone.png" alt="Doces Flor">
+        <span class="gaveta-header-titulo">Doces Flor</span>
+        <button class="gaveta-fechar" onclick="fecharGaveta()">✕</button>
+    </div>
+    <nav class="gaveta-nav">
+        <button class="gaveta-btn active" id="gbtnCriar" onclick="irParaGaveta('criar')">➕ Novo Pedido</button>
+        <button class="gaveta-btn" id="gbtnAndamento" onclick="irParaGaveta('andamento')">
+            📦 Andamento
+            <span class="gaveta-badge" id="gavetaBadge" style="display:none;"></span>
+        </button>
+        <button class="gaveta-btn" id="gbtnFinalizados" onclick="irParaGaveta('finalizados')">✅ Finalizados</button>
+        <button class="gaveta-btn" id="gbtnDashboard" onclick="irParaGaveta('dashboard')">📊 Dashboard</button>
+        <button class="gaveta-btn" id="gbtnGastos" onclick="irParaGaveta('gastos')">🧮 Custos</button>
+        <button class="gaveta-btn" id="gbtnEventos" onclick="irParaGaveta('eventos')">🔒 Eventos</button>
+        <button class="gaveta-btn" id="gbtnCupcake" onclick="irParaGaveta('cupcake')">🧁 Cupcake</button>
+        <hr class="gaveta-separador">
+        <button class="gaveta-btn" onclick="fazerLogout();fecharGaveta();">🚪 Sair</button>
+    </nav>
+</div>
 
-function getEventoBloqueado(dataISO) {
-    return new Promise(resolve => {
-        database.ref('eventos').once('value', snapshot => {
-            let encontrado = null;
-            snapshot.forEach(child => {
-                const e = child.val();
-                if (eventoEstaFinalizado(e)) return;
-                if (dataISO >= e.inicio && dataISO <= e.fim) encontrado = e;
-            });
-            resolve(encontrado);
-        });
-    });
-}
+<!-- ═══ AVISO PRÓXIMOS ═══ -->
+<div id="avisoProximos" onclick="abrirPainelUrgentes()"></div>
 
-
-async function verificarDataBloqueada() {
-    const dataISO = document.getElementById('dataEntrega').value;
-    const aviso   = document.getElementById('aviso-data-bloqueada');
-    const texto   = document.getElementById('aviso-data-bloqueada-texto');
-    if (!dataISO) { aviso.style.display = 'none'; return; }
-    const evento = await getEventoBloqueado(dataISO);
-    if (evento) {
-        const inicioBR = evento.inicio.split('-').reverse().join('/');
-        const fimBR    = evento.fim.split('-').reverse().join('/');
-        const mesmoDia = evento.inicio === evento.fim;
-        texto.textContent = `Data bloqueada — ${evento.nome}` +
-            (mesmoDia ? ` (${inicioBR})` : ` (${inicioBR} a ${fimBR})`);
-        aviso.style.display = 'block';
-    } else {
-        aviso.style.display = 'none';
-    }
-}
-
-
-function marcarDiasBloqueadosCalendario(mesRef, anoRef, prefixoId) {
-    prefixoId = prefixoId || 'dia';
-    database.ref('eventos').once('value', snapshot => {
-        snapshot.forEach(child => {
-            const e = child.val();
-            if (eventoEstaFinalizado(e)) return;
-            const dtInicio = new Date(e.inicio + 'T00:00:00');
-            const dtFim    = new Date(e.fim    + 'T00:00:00');
-            const cur      = new Date(dtInicio);
-            let idx = 0;
-            while (cur <= dtFim) {
-                if (cur.getMonth() === mesRef && cur.getFullYear() === anoRef) {
-                    const dia = cur.getDate();
-                    const el  = document.getElementById(prefixoId + '-' + dia);
-                    if (el) {
-                        el.classList.add('bloqueado');
-                        if (idx === 0) el.classList.add('bloqueado-inicio');
-                        const proxDia = new Date(cur); proxDia.setDate(proxDia.getDate()+1);
-                        if (proxDia > dtFim) el.classList.add('bloqueado-fim');
-                        if (!el.querySelector('.dia-lock')) {
-                            const lock = document.createElement('div');
-                            lock.className = 'dia-lock';
-                            lock.textContent = '🔒';
-                            el.appendChild(lock);
-                        }
-                        el.title = '🔒 ' + e.nome;
-                    }
-                }
-                cur.setDate(cur.getDate() + 1);
-                idx++;
-            }
-        });
-    });
-}
-
-// ====================== VENDAS DE EVENTO ======================
-
-
-function filtrarEventos(filtro, btn) {
-    filtroEventosAtual = filtro;
-    document.querySelectorAll('#filtros-eventos .chip-filtro').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    carregarEventos();
-}
-
-
-function filtrarPagamento(filtro, btn) {
-    filtroPagamentoAtual = filtro;
-    document.querySelectorAll('#filtros-pagamento .chip-filtro').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    carregarEventos();
-}
-
-
-function carregarEventos() {
-    const lista = document.getElementById('lista-eventos');
-    lista.innerHTML = gerarSkeleton(2);
-    database.ref('eventos').once('value', snapshot => {
-        const eventos = [];
-        snapshot.forEach(child => {
-            const e = child.val();
-            e.key = child.key;
-            if (!e.status) e.status = 'aberto';
-            if (filtroEventosAtual === 'aberto' && eventoEstaFinalizado(e)) return;
-            if (filtroEventosAtual === 'finalizado' && !eventoEstaFinalizado(e)) return;
-            eventos.push(e);
-        });
-        window._hashEventos = JSON.stringify(snapshot.val());
-        if (eventos.length === 0) {
-            const msgs = { todos:'Nenhum evento cadastrado.', aberto:'Nenhum evento em andamento.', finalizado:'Nenhum evento finalizado.' };
-            lista.innerHTML = `<p style="color:var(--brown-warm);">${msgs[filtroEventosAtual]||msgs.todos}</p>`;
-            return;
-        }
-        eventos.sort((a,b) => {
-            const aFin = eventoEstaFinalizado(a)?1:0, bFin = eventoEstaFinalizado(b)?1:0;
-            if (aFin !== bFin) return aFin - bFin;
-            return a.inicio.localeCompare(b.inicio);
-        });
-        lista.innerHTML = '';
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
-        eventos.forEach(e => renderizarEventoCard(e, lista, hoje));
-    });
-}
-
-
-function renderizarEventoCard(e, lista, hoje) {
-    const fimDate = new Date(e.fim + 'T00:00:00');
-    const passado = fimDate < hoje;
-    const finalizado = eventoEstaFinalizado(e);
-    const inicioBR = e.inicio.split('-').reverse().join('/');
-    const fimBR    = e.fim.split('-').reverse().join('/');
-    const mesmoDia = e.inicio === e.fim;
-    const statusLabel = finalizado ? 'Finalizado ✅' : (passado ? 'Aguardando fechamento' : 'Em andamento');
-    const statusClass = finalizado ? 'finalizado' : 'aberto';
-    const iconeNome = finalizado ? '✅' : '🔒';
-    const card = document.createElement('div');
-    card.className = 'evento-card-completo' + (finalizado ? ' evento-finalizado' : '');
-    card.id = 'evento-card-' + e.key;
-    const vendas   = e.vendas   ? Object.values(e.vendas)   : [];
-    const produtosArr = e.produtos ? Object.entries(e.produtos) : [];
-    // Soma por CAIXA/ITEM (não por brigadeiro individual dentro da caixa)
-    const produzido = produtosArr.reduce((s,[,p]) => s + (parseInt(p.produzido)||0), 0);
-    const totalUnidadesVendidas = produtosArr.reduce((s,[pkey]) => {
-        const vendidoDoProduto = vendas.filter(v => v.produtoKey === pkey)
-            .reduce((s2,v) => s2 + (parseInt(v.quantidade)||0), 0);
-        return s + vendidoDoProduto;
-    }, 0);
-    const totalBrigadeiros = produtosArr.reduce((s,[,p]) => s + (parseInt(p.produzido)||0)*(parseInt(p.unidades)||0), 0);
-    const totalArrecadado = vendas.reduce((s,v) => s+(parseFloat(v.valor)||0), 0);
-    const sobrandoUnidades = Math.max(0, produzido-totalUnidadesVendidas);
-    const btnFinalizarMenu = (!finalizado && passado)
-        ? `<button onclick="finalizarEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">✓ Finalizar evento</button>` : '';
-    const btnReabrirMenu = finalizado
-        ? `<button onclick="reabrirEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">🔓 Reabrir evento</button>` : '';
-    const btnEditarMenu =
-        `<button onclick="abrirEdicaoEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">✏️ Editar evento</button>`;
-    const detalhamentoHTML = gerarDetalhamentoProdutosHTML(e);
-    const vendasRapidasHTML = gerarProdutosVendaHTML(e);
-    const editarProduzidoHTML = '';
-    card.innerHTML = `
-        <div class="evento-card-header">
+<!-- ═══ SEÇÃO 1: CRIAR PEDIDO ═══ -->
+<section id="secao-criar" class="secao active">
+    <h2 class="secao-titulo">
+        🌸 Novo Pedido
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Feito com amor, entregue com carinho ♥</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">👤 Dados do Cliente</p>
+        <label for="nome">Nome</label>
+        <div class="autocomplete-wrapper">
+            <input type="text" id="nome" placeholder="Nome do cliente" autocomplete="off">
+            <div class="autocomplete-lista" id="autocompleteLista" style="display:none;"></div>
+        </div>
+        <label for="telefone">Telefone</label>
+        <input type="text" id="telefone" placeholder="(47) 99999-9999">
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">📅 Entrega / Retirada</p>
+        <div class="linha-dupla">
             <div>
-                <div class="evento-header-linha1">
-                    <span class="evento-card-nome">${iconeNome} ${escaparHTML(e.nome)}</span>
-                    <span class="evento-badge ${statusClass}">${statusLabel}</span>
-                </div>
-                <div class="evento-card-datas">📅 ${mesmoDia?inicioBR:inicioBR+' até '+fimBR}${e.obs?' — '+escaparHTML(e.obs):''}</div>
+                <label for="dataEntrega">Data</label>
+                <input type="date" id="dataEntrega">
             </div>
-            <div style="position:relative;flex-shrink:0;">
-                <button class="btn-mais" onclick="toggleMenuMais('menuEvento-${e.key}', event)" aria-label="Mais opções">⋯</button>
-                <div class="menu-mais" id="menuEvento-${e.key}" style="display:none;">
-                    ${btnEditarMenu}
-                    ${btnFinalizarMenu}
-                    ${btnReabrirMenu}
-                    <button class="menu-mais-excluir" onclick="excluirEvento('${e.key}');fecharMenuMais('menuEvento-${e.key}')">🗑️ Excluir evento</button>
+            <div>
+                <label for="horarioEntrega">Horário</label>
+                <input type="time" id="horarioEntrega">
+                <div id="aviso-data-bloqueada">
+                    🔒 <span id="aviso-data-bloqueada-texto"></span>
                 </div>
             </div>
         </div>
-        <div class="evento-arrecadado-destaque">
-            <div class="evento-arrecadado-label">💰 Arrecadado</div>
-            <div class="evento-arrecadado-valor">R$ ${totalArrecadado.toFixed(2).replace('.',',')}</div>
+        <label for="tipoEntrega">Tipo</label>
+        <select id="tipoEntrega">
+            <option value="retirada" selected>Retirada</option>
+            <option value="entrega">Entrega</option>
+        </select>
+        <div id="enderecoFields">
+            <hr class="divisor">
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" placeholder="00000-000">
+            <div class="linha-dupla">
+                <div><label for="endereco">Endereço</label><input type="text" id="endereco"></div>
+                <div class="estreito"><label for="numero">Nº</label><input type="text" id="numero"></div>
+            </div>
+            <label for="pontoReferencia">Complemento</label>
+            <input type="text" id="pontoReferencia">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro">
+            <label for="cidade">Cidade</label>
+            <input type="text" id="cidade">
         </div>
-        <div class="evento-resumo-3grid">
-            <div class="evento-resumo-mini">
-                <div class="evento-resumo-mini-label">🍫 Produzido</div>
-                <div class="evento-resumo-mini-valor">${produzido} cx</div>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">🍫 Adicionar Brigadeiros</p>
+        <div id="contadorCategorias" style="display:none;gap:8px;margin-bottom:14px;">
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">🍫</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Tradicional</div>
+                <div id="infoTrad" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
             </div>
-            <div class="evento-resumo-mini">
-                <div class="evento-resumo-mini-label">📦 Vendido</div>
-                <div class="evento-resumo-mini-valor">${totalUnidadesVendidas} cx</div>
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">✨</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Gourmet</div>
+                <div id="infoGourmet" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
             </div>
-            <div class="evento-resumo-mini">
-                <div class="evento-resumo-mini-label">📬 Sobrou</div>
-                <div class="evento-resumo-mini-valor">${sobrandoUnidades} cx</div>
+            <div style="flex:1;background:var(--cream);border-radius:14px;padding:12px 14px;border:1px solid var(--cream-dark);text-align:center;">
+                <div style="font-size:1.3em;margin-bottom:4px;">🍓</div>
+                <div style="font-size:0.75em;font-weight:600;color:var(--brown-warm);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px;">Frutas</div>
+                <div id="infoFrutas" style="font-size:0.82em;font-weight:700;color:var(--brown-dark);line-height:1.4;">0 un.</div>
             </div>
         </div>
-        <p style="text-align:center;font-size:0.78em;color:var(--brown-warm);margin-top:-4px;margin-bottom:10px;">🍫 ${totalBrigadeiros} brigadeiros no total</p>
-        ${editarProduzidoHTML}
-        ${detalhamentoHTML}
-        ${vendasRapidasHTML}
-        <button class="btn-toggle-historico" onclick="toggleHistorico('${e.key}')">📋 Histórico de vendas <span id="seta-historico-${e.key}">▾</span></button>
-        <div id="historico-wrapper-${e.key}" style="display:none;">
-            <div id="historico-${e.key}" style="background:var(--white);border-radius:10px;border:1px solid var(--cream-dark);overflow:hidden;margin-top:8px;">
-                ${vendas.length===0?'<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda lançada ainda.</p>':renderizarHistoricoVendas(e)}
-            </div>
-        </div>`;
-    lista.appendChild(card);
-}
-
-function renderizarHistoricoVendas(e) {
-    const vendas = e.vendas ? Object.entries(e.vendas) : [];
-    const finalizado = eventoEstaFinalizado(e);
-    const filtradas = filtroPagamentoAtual === 'todos'
-        ? vendas
-        : vendas.filter(([_,v]) => (v.formaPagamento||'') === filtroPagamentoAtual);
-    if (filtradas.length === 0) return '<p style="color:var(--brown-warm);font-size:0.83em;padding:10px 12px;">Nenhuma venda encontrada.</p>';
-    const iconesPagamento = { dinheiro:'💵 Dinheiro', pix:'📱 Pix', credito:'💳 Crédito', debito:'💳 Débito' };
-    return filtradas.map(([key,v]) => {
-        const hora = v.hora||'--:--';
-        let desc;
-        if (v.produtoNome) {
-            desc = `${v.quantidade}x ${escaparHTML(v.produtoNome)}`;
-        } else {
-            const partes = [];
-            if (v.caixas>0) partes.push(`${v.caixas} caixa${v.caixas>1?'s':''}`);
-            if (v.avulso>0) partes.push(`${v.avulso} avulso`);
-            desc = partes.join(' + ') + ' (legado)';
-        }
-        const pagLabel = v.formaPagamento ? ' · ' + (iconesPagamento[v.formaPagamento]||v.formaPagamento) : '';
-        const gratuitoTag = v.gratuito ? ' <span style="color:var(--amber);font-weight:700;">🎁 grátis</span>' : '';
-        const btnExcluir = finalizado?'':
-            `<button class="btn-remove" style="padding:4px 10px;font-size:0.74em;" onclick="excluirVenda('${e.key}','${key}')">✕</button>`;
-        return `<div class="venda-item">
-            <div><span style="font-weight:600;">${hora}</span><span style="color:var(--brown-warm);margin-left:6px;">${desc}${pagLabel}</span>${gratuitoTag}</div>
-            <div style="display:flex;align-items:center;gap:8px;"><strong style="color:var(--green);">R$ ${(v.valor||0).toFixed(2).replace('.',',')}</strong>${btnExcluir}</div>
-        </div>`;
-    }).join('');
-}
-
-
-function toggleEditarProduzido(key) {
-    const div = document.getElementById('editar-produzido-'+key);
-    if (!div) return;
-    const aberto = div.style.display === 'block';
-    div.style.display = aberto ? 'none' : 'block';
-    if (!aberto) { const inp = document.getElementById('produzido-'+key); if (inp) inp.focus(); }
-}
-
-function toggleHistorico(key, forcarAberto) {
-    const div = document.getElementById('historico-wrapper-'+key);
-    const seta = document.getElementById('seta-historico-'+key);
-    if (!div) return;
-    const abrir = forcarAberto === true || div.style.display !== 'block';
-    div.style.display = abrir ? 'block' : 'none';
-    if (seta) seta.textContent = abrir ? '▴' : '▾';
-}
-
-
-function salvarProduzido(key) {
-    database.ref('eventos/'+key).once('value', snapshot => {
-        const e = snapshot.val();
-        if (eventoEstaFinalizado(e)) { toast('❌ Evento finalizado.','erro'); return; }
-        const produzido = parseInt(document.getElementById('produzido-'+key).value)||0;
-        database.ref('eventos/'+key).update({ produzido }).then(()=>{ toast('✅ Total produzido salvo!'); carregarEventos(); }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
-}
-
-function gerarDetalhamentoProdutosHTML(e) {
-    const produtos = e.produtos ? Object.entries(e.produtos) : [];
-    if (produtos.length === 0) return '';
-    const vendas = e.vendas ? Object.values(e.vendas) : [];
-    const linhas = produtos.map(([pkey, p]) => {
-        const produzidoP = parseInt(p.produzido) || 0;
-        const unidadesP = parseInt(p.unidades) || 0;
-        const vendidoP = vendas.filter(v => v.produtoKey === pkey)
-            .reduce((s,v) => s + (parseInt(v.quantidade)||0), 0);
-        const sobrouP = Math.max(0, produzidoP - vendidoP);
-        return `
-        <div style="background:var(--cream);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
-            <div style="font-weight:700;color:var(--brown-dark);margin-bottom:6px;">${escaparHTML(p.nome)}</div>
-            <div style="font-size:0.78em;color:var(--brown-warm);display:flex;gap:12px;flex-wrap:wrap;">
-                <span>📦 Produzido: <strong>${produzidoP}</strong></span>
-                <span>🛒 Vendido: <strong>${vendidoP}</strong></span>
-                <span>📬 Sobrou: <strong>${sobrouP}</strong></span>
-                <span>🍫 <strong>${produzidoP*unidadesP}</strong> brigadeiros</span>
-            </div>
-        </div>`;
-    }).join('');
-    return `
-    <div style="margin-top:2px;">
-        <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">📋 Detalhamento por Item</p>
-        ${linhas}
-    </div>`;
-}
-
-// ====================== PRODUTOS DO EVENTO E VENDA POR PRODUTO ======================
-
-function gerarProdutosVendaHTML(e) {
-    if (eventoEstaFinalizado(e)) return '';
-    const produtos = e.produtos ? Object.entries(e.produtos) : [];
-    const linhasProdutos = produtos.map(([pkey, p]) => {
-        const preco = parseFloat(p.preco) || 0;
-        const produzidoP = parseInt(p.produzido) || 0;
-        const unidadesP = parseInt(p.unidades) || 0;
-        const vendidoP = (e.vendas ? Object.values(e.vendas) : [])
-            .filter(v => v.produtoKey === pkey)
-            .reduce((s,v) => s + (parseInt(v.quantidade)||0), 0);
-        const sobrouP = Math.max(0, produzidoP - vendidoP);
-        return `
-        <div class="produto-venda-linha" id="produtoLinha-${e.key}-${pkey}">
-            <div style="display:flex;gap:6px;align-items:stretch;">
-                <button type="button" class="btn btn-laranja btn-bloco" style="text-align:left;display:flex;justify-content:space-between;align-items:center;flex:1;margin-bottom:0;" onclick="toggleVendaProduto('${e.key}','${pkey}')">
-                    <span>${escaparHTML(p.nome)}</span>
-                    <span style="font-weight:700;">R$ ${preco.toFixed(2).replace('.',',')}</span>
-                </button>
-                <button type="button" class="btn btn-cinza" style="flex:0 0 auto;padding:0 12px;margin-bottom:0;" onclick="toggleEditarProdutoEvento('${e.key}','${pkey}')" aria-label="Editar produto">✏️</button>
-                <button type="button" class="btn btn-vermelho" style="flex:0 0 auto;padding:0 12px;margin-bottom:0;" onclick="excluirProdutoEvento('${e.key}','${pkey}')" aria-label="Excluir produto">🗑️</button>
-            </div>
-            <div style="font-size:0.74em;color:var(--brown-warm);margin:2px 4px 8px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span>📦 Produzido: <strong>${produzidoP} un.</strong></span>
-                <span>🛒 Vendido: <strong>${vendidoP} un.</strong></span>
-                <span>📬 Sobrou: <strong>${sobrouP} un.</strong></span>
-                <span>🍫 Total: <strong>${produzidoP*unidadesP} brigadeiros</strong></span>
-            </div>
-            <div class="produto-edicao-painel" id="produtoEdicao-${e.key}-${pkey}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-bottom:10px;">
-                <label style="font-size:0.76em;">Nome do produto</label>
-                <input type="text" id="editProdutoNome-${e.key}-${pkey}" value="${escaparHTML(p.nome)}" style="margin-bottom:10px;">
-                <div class="linha-dupla">
-                    <div>
-                        <label style="font-size:0.76em;">Unidades por item</label>
-                        <input type="number" id="editProdutoUnidades-${e.key}-${pkey}" value="${unidadesP}" min="1">
-                    </div>
-                    <div>
-                        <label style="font-size:0.76em;">Preço (R$)</label>
-                        <input type="text" id="editProdutoPreco-${e.key}-${pkey}" value="${preco.toFixed(2).replace('.',',')}" oninput="this.value=maskMoeda(this.value)">
-                    </div>
-                </div>
-                <label style="font-size:0.76em;">Quantidade produzida</label>
-                <input type="number" id="editProdutoProduzido-${e.key}-${pkey}" value="${produzidoP}" min="0" style="margin-bottom:10px;">
-                <div style="display:flex;gap:8px;">
-                    <button type="button" class="btn btn-cinza" style="flex:1;margin-bottom:0;" onclick="toggleEditarProdutoEvento('${e.key}','${pkey}')">Cancelar</button>
-                    <button type="button" class="btn btn-verde" style="flex:1;margin-bottom:0;" onclick="salvarEdicaoProdutoEvento('${e.key}','${pkey}')">💾 Salvar</button>
+        <label>Sabor</label>
+        <div class="sabor-categorias">
+            <button type="button" class="sabor-cat-btn" data-cat="trad" onclick="selecionarCategoriaSabor('trad', this)">🍫 Tradicionais</button>
+            <button type="button" class="sabor-cat-btn" data-cat="gourmet" onclick="selecionarCategoriaSabor('gourmet', this)">✨ Gourmet</button>
+            <button type="button" class="sabor-cat-btn" data-cat="frutas" onclick="selecionarCategoriaSabor('frutas', this)">🍓 Frutas</button>
+        </div>
+        <div id="saborListaChips"></div>
+        <input type="hidden" id="sabor">
+        <div class="linha-dupla">
+            <div>
+                <label for="formato">Formato</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="formato" placeholder="Digite ou selecione" autocomplete="off">
+                    <div class="autocomplete-lista" id="formatoLista" style="display:none;"></div>
                 </div>
             </div>
-            <div class="produto-venda-painel" id="produtoPainel-${e.key}-${pkey}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:6px;margin-bottom:10px;">
-                <label style="font-size:0.76em;">Quantidade</label>
-                <div style="display:flex;gap:6px;margin-bottom:10px;">
-                    <button type="button" class="btn btn-laranja btn-qtd-rapida" data-qtd="1" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','1',this)">+1</button>
-                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="2" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','2',this)">+2</button>
-                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="3" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','3',this)">+3</button>
-                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="4" style="flex:1;margin-bottom:0;padding:9px 4px;" onclick="selecionarQtdRapida('${e.key}','${pkey}','4',this)">+4</button>
-                    <button type="button" class="btn btn-cinza btn-qtd-rapida" data-qtd="outro" style="flex:1.3;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="selecionarQtdRapida('${e.key}','${pkey}','outro',this)">Especificar</button>
-                </div>
-                <input type="number" id="qtd-${e.key}-${pkey}" min="1" value="1" style="display:none;margin-bottom:10px;" oninput="atualizarPreviewVendaProduto('${e.key}','${pkey}')">
-                <div style="font-size:0.85em;color:var(--green);font-weight:600;margin-bottom:12px;">💰 Total: <span id="previewValor-${e.key}-${pkey}">R$ ${preco.toFixed(2).replace('.',',')}</span></div>
-                <label style="font-size:0.76em;">Forma de pagamento (confirma a venda na hora)</label>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','dinheiro')">💵 Dinheiro</button>
-                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','pix')">📱 Pix</button>
-                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','credito')">💳 Crédito</button>
-                    <button type="button" class="btn btn-verde" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','debito')">💳 Débito</button>
-                    <button type="button" class="btn btn-cinza" style="flex:1;min-width:70px;margin-bottom:0;padding:9px 4px;font-size:0.8em;" onclick="confirmarVendaProdutoRapida('${e.key}','${pkey}','gratis')">🎁 Grátis</button>
+            <div>
+                <label for="tipoForma">Forminha</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="tipoForma" placeholder="Digite ou selecione" autocomplete="off">
+                    <div class="autocomplete-lista" id="tipoFormaLista" style="display:none;"></div>
                 </div>
             </div>
-        </div>`;
-    }).join('');
+        </div>
+        <label for="cor">Cor da Forminha</label>
+        <div class="cor-forminha-wrapper">
+            <div class="cor-forminha-campo" onclick="toggleGradeCores()">
+                <span class="cor-forminha-dot" id="corForminhaDot"></span>
+                <input type="text" id="cor" placeholder="Selecione a cor" readonly>
+            </div>
+            <div class="cor-grade" id="corGrade" style="display:none;"></div>
+            <button type="button" class="cor-mais-btn" onclick="abrirPainelCorCustom(event)">+ Mais cores</button>
+            <div class="cor-custom-painel" id="corCustomPainel" style="display:none;">
+                <div class="cor-custom-linha">
+                    <div class="cor-custom-preview" id="corCustomPreview"></div>
+                    <input type="text" id="corCustomInput" placeholder="Ex: coral, lilás, #8A2BE2" autocomplete="off">
+                </div>
+                <button type="button" class="cor-custom-ok" id="corCustomOk" disabled onclick="confirmarCorCustom()">Usar esta cor</button>
+            </div>
+        </div>
+        <label for="quantidade">Quantidade</label>
+        <select id="quantidade" onchange="toggleQuantidadeCustomizada(this)">
+            <option value="">Selecione</option>
+            <option value="25">25 unidades</option>
+            <option value="33">33 unidades</option>
+            <option value="34">34 unidades</option>
+            <option value="50">50 unidades</option>
+            <option value="75">75 unidades</option>
+            <option value="100">100 unidades</option>
+            <option value="125">125 unidades</option>
+            <option value="150">150 unidades</option>
+            <option value="200">200 unidades</option>
+            <option value="outro">✏️ Especificar...</option>
+        </select>
+        <input type="number" id="quantidadeCustomizada" placeholder="Digite a quantidade" min="1" style="display:none;margin-top:-10px;margin-bottom:14px;">
+        <button class="btn btn-laranja btn-bloco" id="btnAdicionarItem" onclick="adicionarItem()">+ Adicionar Item</button>
+        <div id="itensList"></div>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">💰 Valores</p>
+        <label for="valor">Valor Brigadeiros</label>
+        <input type="text" id="valor" readonly>
+        <label for="valorFrete">Custo Frete</label>
+        <input type="text" id="valorFrete" placeholder="R$ 0,00">
+        <label for="valorDesconto">Desconto</label>
+        <input type="text" id="valorDesconto" placeholder="R$ 0,00">
+        <label for="valorTotal">Valor Total</label>
+        <input type="text" id="valorTotal" readonly>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">💳 Pagamento</p>
+        <label for="observacoes">Observações</label>
+        <textarea id="observacoes" placeholder="Alguma observação especial?"></textarea>
+        <label for="statusPagamento">Status do Pagamento</label>
+        <select id="statusPagamento">
+            <option value="A pagar">A pagar</option>
+            <option value="Pago Parcialmente">Pago Parcialmente</option>
+            <option value="Pago">Pago</option>
+        </select>
+        <div id="valorPagoContainer">
+            <label for="valorPago">Valor Pago</label>
+            <input type="text" id="valorPago" placeholder="R$ 0,00">
+        </div>
+    </div>
+    <div id="custo-pedido-estimado" style="display:none;">
+    <div class="custo-pedido-card">
+        <div class="custo-pedido-titulo">🧮 Custo Estimado de Produção</div>
+        <div id="custo-pedido-linhas"></div>
+        <div class="custo-pedido-total">
+            <span>Custo Total</span>
+            <span id="custo-pedido-total-valor">R$ 0,00</span>
+        </div>
+        <div class="custo-pedido-margem" id="custo-pedido-margem"></div>
+    </div>
+</div>
+    <button class="btn btn-verde btn-bloco" id="btnEnviar" onclick="salvarPedido()">💾 Salvar Pedido</button>
+</section>
 
-    return `
-    <div style="margin-top:2px;">
-        <p style="font-size:0.78em;font-weight:700;color:var(--brown-warm);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">➕ Lançar Venda</p>
-        ${linhasProdutos || '<p style="color:var(--brown-warm);font-size:0.83em;">Nenhum produto cadastrado neste evento ainda.</p>'}
-        <div id="novoProdutoForm-${e.key}" style="display:none;background:var(--white);border-radius:12px;padding:12px;border:1px solid var(--cream-dark);margin-top:8px;margin-bottom:8px;">
-            <label style="font-size:0.76em;">Nome do produto</label>
-            <input type="text" id="novoProdutoNome-${e.key}" placeholder="Ex: Caixinha 16un" style="margin-bottom:10px;">
+<!-- ═══ SEÇÃO 2: ANDAMENTO ═══ -->
+<section id="secao-andamento" class="secao">
+    <h2 class="secao-titulo">
+        <span class="titulo-linha-principal">📦 Pedidos em Andamento <span id="tituloAndamentoContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span></span>
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Acompanhe seus pedidos ativos</span>
+    </h2>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <input type="text" id="buscaAndamento" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;" oninput="filtrarAndamentoPorNome()">
+        <button class="btn-filtro-status" onclick="toggleMenuMais('menuFiltroStatus', event)" aria-label="Filtrar por status">🔽 <span id="filtroStatusLabel">Todos</span></button>
+        <div class="toggle-visualizacao" id="toggleVisAndamento">
+            <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoAndamento('lista')" aria-label="Visualização em lista">☰</button>
+            <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoAndamento('grade')" aria-label="Visualização em grade">▦</button>
+        </div>
+    </div>
+    <div class="menu-mais" id="menuFiltroStatus" style="display:none;">
+        <button onclick="filtrarStatusMenu('todos','Todos')">Todos</button>
+        <button onclick="filtrarStatusMenu('A pagar','A pagar')">A pagar</button>
+        <button onclick="filtrarStatusMenu('Pago Parcialmente','Parcial')">Parcial</button>
+        <button onclick="filtrarStatusMenu('Pago','Pago')">Pago</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-amarelo" style="flex:1;" onclick="toggleResumoProd()">🍫 Produção Semanal</button>
+        <button class="btn btn-marrom" style="flex:1;" onclick="toggleCalendario()">📅 Calendário</button>
+    </div>
+    <div id="resumoProducao" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
+        <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🍫 Total a Produzir na Semana</p>
+        <div id="resumoProducaoConteudo"></div>
+    </div>
+    <div id="calendario-wrapper"><div id="calendario-container"></div></div>
+    <div id="lista-andamento"><p style="color:var(--brown-warm);">Carregando...</p></div>
+</section>
+
+<!-- ═══ SEÇÃO 3: FINALIZADOS ═══ -->
+<section id="secao-finalizados" class="secao">
+    <h2 class="secao-titulo">
+        <span class="titulo-linha-principal">✅ Pedidos Finalizados <span id="tituloFinalizadosContagem" style="font-size:0.5em;font-weight:600;color:var(--brown-warm);"></span></span>
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Histórico de entregas realizadas</span>
+    </h2>
+
+<div style="display:flex;gap:8px;margin-bottom:12px;">
+    <input type="text" id="buscaFinalizados" placeholder="🔍 Buscar por nome..." style="margin-bottom:0;flex:1;min-width:0;">
+    <div class="toggle-visualizacao" id="toggleVisFinalizados">
+        <button class="toggle-vis-btn active" data-modo="lista" onclick="mudarVisualizacaoFinalizados('lista')" aria-label="Visualização em lista">☰</button>
+        <button class="toggle-vis-btn" data-modo="grade" onclick="mudarVisualizacaoFinalizados('grade')" aria-label="Visualização em grade">▦</button>
+    </div>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch;">
+    <div style="display:flex;gap:8px;flex:1;min-width:0;">
+        <select id="filtroFinalizadosMes" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
+            <option value="">Todos os meses</option>
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+            <option value="2">Março</option><option value="3">Abril</option>
+            <option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option>
+            <option value="8">Setembro</option><option value="9">Outubro</option>
+            <option value="10">Novembro</option><option value="11">Dezembro</option>
+        </select>
+        <select id="filtroFinalizadosAno" onchange="filtrarFinalizadosPorPeriodo()" style="margin-bottom:0;flex:1;min-width:0;">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+        </select>
+    </div>
+    <button class="btn btn-marrom" style="flex:1;min-width:0;white-space:nowrap;" onclick="toggleCalendarioFinalizados()">📅 Calendário</button>
+</div>
+
+<div id="calendario-wrapper-finalizados"><div id="calendario-container-finalizados"></div></div>
+<div id="lista-finalizados"><p style="color:var(--brown-warm);">Carregando...</p></div>
+</section>
+
+<!-- ═══ SEÇÃO 3.5: GASTOS ═══ -->
+<section id="secao-gastos" class="secao">
+    <div class="custos-tabs">
+        <button class="custos-tab active" id="custosTabInsumos" onclick="mostrarAbaGastos('insumos', this)">🧴 Insumos</button>
+        <button class="custos-tab" id="custosTabCompras" onclick="mostrarAbaGastos('compras', this)">🔮 Previsão</button>
+        <button class="custos-tab" id="custosTabReceitas" onclick="mostrarAbaGastos('receitas', this)">📋 Receitas</button>
+        <button class="custos-tab" id="custosTabGastos" onclick="mostrarAbaGastos('gastos', this)">💸 Gastos</button>
+    </div>
+    <h2 class="secao-titulo">
+        🧮 Custos & Produção
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Insumos, receitas e gastos em um só lugar</span>
+    </h2>
+    <div id="aba-gastos" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Gasto</p>
+        <div class="linha-dupla">
+            <div><label for="gastoData">Data</label><input type="date" id="gastoData"></div>
+            <div>
+                <label for="gastoCategoria">Categoria</label>
+                <select id="gastoCategoria" onchange="atualizarDescricaoGasto()">
+                    <option value="">Selecione</option>
+                    <option value="Ingrediente">🧴 Ingrediente</option>
+                    <option value="Embalagem">📦 Embalagem</option>
+                    <option value="Materiais">🧰 Materiais</option>
+                    <option value="Outros">📋 Outros</option>
+                </select>
+            </div>
+        </div>
+        <label for="gastoDescricao">Descrição</label>
+        <input type="text" id="gastoDescricao" placeholder="Ex: Caixa de 4 unidades" list="listaDescricoesGasto" autocomplete="off">
+        <datalist id="listaDescricoesGasto"></datalist>
+        <div class="linha-dupla">
+            <div><label for="gastoQuantidade">Quantidade</label><input type="number" id="gastoQuantidade" placeholder="Ex: 2" min="1" step="1"></div>
+            <div><label for="gastoValor">Valor Total (R$)</label><input type="text" id="gastoValor" placeholder="R$ 0,00"></div>
+        </div>
+        <button class="btn btn-laranja btn-bloco" id="btnSalvarGasto" onclick="salvarGasto()">💾 Salvar Gasto</button>
+    </div>
+    <div class="form-card">
+        <p class="form-card-titulo">🔍 Filtrar</p>
+        <div class="linha-dupla">
+            <div>
+                <label>Mês</label>
+                <select id="gastoFiltroMes">
+                    <option value="todos">Todos</option>
+                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+                    <option value="2">Março</option><option value="3">Abril</option>
+                    <option value="4">Maio</option><option value="5">Junho</option>
+                    <option value="6">Julho</option><option value="7">Agosto</option>
+                    <option value="8">Setembro</option><option value="9">Outubro</option>
+                    <option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+            </div>
+            <div><label>Ano</label><input type="number" id="gastoFiltroAno" value="2026" min="2024" max="2030"></div>
+        </div>
+        <button class="btn btn-marrom btn-bloco" onclick="carregarGastos()">🔍 Filtrar</button>
+    </div>
+    <div id="gastoResumo" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:16px;text-align:center;box-shadow:0 4px 18px var(--shadow);">
+        <p style="font-size:0.78em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total no Período</p>
+        <p id="gastoTotalPeriodo" style="font-family:'DM Sans',sans-serif;font-size:2em;font-weight:700;color:var(--brown-dark);">R$ 0,00</p>
+    </div>
+    <div id="lista-gastos"><p style="color:var(--brown-warm);">Nenhum gasto cadastrado ainda.</p></div>
+    </div>
+
+<!-- ── ABA INSUMOS ── -->
+<div id="aba-insumos" style="display:block;">
+    <div id="alertasInsumos"></div>
+    <p class="form-card-titulo" style="margin:4px 4px 14px;">📦 Estoque Atual</p>
+    <input type="text" id="buscaInsumos" placeholder="🔍 Buscar insumo por nome..." style="margin-bottom:12px;" oninput="filtrarInsumosPorNome()">
+    <div id="lista-insumos"><p style="color:var(--brown-warm);">Nenhum insumo cadastrado ainda.</p></div>
+
+    <div class="form-card" style="margin-top:22px;">
+        <p class="form-card-titulo" id="tituloFormInsumo">➕ Novo Insumo</p>
+        <label for="insumoNome">Nome do Insumo</label>
+        <input type="text" id="insumoNome" placeholder="Ex: Leite condensado" list="listaInsumosExistentes" oninput="verificarInsumoExistente()" autocomplete="off">
+        <datalist id="listaInsumosExistentes"></datalist>
+        <p id="avisoInsumoExistente" style="display:none;font-size:0.8em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+
+        <div id="blocoInsumoNovo">
             <div class="linha-dupla">
                 <div>
-                    <label style="font-size:0.76em;">Unidades por item</label>
-                    <input type="number" id="novoProdutoUnidades-${e.key}" placeholder="Ex: 16" min="1">
+                <label for="insumoPreco">Preço (R$)</label>
+                <input type="text" id="insumoPreco" placeholder="R$ 0,00" inputmode="decimal" maxlength="15" oninput="this.value=maskMoeda(this.value)">
                 </div>
                 <div>
-                    <label style="font-size:0.76em;">Preço (R$)</label>
-                    <input type="text" id="novoProdutoPreco-${e.key}" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value)">
+                    <label for="insumoUnidade">Unidade</label>
+                    <select id="insumoUnidade" onchange="toggleNomeEmbalagem()">
+                        <option value="un">Unidade (un)</option>
+                        <option value="g">Gramas (g)</option>
+                        <option value="ml">Mililitros (ml)</option>
+                        
+                    </select>
                 </div>
             </div>
-            <label style="font-size:0.76em;">Quantidade produzida (caixas/itens)</label>
-            <input type="number" id="novoProdutoProduzido-${e.key}" placeholder="Ex: 237" min="0" style="margin-bottom:10px;">
-            <button type="button" class="btn btn-verde btn-bloco" onclick="salvarProdutoEvento('${e.key}')">💾 Salvar Produto</button>
+            <div id="insumoQtdWrapper">
+                <label for="insumoQtd">Quantidade por embalagem</label>
+                <input type="text" id="insumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaEstoqueEmbalagem()">
+            </div>
+            <div id="wrapperNomeEmbalagem">
+                <label for="insumoNomeEmbalagem">Como você chama a embalagem? (opcional, mas facilita muito)</label>
+                <input type="text" id="insumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+                <p style="font-size:0.76em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;">
+                    💡 Preenchendo isso, você passa a informar estoque e compras em "caixinhas", não em gramas.
+                </p>
+            </div>
+            <div class="linha-dupla">
+                <div>
+                    <label for="insumoEstoqueAtual" id="labelEstoqueAtual">Estoque Atual</label>
+                    <input type="text" id="insumoEstoqueAtual" placeholder="Ex: 3950" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+                </div>
+                <div>
+                    <label for="insumoEstoqueMinimo" id="labelEstoqueMinimo">Estoque Mínimo (alerta)</label>
+                    <input type="text" id="insumoEstoqueMinimo" placeholder="Ex: 800" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+                </div>
+            </div>
+            <p id="dicaEstoqueEmbalagem" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
         </div>
-        <button type="button" class="btn btn-cinza btn-bloco" onclick="toggleNovoProdutoForm('${e.key}')">+ Adicionar Item</button>
-    </div>`;
-}
 
-function toggleNovoProdutoForm(eventoKey) {
-    const div = document.getElementById('novoProdutoForm-'+eventoKey);
-    if (!div) return;
-    div.style.display = div.style.display === 'block' ? 'none' : 'block';
-}
+        <div id="blocoInsumoReposicao" style="display:none;">
+            <p id="infoInsumoReposicao" style="font-size:0.82em;color:var(--brown-warm);margin-bottom:10px;"></p>
+            <div class="linha-dupla">
+                <div>
+                    <label for="reposQtd" id="labelReposQtd">Quantidade comprada</label>
+                    <input type="number" id="reposQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewReposicao()">
+                </div>
+                <div>
+                    <label for="reposValor" id="labelReposValor">Valor pago (R$)</label>
+                    <input type="text" id="reposValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewReposicao()">
+                </div>
+            </div>
+            <label for="reposCategoria">Categoria do gasto</label>
+            <select id="reposCategoria">
+                <option value="Ingredientes">🧴 Ingredientes</option>
+                <option value="Embalagens">📦 Embalagens</option>
+                <option value="Gás/Energia">🔥 Gás/Energia</option>
+                <option value="Entrega">🚗 Entrega</option>
+                <option value="Outros">📋 Outros</option>
+            </select>
+            <label for="reposData">Data da compra</label>
+            <input type="date" id="reposData">
+            <p id="reposPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        </div>
 
-function salvarProdutoEvento(eventoKey) {
-    const nome = document.getElementById(`novoProdutoNome-${eventoKey}`).value.trim();
-    const unidades = parseInt(document.getElementById(`novoProdutoUnidades-${eventoKey}`).value) || 0;
-    const precoStr = document.getElementById(`novoProdutoPreco-${eventoKey}`).value;
-    const preco = parseFloat((precoStr||'0').replace(/[^\d,]/g,'').replace(',','.')) || 0;
-    const produzido = parseInt(document.getElementById(`novoProdutoProduzido-${eventoKey}`).value) || 0;
-    if (!nome)          { toast('❌ Informe o nome do produto.', 'erro'); return; }
-    if (unidades <= 0)  { toast('❌ Informe as unidades por item.', 'erro'); return; }
-    if (preco <= 0)     { toast('❌ Informe o preço.', 'erro'); return; }
-    database.ref('eventos/'+eventoKey+'/produtos').push({ nome, unidades, preco, produzido }).then(() => {
-        toast('✅ Produto adicionado!');
-        carregarEventos();
-    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-}
+        <button class="btn btn-laranja btn-bloco" id="btnSalvarInsumo" onclick="salvarOuRepor()">💾 Salvar Insumo</button>
+    </div>
+</div>
 
-function toggleVendaProduto(eventoKey, produtoKey) {
-    document.querySelectorAll(`[id^="produtoPainel-${eventoKey}-"]`).forEach(painel => {
-        if (painel.id !== `produtoPainel-${eventoKey}-${produtoKey}`) painel.style.display = 'none';
-    });
-    const painel = document.getElementById(`produtoPainel-${eventoKey}-${produtoKey}`);
-    if (!painel) return;
-    const aberto = painel.style.display === 'block';
-    painel.style.display = aberto ? 'none' : 'block';
-    if (!aberto) {
-        const qtdInput = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
-        if (qtdInput) { qtdInput.value = 1; qtdInput.style.display = 'none'; }
-        painel.querySelectorAll('.btn-qtd-rapida').forEach(b => {
-            const ativo = b.dataset.qtd === '1';
-            b.classList.toggle('btn-laranja', ativo);
-            b.classList.toggle('btn-cinza', !ativo);
-        });
-        atualizarPreviewVendaProduto(eventoKey, produtoKey);
+<!-- ── ABA COMPRAS ── -->
+<div id="aba-compras" style="display:none;">
+    <div class="form-card" style="border:2px solid var(--amber);display:none;" id="cardRegistrarCompraLegado">
+        <p class="form-card-titulo">🛒 Registrar Compra</p>
+        <label for="compraInsumoSel">Insumo</label>
+        <select id="compraInsumoSel" onchange="atualizarInfoCompraInsumo()">
+            <option value="">Selecione o insumo</option>
+        </select>
+        <p id="compraInsumoInfo" style="font-size:0.78em;color:var(--brown-warm);margin-top:-10px;margin-bottom:12px;"></p>
+        <div class="linha-dupla">
+            <div>
+                <label for="compraQtd" id="labelCompraQtd">Quantidade comprada</label>
+                <input type="number" id="compraQtd" placeholder="Ex: 1000" min="0" step="0.01" oninput="calcularPreviewCompra()">
+            </div>
+            <div>
+                <label for="compraValor" id="labelCompraValor">Valor pago (R$)</label>
+                <input type="text" id="compraValor" placeholder="R$ 0,00" oninput="this.value=maskMoeda(this.value);calcularPreviewCompra()">
+            </div>
+        </div>
+        <label for="compraCategoria">Categoria do gasto</label>
+        <select id="compraCategoria">
+            <option value="Ingredientes">🧴 Ingredientes</option>
+            <option value="Embalagens">📦 Embalagens</option>
+            <option value="Gás/Energia">🔥 Gás/Energia</option>
+            <option value="Entrega">🚗 Entrega</option>
+            <option value="Outros">📋 Outros</option>
+        </select>
+        <label for="compraData">Data da compra</label>
+        <input type="date" id="compraData">
+        <p id="compraPreview" style="font-size:0.85em;color:var(--green);font-weight:600;margin-top:-8px;margin-bottom:12px;"></p>
+        <button class="btn btn-verde btn-bloco" id="btnRegistrarCompra" onclick="registrarCompraInsumo()">✅ Registrar Compra</button>
+    </div>
+
+    <div class="form-card" style="border:2px solid var(--blue);">
+        <p class="form-card-titulo">🔮 Previsão de Compras</p>
+        <p style="font-size:0.8em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;">O que falta comprar para não faltar insumo nos pedidos já agendados.</p>
+        <div id="previsao-compra-filtros" style="display:flex;gap:6px;margin-bottom:14px;">
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(7,this)">7 dias</button>
+            <button class="chip-filtro active" id="chipPrevisao15" onclick="calcularPrevisaoCompra(15,this)">15 dias</button>
+            <button class="chip-filtro" onclick="calcularPrevisaoCompra(30,this)">30 dias</button>
+        </div>
+        <div id="painel-previsao-compra"></div>
+    </div>
+</div>
+
+<!-- ── ABA RECEITAS ── -->
+<div id="aba-receitas" style="display:none;">
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Nova Receita</p>
+        <label for="receitaSabor">Sabor</label>
+        <select id="receitaSabor">
+            <option value="">Selecione o sabor</option>
+        </select>
+        <label for="receitaRendimento">Rendimento médio (unidades)</label>
+        <input type="number" id="receitaRendimento" placeholder="Ex: 25" min="1" value="25">
+        <hr class="divisor">
+        <p style="font-size:0.82em;font-weight:700;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.04em;">🧴 Ingredientes da Receita</p>
+        <div class="linha-dupla">
+            <div>
+                <label for="receitaInsumoSel">Insumo</label>
+                <select id="receitaInsumoSel">
+                    <option value="">Selecione</option>
+                </select>
+            </div>
+            <div>
+                <label for="receitaInsumoQtd">Quantidade usada</label>
+                <input type="number" id="receitaInsumoQtd" placeholder="Ex: 80">
+            </div>
+        </div>
+        <p id="receitaInsumoHint" style="font-size:0.76em;color:var(--brown-warm);margin-top:-8px;margin-bottom:10px;padding-left:4px;"></p>
+        <button class="btn btn-cinza btn-bloco" onclick="adicionarIngredienteReceita()">+ Adicionar Ingrediente</button>
+        <div id="listaIngredientesReceita" style="margin-bottom:12px;"></div>
+        <button class="btn btn-verde btn-bloco" onclick="salvarReceita()">💾 Salvar Receita</button>
+        <button class="btn btn-cinza btn-bloco" id="btnCancelarEdicaoReceita" style="display:none;" onclick="cancelarEdicaoReceita()">✕ Cancelar edição</button>
+    </div>
+    <div id="lista-receitas"><p style="color:var(--brown-warm);">Nenhuma receita cadastrada ainda.</p></div>
+</div>
+</section>
+
+<!-- ═══ SEÇÃO 4: DASHBOARD ═══ -->
+<section id="secao-dashboard" class="secao">
+    <h2 class="secao-titulo">
+        📊 Dashboard
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Resumo financeiro e de produção</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">📅 Período</p>
+        <div class="linha-dupla">
+            <div>
+                <label>Mês</label>
+                <select id="dashMes">
+                    <option value="geral">Geral (ano todo)</option>
+                    <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+                    <option value="2">Março</option><option value="3">Abril</option>
+                    <option value="4">Maio</option><option value="5">Junho</option>
+                    <option value="6">Julho</option><option value="7">Agosto</option>
+                    <option value="8">Setembro</option><option value="9">Outubro</option>
+                    <option value="10">Novembro</option><option value="11">Dezembro</option>
+                </select>
+            </div>
+            <div><label>Ano</label><input type="number" id="dashAno" value="2026" min="2024" max="2030"></div>
+        </div>
+        <button class="btn btn-laranja btn-bloco" onclick="carregarDashboard()">Gerar Relatório</button>
+        <button class="btn btn-marrom btn-bloco" id="btnExportarCSV" onclick="exportarDashboardCSV()" style="display:none;">📥 Exportar CSV</button>
+        <button class="btn btn-vermelho btn-bloco" id="btnExportarPDF" onclick="exportarDashboardPDF()" style="display:none;">📄 Exportar PDF</button>
+    </div>
+    <div id="dashboard-resultado" style="display:none;" data-aba-ativa="financeiro">
+        <div class="dash-kpis">
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">💰</div>
+                <p class="dash-kpi-label">Faturamento</p>
+                <p id="dashFaturamento" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashFaturamentoComparativo" class="dash-kpi-extra"></p>
+            </div>
+            <div class="dash-kpi-selo kpi-verde">
+                <div class="dash-kpi-icone">📈</div>
+                <p class="dash-kpi-label">Lucro Líquido</p>
+                <p id="dashLucro" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">🎯</div>
+                <p class="dash-kpi-label">Ticket Médio</p>
+                <p id="dashTicket" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo kpi-amber" id="cardPendencias" style="display:none;">
+                <div class="dash-kpi-icone">⏳</div>
+                <p class="dash-kpi-label">A Receber</p>
+                <p id="dashPendenciasValor" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashPendenciasDetalhe" class="dash-kpi-extra"></p>
+                <div id="dashPendenciasLista" style="margin-top:10px;text-align:left;max-height:180px;overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <div class="dash-tabs">
+            <button class="dash-tab active" onclick="mostrarAbaDash('financeiro', this)">💰 Financeiro</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('producao', this)">🍫 Produção</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('clientes', this)">⭐ Clientes</button>
+            <button class="dash-tab" onclick="mostrarAbaDash('links', this)">🔗 Links</button>
+        </div>
+
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">📦 Pedidos</p>
+            <div class="linha-dupla">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('finalizados')">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
+                    <p id="dashEntregues" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
+                </div>
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;cursor:pointer;" onclick="irParaPedidosDash('andamento')">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
+                    <p id="dashAndamento" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">🍫 Produção</p>
+            <div style="display:flex;gap:12px;">
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Brigadeiros</p>
+                    <p id="dashTotalBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
+                </div>
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
+                    <p id="dashMediaBrig" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">🍫 Sabores Mais Vendidos</p>
+            <div id="dashSabores"></div>
+        </div>
+        <div class="form-card" data-dashtab="producao">
+        <p class="form-card-titulo">💹 Lucratividade por Sabor</p>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <label style="margin:0;text-transform:none;font-weight:500;font-size:0.8em;letter-spacing:0;">Mostrar apenas margem abaixo de</label>
+                <input type="number" id="filtroMargemSabor" placeholder="Ex: 30" min="0" max="100" style="margin-bottom:0;width:80px;" oninput="reaplicarFiltroMargemSabor()">
+                <span style="font-size:0.85em;color:var(--brown-warm);">%</span>
+            </div>
+            <div id="dashLucratividadeSabores"></div>
+        </div>
+        <div class="form-card" data-dashtab="clientes">
+        <p class="form-card-titulo">⭐ Avaliações dos Clientes</p>
+            <div id="dashAvaliacoes"></div>
+        </div>
+        <div class="form-card" data-dashtab="links">
+        <p class="form-card-titulo">🔗 Página de Links</p>
+            <div id="dashEstatisticasLinks"><p style="color:var(--brown-warm);font-size:0.88em;">Carregando...</p></div>
+        </div>
+        <div class="form-card" id="cardCustoProdDash" style="display:none;" data-dashtab="producao"></div>
+        <div class="form-card" id="cardEventosDash" style="display:none;" data-dashtab="financeiro">
+            <p class="form-card-titulo">🔒 Eventos do Período</p>
+            <div id="dashEventosLista"></div>
+            <div style="border-top:2px solid var(--cream-dark);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.85em;font-weight:600;color:var(--brown-warm);">Total Eventos</span>
+                <strong id="dashEventosTotal" style="color:var(--green);font-size:1.1em;">R$ 0,00</strong>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="financeiro">
+        <p class="form-card-titulo">📈 Faturamento por Período</p>
+            <canvas id="graficoFaturamento" style="max-height:280px;"></canvas>
+        </div>
+        <div class="form-card" data-dashtab="financeiro">
+            <p class="form-card-titulo">💸 Gastos no Período</p>
+            <div style="background:#FEF3C7;border-radius:16px;padding:16px;text-align:center;">
+                <p id="dashGastos" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:#92400E;">R$ 0,00</p>
+            </div>
+        </div>
+        <div class="form-card" data-dashtab="financeiro">
+        <p class="form-card-titulo">💸 Gastos por Categoria</p>
+            <div class="dash-gastos-cat-grid">
+                <div>
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Total do período</p>
+                    <div id="dashGastosCategorias"></div>
+                </div>
+                <div>
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Evolução no ano</p>
+                    <canvas id="graficoGastosCategoria" style="max-height:240px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ SEÇÃO 5: EVENTOS ═══ -->
+<section id="secao-eventos" class="secao">
+    <h2 class="secao-titulo">
+        🔒 Eventos
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Gerencie seus eventos</span>
+    </h2>
+    <div class="form-card">
+        <p class="form-card-titulo">➕ Novo Evento / Bloqueio</p>
+        <label for="eventoNome">Nome do Evento</label>
+        <input type="text" id="eventoNome" placeholder="Ex: Casamento da Ana, Férias...">
+        <div class="linha-dupla">
+            <div><label for="eventoInicio">Data Início</label><input type="date" id="eventoInicio"></div>
+            <div><label for="eventoFim">Data Fim</label><input type="date" id="eventoFim"></div>
+        </div>
+        <label for="eventoObs">Observação (opcional)</label>
+        <input type="text" id="eventoObs" placeholder="Detalhes adicionais...">
+        <button class="btn btn-vermelho btn-bloco" onclick="salvarEvento()">🔒 Bloquear Período</button>
+    </div>
+    <div id="filtros-eventos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="chip-filtro active" onclick="filtrarEventos('todos', this)">Todos</button>
+        <button class="chip-filtro" onclick="filtrarEventos('aberto', this)">Em andamento</button>
+        <button class="chip-filtro" onclick="filtrarEventos('finalizado', this)">Finalizados</button>
+    </div>
+    <div id="filtros-pagamento" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="chip-filtro active" onclick="filtrarPagamento('todos', this)">💰 Todos pagamentos</button>
+        <button class="chip-filtro" onclick="filtrarPagamento('dinheiro', this)">💵 Dinheiro</button>
+        <button class="chip-filtro" onclick="filtrarPagamento('pix', this)">📱 Pix</button>
+        <button class="chip-filtro" onclick="filtrarPagamento('credito', this)">💳 Crédito</button>
+        <button class="chip-filtro" onclick="filtrarPagamento('debito', this)">💳 Débito</button>
+    </div>
+    <div id="lista-eventos"><p style="color:var(--brown-warm);">Nenhum evento cadastrado.</p></div>
+</section>
+
+<!-- ═══ CUPCAKE ═══ -->
+<section id="secao-cupcake" class="secao">
+    <h2 class="secao-titulo">
+        🧁 Cupcake
+        <div class="ornament-line"><span class="ornament-icon">✦</span></div>
+        <span class="secao-sub">Pedidos de cupcake, separados do brigadeiro</span>
+    </h2>
+
+    <div class="menu-tabs-cupcake">
+        <button class="menu-btn active" onclick="irParaCupcake('cupcakeCriar', this)">➕ Novo Pedido</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeAndamento', this)">📦 Pedidos em Andamento</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeFinalizados', this)">✅ Pedidos Finalizados</button>
+        <button class="menu-btn" onclick="irParaCupcake('cupcakeDashboard', this)">📊 Dashboard</button>
+    </div>
+
+    <div id="secao-cupcakeCriar" class="sub-secao-cupcake active">
+        <div class="form-card">
+            <p class="form-card-titulo">👤 Dados do Cliente</p>
+            <label for="nomeCupcake">Nome</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="nomeCupcake" placeholder="Nome do cliente" autocomplete="off">
+                <div class="autocomplete-lista" id="autocompleteListaCupcake" style="display:none;"></div>
+            </div>
+            <label for="telefoneCupcake">Telefone</label>
+            <input type="text" id="telefoneCupcake" placeholder="(47) 99999-9999">
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">📅 Entrega / Retirada</p>
+            <div class="linha-dupla">
+                <div><label for="dataEntregaCupcake">Data</label><input type="date" id="dataEntregaCupcake"></div>
+                <div><label for="horarioEntregaCupcake">Horário</label><input type="time" id="horarioEntregaCupcake"></div>
+            </div>
+            <label for="tipoEntregaCupcake">Tipo</label>
+            <select id="tipoEntregaCupcake" onchange="toggleEnderecoCupcake()">
+                <option value="retirada" selected>Retirada</option>
+                <option value="entrega">Entrega</option>
+            </select>
+            <div id="enderecoFieldsCupcake" style="display:none;">
+                <hr class="divisor">
+                <label for="cepCupcake">CEP</label>
+                <input type="text" id="cepCupcake" placeholder="00000-000">
+                <div class="linha-dupla">
+                    <div><label for="enderecoCupcake">Endereço</label><input type="text" id="enderecoCupcake"></div>
+                    <div class="estreito"><label for="numeroCupcake">Nº</label><input type="text" id="numeroCupcake"></div>
+                </div>
+                <label for="pontoReferenciaCupcake">Complemento</label>
+                <input type="text" id="pontoReferenciaCupcake">
+                <label for="bairroCupcake">Bairro</label>
+                <input type="text" id="bairroCupcake">
+                <label for="cidadeCupcake">Cidade</label>
+                <input type="text" id="cidadeCupcake">
+            </div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">🧁 Itens do Pedido</p>
+            <label for="descricaoItemCupcake">Sabor / Descrição</label>
+            <input type="text" id="descricaoItemCupcake" placeholder="Ex: Cupcake Ninho com Nutella">
+            <div class="linha-dupla">
+                <div>
+                    <label for="quantidadeItemCupcake">Quantidade</label>
+                    <input type="number" id="quantidadeItemCupcake" placeholder="Ex: 12" min="1">
+                </div>
+                <div>
+                    <label for="valorUnidadeItemCupcake">Valor Unidade</label>
+                    <input type="text" id="valorUnidadeItemCupcake" placeholder="R$ 0,00" inputmode="decimal">
+                </div>
+            </div>
+            <button class="btn btn-laranja btn-bloco" onclick="adicionarItemCupcake()">+ Adicionar Item</button>
+            <div id="itensListCupcake"></div>
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💰 Valores</p>
+            <label for="valorTotalCupcake">Valor Total</label>
+            <input type="text" id="valorTotalCupcake" placeholder="R$ 0,00">
+        </div>
+        <div class="form-card">
+            <p class="form-card-titulo">💳 Pagamento</p>
+            <label for="observacoesCupcake">Observações</label>
+            <textarea id="observacoesCupcake" placeholder="Alguma observação especial?"></textarea>
+            <label for="statusPagamentoCupcake">Status do Pagamento</label>
+            <select id="statusPagamentoCupcake">
+                <option value="A pagar">A pagar</option>
+                <option value="Pago Parcialmente">Pago Parcialmente</option>
+                <option value="Pago">Pago</option>
+            </select>
+        </div>
+        <button class="btn btn-verde btn-bloco" id="btnEnviarCupcake" onclick="salvarPedidoCupcake()">💾 Salvar Pedido</button>
+    </div>
+    <div id="secao-cupcakeAndamento" class="sub-secao-cupcake">
+        <div style="margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--brown-dark);">
+            Pedidos ativos <span id="tituloAndamentoContagemCupcake" style="font-size:0.85em;font-weight:600;color:var(--brown-warm);"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button class="btn btn-amarelo" style="flex:1;" onclick="toggleResumoProdCupcake()">🧁 Produção Semanal</button>
+            <button class="btn btn-marrom" style="flex:1;" onclick="toggleCalendarioCupcake()">📅 Calendário</button>
+        </div>
+        <div id="resumoProducaoCupcake" style="display:none;background:var(--white);border-radius:20px;border:1px solid var(--cream-dark);padding:20px;margin-bottom:14px;box-shadow:0 4px 18px var(--shadow);">
+            <p style="font-family:'Cormorant Garamond',serif;color:var(--brown-dark);font-size:1.1em;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--cream-dark);">🧁 Total a Produzir na Semana</p>
+            <div id="resumoProducaoConteudoCupcake"></div>
+        </div>
+        <div id="calendario-wrapper-cupcake"><div id="calendario-container-cupcake"></div></div>
+        <div id="lista-andamento-cupcake"><p style="color:var(--brown-warm);">Carregando...</p></div>
+    </div>
+    <div id="secao-cupcakeFinalizados" class="sub-secao-cupcake">
+        <div style="margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-weight:700;color:var(--brown-dark);">
+            Histórico <span id="tituloFinalizadosContagemCupcake" style="font-size:0.85em;font-weight:600;color:var(--brown-warm);"></span>
+        </div>
+        <div style="margin-bottom:14px;">
+            <button class="btn btn-marrom btn-bloco" onclick="toggleCalendarioFinalizadosCupcake()">📅 Calendário</button>
+        </div>
+        <div id="calendario-wrapper-finalizados-cupcake"><div id="calendario-container-finalizados-cupcake"></div></div>
+        <div id="lista-finalizados-cupcake"><p style="color:var(--brown-warm);">Carregando...</p></div>
+    </div>
+    <div id="secao-cupcakeDashboard" class="sub-secao-cupcake">
+        <div class="form-card">
+            <p class="form-card-titulo">📅 Período</p>
+            <div class="linha-dupla">
+                <div>
+                    <label>Mês</label>
+                    <select id="dashMesCupcake" onchange="carregarDashboardCupcake()">
+                        <option value="geral">Geral (ano todo)</option>
+                        <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                        <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                        <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                        <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Ano</label>
+                    <select id="dashAnoCupcake" onchange="carregarDashboardCupcake()"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-kpis kpis-cupcake" id="dashKpisCupcake">
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">💰</div>
+                <p class="dash-kpi-label">Faturamento</p>
+                <p id="dashFaturamentoCupcake" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashFaturamentoComparativoCupcake" class="dash-kpi-extra"></p>
+            </div>
+            <div class="dash-kpi-selo">
+                <div class="dash-kpi-icone">🎯</div>
+                <p class="dash-kpi-label">Ticket Médio</p>
+                <p id="dashTicketCupcake" class="dash-kpi-valor">R$ 0,00</p>
+            </div>
+            <div class="dash-kpi-selo kpi-amber" id="cardPendenciasCupcake" style="display:none;">
+                <div class="dash-kpi-icone">⏳</div>
+                <p class="dash-kpi-label">A Receber</p>
+                <p id="dashPendenciasValorCupcake" class="dash-kpi-valor">R$ 0,00</p>
+                <p id="dashPendenciasDetalheCupcake" class="dash-kpi-extra"></p>
+                <div id="dashPendenciasListaCupcake" style="margin-top:10px;text-align:left;max-height:180px;overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">📦 Pedidos</p>
+            <div class="linha-dupla">
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Entregues</p>
+                    <p id="dashEntreguesCupcake" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--green);">0</p>
+                </div>
+                <div style="background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Em Andamento</p>
+                    <p id="dashAndamentoCupcake" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--amber);">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">🧁 Produção</p>
+            <div style="display:flex;gap:12px;">
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Total Cupcakes</p>
+                    <p id="dashTotalCupcakes" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-dark);">0</p>
+                </div>
+                <div style="flex:1;background:var(--cream);border-radius:16px;padding:16px;text-align:center;">
+                    <p style="font-size:0.72em;color:var(--brown-warm);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Média / Pedido</p>
+                    <p id="dashMediaCupcakes" style="font-family:'DM Sans',sans-serif;font-size:1.6em;font-weight:700;color:var(--brown-warm);">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <p class="form-card-titulo">📈 Faturamento por Período</p>
+            <canvas id="graficoFaturamentoCupcake" style="max-height:280px;"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ MODAL ═══ -->
+<div id="modalConfirmacao" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <p id="modalMensagem"></p>
+        <div class="modal-botoes">
+            <button class="btn btn-cinza" onclick="fecharModal(false)">Cancelar</button>
+            <button class="btn btn-vermelho" onclick="fecharModal(true)">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarInsumo" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;text-align:center;">✏️ Editar Insumo</p>
+        <label for="editInsumoNome">Nome do Insumo</label>
+        <input type="text" id="editInsumoNome">
+        <div class="linha-dupla">
+            <div>
+                <label for="editInsumoPreco">Preço (R$)</label>
+                <input type="text" id="editInsumoPreco" maxlength="15" oninput="this.value=maskMoeda(this.value)">
+            </div>
+            <div>
+                <label for="editInsumoUnidade">Unidade</label>
+                <select id="editInsumoUnidade" onchange="toggleNomeEmbalagemEdicao()">
+                    <option value="un">Unidade (un)</option>
+                    <option value="g">Gramas (g)</option>
+                    <option value="ml">Mililitros (ml)</option>
+                    
+                </select>
+            </div>
+        </div>
+        <div id="editInsumoQtdWrapper">
+            <label for="editInsumoQtd">Quantidade por embalagem</label>
+            <input type="text" id="editInsumoQtd" placeholder="Ex: 395 (para 395g)" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value);atualizarDicaPesoEdicao()">
+            <p id="dicaPesoEdicao" style="display:none;font-size:0.78em;color:var(--brown-warm);margin-top:-8px;margin-bottom:12px;"></p>
+        </div>
+        <div id="editWrapperNomeEmbalagem">
+            <label for="editInsumoNomeEmbalagem">Como você chama a embalagem?</label>
+            <input type="text" id="editInsumoNomeEmbalagem" placeholder="Ex: caixinha, pacote, lata, vidro">
+        </div>
+        <div class="linha-dupla">
+            <div>
+                <label id="editLabelEstoqueAtual" for="editInsumoEstoqueAtual">Estoque Atual</label>
+                <input type="text" id="editInsumoEstoqueAtual" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+            </div>
+            <div>
+                <label id="editLabelEstoqueMinimo" for="editInsumoEstoqueMinimo">Estoque Mínimo</label>
+                <input type="text" id="editInsumoEstoqueMinimo" inputmode="decimal" maxlength="12" oninput="this.value=maskQuantidade(this.value)">
+            </div>
+        </div>
+        <div class="modal-botoes" style="margin-top:6px;">
+            <button class="btn btn-cinza" onclick="fecharEdicaoInsumo()">Cancelar</button>
+            <button class="btn btn-verde" onclick="salvarEdicaoInsumo()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarGasto" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;text-align:center;">✏️ Editar Gasto</p>
+        <label for="editGastoData">Data</label>
+        <input type="date" id="editGastoData">
+        <label for="editGastoCategoria">Categoria</label>
+        <select id="editGastoCategoria">
+            <option value="Ingrediente">🧴 Ingrediente</option>
+            <option value="Embalagem">📦 Embalagem</option>
+            <option value="Materiais">🧰 Materiais</option>
+            <option value="Outros">📋 Outros</option>
+        </select>
+        <label for="editGastoDescricao">Descrição</label>
+        <input type="text" id="editGastoDescricao" list="listaDescricoesGasto" autocomplete="off">
+        <div class="linha-dupla">
+            <div>
+                <label for="editGastoQuantidade">Quantidade</label>
+                <input type="number" id="editGastoQuantidade" min="1">
+            </div>
+            <div>
+                <label for="editGastoValor">Valor Total (R$)</label>
+                <input type="text" id="editGastoValor" oninput="this.value=maskMoeda(this.value)">
+            </div>
+        </div>
+        <div class="modal-botoes" style="margin-top:6px;">
+            <button class="btn btn-cinza" onclick="fecharEdicaoGasto()">Cancelar</button>
+            <button class="btn btn-verde" onclick="salvarEdicaoGasto()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalEditarEvento" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--brown-dark);margin-bottom:16px;text-align:center;">✏️ Editar Evento</p>
+        <input type="hidden" id="editEventoKey">
+        <label for="editEventoNome">Nome do Evento</label>
+        <input type="text" id="editEventoNome">
+        <div class="linha-dupla">
+            <div><label for="editEventoInicio">Data Início</label><input type="date" id="editEventoInicio"></div>
+            <div><label for="editEventoFim">Data Fim</label><input type="date" id="editEventoFim"></div>
+        </div>
+        <label for="editEventoObs">Observação</label>
+        <input type="text" id="editEventoObs">
+        <div class="modal-botoes" style="margin-top:6px;">
+            <button class="btn btn-cinza" onclick="document.getElementById('modalEditarEvento').style.display='none'">Cancelar</button>
+            <button class="btn btn-verde" onclick="salvarEdicaoEvento()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistoricoPreco" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:420px;text-align:left;">
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:var(--brown-dark);margin-bottom:4px;">📈 Histórico de Preço</p>
+        <p id="historicoPrecoInsumoNome" style="font-size:0.85em;color:var(--brown-warm);margin-bottom:14px;"></p>
+        <canvas id="graficoHistoricoPreco" style="max-height:180px;margin-bottom:14px;"></canvas>
+        <div id="historicoPrecoLista" style="max-height:260px;overflow-y:auto;"></div>
+        <div class="modal-botoes" style="margin-top:14px;">
+            <button class="btn btn-cinza btn-bloco" onclick="document.getElementById('modalHistoricoPreco').style.display='none'">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div id="avisoOffline">📵 Sem conexão</div>
+
+
+<!-- ═══════════════════════════════════════════
+     MÓDULOS DO PEDIDOS — ordem importa:
+     auth → precos → crud → dashboard → custos → eventos → whatsapp → ui (init)
+═══════════════════════════════════════════ -->
+<script>
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+</script>
+<script src="js/pedidos-auth.js"></script>
+<script src="js/pedidos-precos.js"></script>
+<script src="js/pedidos-cores-formatos.js"></script>
+<script src="js/pedidos-sabor-categorias.js"></script>
+<script src="js/pedidos-crud.js"></script>
+<script src="js/pedidos-dashboard.js"></script>
+<script src="js/pedidos-custos.js"></script>
+<script src="js/pedidos-eventos.js"></script>
+<script src="js/pedidos-whatsapp.js"></script>
+<script src="js/pedidos-print.js"></script>
+<script src="js/pedidos-ui.js"></script>
+<script src="js/pedidos-cupcake.js"></script>
+
+<script>
+(function() {
+  function animarNumero(el) {
+    const textoFinal = el.textContent.trim();
+    const valorNumerico = parseFloat(textoFinal.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    if (isNaN(valorNumerico)) return;
+    const prefixo = textoFinal.match(/^R\$\s?/) ? 'R$ ' : '';
+    const duracao = 600;
+    const inicio = performance.now();
+    function passo(agora) {
+      const progresso = Math.min((agora - inicio) / duracao, 1);
+      const atual = valorNumerico * progresso;
+      el.textContent = prefixo + atual.toLocaleString('pt-BR', { minimumFractionDigits: prefixo ? 2 : 0, maximumFractionDigits: prefixo ? 2 : 0 });
+      if (progresso < 1) requestAnimationFrame(passo);
+      else el.textContent = textoFinal;
     }
-}
-
-function atualizarPreviewVendaProduto(eventoKey, produtoKey) {
-    database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).once('value', snap => {
-        const p = snap.val();
-        if (!p) return;
-        const qtdInput = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
-        const qtd = parseInt(qtdInput?.value) || 0;
-        const preview = document.getElementById(`previewValor-${eventoKey}-${produtoKey}`);
-        const valor = qtd * (parseFloat(p.preco)||0);
-        if (preview) preview.textContent = 'R$ ' + valor.toFixed(2).replace('.',',');
-    });
-}
-
-function selecionarQtdRapida(eventoKey, produtoKey, valor, btn) {
-    const grupo = btn.parentElement;
-    grupo.querySelectorAll('.btn-qtd-rapida').forEach(b => {
-        b.classList.remove('btn-laranja');
-        b.classList.add('btn-cinza');
-    });
-    btn.classList.remove('btn-cinza');
-    btn.classList.add('btn-laranja');
-    const inputManual = document.getElementById(`qtd-${eventoKey}-${produtoKey}`);
-    if (valor === 'outro') {
-        inputManual.style.display = 'block';
-        inputManual.value = inputManual.value || 1;
-        inputManual.focus();
-    } else {
-        inputManual.style.display = 'none';
-        inputManual.value = valor;
+    requestAnimationFrame(passo);
+  }
+  const idsParaAnimar = ['dashFaturamento','dashTicket','dashGastos','dashLucro','dashEntregues','dashAndamento','dashTotalBrig','dashMediaBrig'];
+  const resultado = document.getElementById('dashboard-resultado');
+  if (!resultado) return;
+  const observer = new MutationObserver(() => {
+    if (resultado.style.display !== 'none') {
+      idsParaAnimar.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) animarNumero(el);
+      });
     }
-    atualizarPreviewVendaProduto(eventoKey, produtoKey);
-}
+  });
+  observer.observe(resultado, { attributes: true, attributeFilter: ['style'] });
+})();
+</script>
 
-function confirmarVendaProdutoRapida(eventoKey, produtoKey, forma) {
-    database.ref('eventos/'+eventoKey).once('value', snapshot => {
-        const e = snapshot.val();
-        if (eventoEstaFinalizado(e)) { toast('❌ Evento finalizado.', 'erro'); return; }
-        const p = e.produtos && e.produtos[produtoKey];
-        if (!p) { toast('❌ Produto não encontrado.', 'erro'); return; }
-        const qtd = parseInt(document.getElementById(`qtd-${eventoKey}-${produtoKey}`).value) || 0;
-        if (qtd <= 0) { toast('❌ Informe a quantidade.', 'erro'); return; }
-        const gratuito = forma === 'gratis';
-        const formaPagamento = gratuito ? null : forma;
-        const unidades = parseInt(p.unidades) || 1;
-        const preco = parseFloat(p.preco) || 0;
-        const valor = gratuito ? 0 : qtd * preco;
-        const agora = new Date();
-        const hora  = agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
-        database.ref('eventos/'+eventoKey+'/vendas').push({
-            produtoKey, produtoNome: p.nome, quantidade: qtd,
-            unidadesTotal: qtd*unidades, valor, gratuito, formaPagamento,
-            hora, timestamp: Date.now()
-        }).then(() => {
-            toast(gratuito ? `🎁 ${qtd}x ${p.nome} registrado como gratuito!` : `✅ ${qtd}x ${p.nome} — R$ ${valor.toFixed(2).replace('.',',')} lançado!`);
-            carregarEventos();
-            setTimeout(()=>{ toggleHistorico(eventoKey, true); },400);
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
-}
-
-function toggleEditarProdutoEvento(eventoKey, produtoKey) {
-    document.querySelectorAll(`[id^="produtoEdicao-${eventoKey}-"]`).forEach(painel => {
-        if (painel.id !== `produtoEdicao-${eventoKey}-${produtoKey}`) painel.style.display = 'none';
-    });
-    const painel = document.getElementById(`produtoEdicao-${eventoKey}-${produtoKey}`);
-    if (!painel) return;
-    painel.style.display = painel.style.display === 'block' ? 'none' : 'block';
-}
-
-function salvarEdicaoProdutoEvento(eventoKey, produtoKey) {
-    const nome = document.getElementById(`editProdutoNome-${eventoKey}-${produtoKey}`).value.trim();
-    const unidades = parseInt(document.getElementById(`editProdutoUnidades-${eventoKey}-${produtoKey}`).value) || 0;
-    const precoStr = document.getElementById(`editProdutoPreco-${eventoKey}-${produtoKey}`).value;
-    const preco = parseFloat((precoStr||'0').replace(/[^\d,]/g,'').replace(',','.')) || 0;
-    const produzido = parseInt(document.getElementById(`editProdutoProduzido-${eventoKey}-${produtoKey}`).value) || 0;
-    if (!nome)          { toast('❌ Informe o nome do produto.', 'erro'); return; }
-    if (unidades <= 0)  { toast('❌ Informe as unidades por item.', 'erro'); return; }
-    if (preco <= 0)     { toast('❌ Informe o preço.', 'erro'); return; }
-    database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).update({ nome, unidades, preco, produzido }).then(() => {
-        toast('✅ Produto atualizado!');
-        carregarEventos();
-    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-}
-
-function excluirProdutoEvento(eventoKey, produtoKey) {
-    showConfirmModal('🗑️ Excluir este produto? As vendas já lançadas continuam no histórico.', function() {
-        database.ref('eventos/'+eventoKey+'/produtos/'+produtoKey).remove().then(() => {
-            toast('🗑️ Produto excluído.');
-            carregarEventos();
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
-}
-
-// ====================== EDITAR EVENTO ======================
-
-function abrirEdicaoEvento(key) {
-    database.ref('eventos/'+key).once('value', snapshot => {
-        const e = snapshot.val();
-        if (!e) return;
-        document.getElementById('editEventoKey').value = key;
-        document.getElementById('editEventoNome').value = e.nome || '';
-        document.getElementById('editEventoInicio').value = e.inicio || '';
-        document.getElementById('editEventoFim').value = e.fim || '';
-        document.getElementById('editEventoObs').value = e.obs || '';
-        document.getElementById('modalEditarEvento').style.display = 'flex';
-    });
-}
-
-function salvarEdicaoEvento() {
-    const key = document.getElementById('editEventoKey').value;
-    const nome = document.getElementById('editEventoNome').value.trim();
-    const inicio = document.getElementById('editEventoInicio').value;
-    const fim = document.getElementById('editEventoFim').value;
-    const obs = document.getElementById('editEventoObs').value.trim();
-    if (!nome)   { toast('❌ Informe o nome do evento.', 'erro'); return; }
-    if (!inicio) { toast('❌ Informe a data de início.', 'erro'); return; }
-    if (!fim)    { toast('❌ Informe a data de fim.', 'erro'); return; }
-    if (fim < inicio) { toast('❌ Data fim deve ser igual ou depois do início.', 'erro'); return; }
-    database.ref('eventos/'+key).update({ nome, inicio, fim, obs }).then(() => {
-        toast('✅ Evento atualizado!');
-        document.getElementById('modalEditarEvento').style.display = 'none';
-        carregarEventos();
-    }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-}
-
-function excluirVenda(eventoKey, vendaKey) {
-    showConfirmModal('Excluir esta venda?', function() {
-        database.ref('eventos/'+eventoKey+'/vendas/'+vendaKey).remove().then(()=>{
-            toast('🗑️ Venda excluída.'); carregarEventos();
-            setTimeout(()=>{ toggleHistorico(eventoKey, true); },400);
-        }).catch(err=>toast('❌ Erro: '+err.message,'erro'));
-    });
-}
-
-// ====================== CUSTOS: ABA SWITCHER ======================
+</body>
+</html>
