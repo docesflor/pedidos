@@ -30,6 +30,10 @@ function limparFormulario() {
     const descInput = document.getElementById('valorDesconto');
     if (descInput) { descInput.value = ''; descInput.readOnly = false; descInput.style.color = ''; descInput.style.fontWeight = ''; }
     document.getElementById('valorTotal').value = '';
+    document.getElementById('custo-pedido-linhas').innerHTML = '';
+    document.getElementById('custo-pedido-total-valor').textContent = 'R$ 0,00';
+    document.getElementById('custo-pedido-margem').textContent = '';
+    document.getElementById('custo-pedido-estimado').style.display = 'none';
     document.getElementById('observacoes').value = '';
     document.getElementById('statusPagamento').value = 'A pagar';
     document.getElementById('valorPago').value = '';
